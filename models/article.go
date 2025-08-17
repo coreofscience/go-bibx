@@ -10,7 +10,7 @@ import (
 
 type Article struct {
 	Label      string
-	IDs        collections.Set[string]
+	IDs        *collections.Set[string]
 	Authors    []string
 	Year       *int
 	Title      *string
@@ -35,9 +35,9 @@ func (a *Article) Merge(other *Article) *Article {
 	}
 
 	merged := &Article{
-		Label:      *keepLongest(a.Label, other.Label),
-		IDs:        *a.IDs.Union(&other.IDs),
-		Authors:    append(a.Authors, other.Authors...),
+		Label:      *keepLongestString(a.Label, other.Label),
+		IDs:        a.IDs.Union(other.IDs),
+		Authors:    keepLongestSlice(a.Authors, other.Authors),
 		Year:       keep(a.Year, other.Year),
 		Title:      keep(a.Title, other.Title),
 		Journal:    keep(a.Journal, other.Journal),
@@ -47,18 +47,8 @@ func (a *Article) Merge(other *Article) *Article {
 		DOI:        keep(a.DOI, other.DOI),
 		Permalink:  keep(a.Permalink, other.Permalink),
 		TimesCited: keep(a.TimesCited, other.TimesCited),
-	}
-
-	if len(a.Keywords) > 0 {
-		merged.Keywords = a.Keywords
-	} else {
-		merged.Keywords = other.Keywords
-	}
-
-	if len(a.References) > 0 {
-		merged.References = a.References
-	} else {
-		merged.References = other.References
+		Keywords:   keepLongestSlice(a.Keywords, other.Keywords),
+		References: keepLongestSlice(a.References, other.References),
 	}
 
 	return merged
@@ -119,20 +109,23 @@ func (a *Article) SimpleId() *string {
 	author := a.Authors[0]
 	firstName := strings.Split(author, " ")[0]
 	name := strings.ReplaceAll(firstName, ",", "")
-	result := fmt.Sprintf("%s%d", name, *a.Year)
+	result := strings.ToLower(fmt.Sprintf("%s%d", name, *a.Year))
 	return &result
 }
 
 // Permalink returns the permalink of the Article if it exists.
 func (a *Article) GetPermalink() *string {
-	if a == nil || a.Permalink == nil {
+	if a == nil {
 		return nil
+	}
+	if a.Permalink != nil && *a.Permalink != "" {
+		return a.Permalink
 	}
 	if a.DOI != nil && *a.DOI != "" {
 		result := fmt.Sprintf("https://doi.org/%s", *a.DOI)
 		return &result
 	}
-	return a.Permalink
+	return nil
 }
 
 // AddSimpleId adds a simple ID to the Article's IDs set.
@@ -167,9 +160,16 @@ func keep[T any](a, b *T) *T {
 	return b
 }
 
-func keepLongest(a, b string) *string {
+func keepLongestString(a, b string) *string {
 	if len(a) >= len(b) {
 		return &a
 	}
 	return &b
+}
+
+func keepLongestSlice[T any](a, b []T) []T {
+	if len(a) >= len(b) {
+		return a
+	}
+	return b
 }

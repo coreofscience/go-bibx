@@ -5,10 +5,14 @@ type Set[T comparable] struct {
 }
 
 // NewSet creates a new Set instance.
-func NewSet[T comparable]() *Set[T] {
-	return &Set[T]{
+func NewSet[T comparable](elements ...T) *Set[T] {
+	result := &Set[T]{
 		elements: make(map[T]bool),
 	}
+	for _, elem := range elements {
+		result.Add(elem)
+	}
+	return result
 }
 
 // Add adds an element to the set.
