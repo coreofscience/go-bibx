@@ -161,10 +161,16 @@ func keep[T any](a, b *T) *T {
 }
 
 func keepLongestString(a, b string) *string {
-	if len(a) >= len(b) {
+	if len(a) > len(b) {
 		return &a
 	}
-	return &b
+	if len(b) > len(a) {
+		return &b
+	}
+	if a > b {
+		return &b
+	}
+	return &a
 }
 
 func keepLongestSlice[T any](a, b []T) []T {

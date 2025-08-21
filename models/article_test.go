@@ -31,6 +31,18 @@ func TestArticle_Merge(t *testing.T) {
 			want:    &models.Article{Label: "AAAAA2"},
 		},
 		{
+			name:    "Merge keeps the lowest label",
+			article: &models.Article{Label: "A1"},
+			other:   &models.Article{Label: "A2"},
+			want:    &models.Article{Label: "A1"},
+		},
+		{
+			name:    "Merge keeps the lowest label",
+			article: &models.Article{Label: "A2"},
+			other:   &models.Article{Label: "A1"},
+			want:    &models.Article{Label: "A1"},
+		},
+		{
 			name:    "Merge keeps the longest label when longest is in the receiver",
 			article: &models.Article{Label: "AAAAA2"},
 			other:   &models.Article{Label: "A1"},
