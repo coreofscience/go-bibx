@@ -1,3 +1,3 @@
 # go-bibx
 
-Go implementation of bibliographic tools.
+Go implementation of bibliometric analysis tools.
