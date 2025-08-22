@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"math"
 	"reflect"
 	"strings"
@@ -163,13 +163,13 @@ func (c *openAlexClient) ListRecentArticles(ctx context.Context, params *ListRec
 
 	maxPages := int(math.Ceil(float64(*params.Limit) / MaxWorksPerPage))
 	concurrency := min(MaxConcurrentRequests, maxPages)
-	log.Printf("Fetching up to %d pages with concurrency %d", maxPages, concurrency)
+	slog.Debug("fetching pages with concurrency", "maxPages", maxPages, "concurrency", concurrency)
 
 	for i := range concurrency {
 		goroutineIndex := i
 		group.Go(func() error {
 			for page := range pages {
-				log.Printf("Fetching page %d from goroutine %d", page, goroutineIndex)
+				slog.Debug("fetching page from goroutine", "page", page, "goroutine", goroutineIndex)
 				queryParams := map[string]string{
 					"select":   strings.Join(slelectFields, ","),
 					"filter":   strings.Join(filterParts, ","),
@@ -187,7 +187,7 @@ func (c *openAlexClient) ListRecentArticles(ctx context.Context, params *ListRec
 					return fmt.Errorf("error fetching works: %w", err)
 				}
 				if response.IsError() {
-					log.Printf("Error response: %s", response.String())
+					slog.Debug("error response", "status", response.Status(), "body", response.String())
 					return fmt.Errorf("error fetching works: %s", response.Status())
 				}
 				result := response.Result().(*WorksResponse)
