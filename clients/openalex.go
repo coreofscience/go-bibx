@@ -8,7 +8,9 @@ import (
 	"math"
 	"reflect"
 	"strings"
+	"sync"
 
+	"github.com/coreofscience/go-bibx/utils"
 	"golang.org/x/sync/errgroup"
 	"resty.dev/v3"
 )
@@ -16,7 +18,7 @@ import (
 const (
 	MaxWorksPerPage       = 200
 	MaxIdsPerRequest      = 80
-	MaxConcurrentRequests = 5
+	MaxConcurrentRequests = 4
 )
 
 type AuthorPosition string
@@ -95,8 +97,13 @@ type ListRecentArticlesParams struct {
 	Limit *int
 }
 
+type ListArticlesByIDsParams struct {
+	IDs []string
+}
+
 type OpenAlexClient interface {
 	ListRecentArticles(ctx context.Context, params *ListRecentArticlesParams) ([]Work, error)
+	ListArticlesByIDs(ctx context.Context, params *ListArticlesByIDsParams) ([]Work, error)
 }
 
 type openAlexClient struct {
@@ -157,8 +164,7 @@ func (c *openAlexClient) ListRecentArticles(ctx context.Context, params *ListRec
 	responses := make(chan *WorksResponse)
 
 	if params.Limit == nil || *params.Limit <= 0 {
-		defaultLimit := 600
-		params.Limit = &defaultLimit
+		params.Limit = utils.NewRef(600)
 	}
 
 	maxPages := int(math.Ceil(float64(*params.Limit) / MaxWorksPerPage))
@@ -191,12 +197,15 @@ func (c *openAlexClient) ListRecentArticles(ctx context.Context, params *ListRec
 					return fmt.Errorf("error fetching works: %s", response.Status())
 				}
 				result := response.Result().(*WorksResponse)
+				slog.Debug("fetched page", "page", page, "numWorks", len(result.Works))
 				if result == nil {
 					return errors.New("error parsing works response")
 				}
 				if len(result.Works) == 0 {
-					return nil
+					slog.Debug("no more works, stopping", "page", page)
+					continue
 				}
+				slog.Debug("sending response", "numWorks", len(result.Works))
 				responses <- result
 			}
 			return nil
@@ -208,29 +217,131 @@ func (c *openAlexClient) ListRecentArticles(ctx context.Context, params *ListRec
 	}
 	close(pages)
 
-	works := make([]Work, 0)
-	go func() {
+	works := make([]Work, 0, *params.Limit)
+	waitGroup := sync.WaitGroup{}
+	waitGroup.Go(func() {
+		slog.Debug("starting response collector")
 		for res := range responses {
 			if res != nil {
+				slog.Debug("received response", "numWorks", len(res.Works))
 				works = append(works, res.Works...)
 			}
 		}
-	}()
+		slog.Debug("response collector done", "totalWorks", len(works))
+	})
 
 	err := group.Wait()
+	close(responses)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching works in parallel: %w", err)
 	}
+	waitGroup.Wait()
+	slog.Debug("all done", "totalWorks", len(works))
+	return works, nil
+}
+
+func (c *openAlexClient) ListArticlesByIDs(ctx context.Context, params *ListArticlesByIDsParams) ([]Work, error) {
+	if params == nil {
+		return nil, errors.New("params cannot be nil")
+	}
+
+	if len(params.IDs) == 0 {
+		return []Work{}, nil
+	}
+
+	slelectFields := jsonFields(Work{})
+	idChunks := chunks(params.IDs, MaxIdsPerRequest)
+
+	group, ctx := errgroup.WithContext(ctx)
+	chunksChann := make(chan []string)
+	responses := make(chan *WorksResponse)
+
+	concurrency := min(MaxConcurrentRequests, len(idChunks))
+	slog.Debug("fetching pages with concurrency", "numChunks", len(idChunks), "concurrency", concurrency)
+
+	for i := range concurrency {
+		goroutineIndex := i
+		group.Go(func() error {
+			for idChunk := range chunksChann {
+				slog.Debug("fetching chunk from goroutine", "numIds", len(idChunk), "goroutine", goroutineIndex)
+				joinedIDs := strings.Join(idChunk, "|")
+				queryParams := map[string]string{
+					"select":   strings.Join(slelectFields, ","),
+					"filter":   fmt.Sprintf("ids.openalex:%s,type:types/article", joinedIDs),
+					"per_page": fmt.Sprintf("%d", MaxIdsPerRequest),
+				}
+				response, err := c.fetchWorks(ctx, queryParams)
+				if err != nil {
+					return fmt.Errorf("error fetching works: %w", err)
+				}
+				if response == nil || len(response.Works) == 0 {
+					continue
+				}
+				slog.Debug("fetched chunk", "numWorks", len(response.Works))
+				responses <- response
+			}
+			return nil
+		})
+	}
+
+	waitGroup := sync.WaitGroup{}
+
+	waitGroup.Go(func() {
+		slog.Debug("sending id chunks to workers", "numChunks", len(idChunks))
+		for _, idChunk := range idChunks {
+			chunksChann <- idChunk
+		}
+		close(chunksChann)
+	})
+
+	works := make([]Work, 0)
+	waitGroup.Go(func() {
+		slog.Debug("starting response collector")
+		for res := range responses {
+			if res != nil {
+				slog.Debug("received response", "numWorks", len(res.Works))
+				works = append(works, res.Works...)
+			}
+		}
+	})
+
+	err := group.Wait()
 	close(responses)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching works in parallel: %w", err)
+	}
+
+	waitGroup.Wait()
 
 	return works, nil
+}
+
+func (c *openAlexClient) fetchWorks(ctx context.Context, queryParams map[string]string) (*WorksResponse, error) {
+	response, err := c.client.R().
+		SetContext(ctx).
+		SetHeaders(c.baseHeaders).
+		SetQueryParams(queryParams).
+		SetResult(&WorksResponse{}).
+		Get(fmt.Sprintf("%s/works", c.baseURL))
+	if err != nil {
+		return nil, fmt.Errorf("error fetching works: %w", err)
+	}
+	if response.IsError() {
+		slog.Debug("error response", "status", response.Status(), "body", response.String())
+		return nil, fmt.Errorf("error fetching works: %s", response.Status())
+	}
+	result := response.Result().(*WorksResponse)
+	if result == nil {
+		return nil, errors.New("error parsing works response")
+	}
+	return result, nil
 }
 
 // List all the JSON fields for an arbitrary struct
 func jsonFields(t any) []string {
 	var fields []string
 	v := reflect.ValueOf(t)
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		v = v.Elem()
 	}
 	if v.Kind() != reflect.Struct {
@@ -245,4 +356,15 @@ func jsonFields(t any) []string {
 		}
 	}
 	return fields
+}
+
+// chunks splits a slice into chunks of the specified size
+func chunks[T any](slice []T, chunkSize int) [][]T {
+	numChunks := (len(slice) + chunkSize - 1) / chunkSize
+	chunked := make([][]T, 0, numChunks)
+	for i := 0; i < len(slice); i += chunkSize {
+		end := min(i+chunkSize, len(slice))
+		chunked = append(chunked, slice[i:end])
+	}
+	return chunked
 }
