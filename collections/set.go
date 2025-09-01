@@ -53,7 +53,7 @@ func (s *Set[T]) Union(other *Set[T]) *Set[T] {
 	return unionSet
 }
 
-// Items returns a sorted slice of the elements in the set.
+// Items returns an unsorted slice of the elements in the set.
 func (s *Set[T]) Items() []*T {
 	if s == nil {
 		return nil
@@ -61,6 +61,18 @@ func (s *Set[T]) Items() []*T {
 	items := make([]*T, 0, len(s.elements))
 	for elem := range s.elements {
 		items = append(items, &elem)
+	}
+	return items
+}
+
+// CopiedItems returns an unsorted slice of the elements in the set.
+func (s *Set[T]) CopiedItems() []T {
+	if s == nil {
+		return nil
+	}
+	items := make([]T, 0, len(s.elements))
+	for elem := range s.elements {
+		items = append(items, elem)
 	}
 	return items
 }
