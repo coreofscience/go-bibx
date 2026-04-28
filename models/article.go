@@ -62,9 +62,9 @@ func (a *Article) Key() *string {
 	items := a.IDs.Items()
 	sort.Slice(items, func(i, j int) bool {
 		// TODO: Maybe use the longest ID as the key?
-		return *items[i] < *items[j]
+		return items[i] < items[j]
 	})
-	return items[0]
+	return &items[0]
 }
 
 // SimpleLabel returns a simplified label for the Article.

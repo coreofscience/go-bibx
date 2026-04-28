@@ -6,13 +6,13 @@ type Set[T comparable] struct {
 
 // NewSet creates a new Set instance.
 func NewSet[T comparable](elements ...T) *Set[T] {
-	result := &Set[T]{
-		elements: make(map[T]struct{}),
-	}
+	internalElements := make(map[T]struct{})
 	for _, elem := range elements {
-		result.Add(elem)
+		internalElements[elem] = struct{}{}
 	}
-	return result
+	return &Set[T]{
+		elements: internalElements,
+	}
 }
 
 // Add adds an element to the set.
@@ -54,19 +54,7 @@ func (s *Set[T]) Union(other *Set[T]) *Set[T] {
 }
 
 // Items returns an unsorted slice of the elements in the set.
-func (s *Set[T]) Items() []*T {
-	if s == nil {
-		return nil
-	}
-	items := make([]*T, 0, len(s.elements))
-	for elem := range s.elements {
-		items = append(items, &elem)
-	}
-	return items
-}
-
-// CopiedItems returns an unsorted slice of the elements in the set.
-func (s *Set[T]) CopiedItems() []T {
+func (s *Set[T]) Items() []T {
 	if s == nil {
 		return nil
 	}

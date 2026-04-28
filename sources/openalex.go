@@ -102,7 +102,7 @@ func (s *openAlexSource) Build(ctx context.Context) (*models.Collection, error) 
 			}
 		}
 	}
-	referencedWorks, err := s.client.ListArticlesByIDs(ctx, missing.CopiedItems())
+	referencedWorks, err := s.client.ListArticlesByIDs(ctx, missing.Items())
 	if err != nil {
 		return nil, fmt.Errorf("failed to list articles by IDs: %w", err)
 	}

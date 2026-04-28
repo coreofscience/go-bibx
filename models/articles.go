@@ -47,19 +47,13 @@ func (a *Articles) UniqueById() map[string]*Article {
 		allIDs := article.IDs.Items()
 		firstID := allIDs[0]
 		remainingIDs := allIDs[1:]
-		if firstID == nil {
-			continue
-		}
-		firstVertex := gograph.NewVertex(*firstID)
+		firstVertex := gograph.NewVertex(firstID)
 		_, _ = graph.AddEdge(firstVertex, firstVertex)
-		idToArticle[*firstID] = append(idToArticle[*firstID], article)
+		idToArticle[firstID] = append(idToArticle[firstID], article)
 		for _, id := range remainingIDs {
-			if id == nil {
-				continue
-			}
-			vertex := gograph.NewVertex(*id)
+			vertex := gograph.NewVertex(id)
 			_, _ = graph.AddEdge(firstVertex, vertex)
-			idToArticle[*id] = append(idToArticle[*id], article)
+			idToArticle[id] = append(idToArticle[id], article)
 		}
 	}
 	unique := make(map[string]*Article, 0)
@@ -146,10 +140,7 @@ func (a *Articles) Deduplicate() Articles {
 			continue
 		}
 		firstID := article.IDs.Items()[0]
-		if firstID == nil {
-			continue
-		}
-		uniqueArticle, exists := uniqueMap[*firstID]
+		uniqueArticle, exists := uniqueMap[firstID]
 		if !exists || uniqueArticle == nil || seen[uniqueArticle] {
 			continue
 		}
@@ -169,10 +160,7 @@ func (a *Articles) Deduplicate() Articles {
 				continue
 			}
 			firstRefID := ref.IDs.Items()[0]
-			if firstRefID == nil {
-				continue
-			}
-			dedupedRef, exists := uniqueMap[*firstRefID]
+			dedupedRef, exists := uniqueMap[firstRefID]
 			if !exists || dedupedRef == nil || seenRefs[dedupedRef] {
 				continue
 			}
