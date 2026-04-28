@@ -94,8 +94,8 @@ func (a *Article) SimpleLabel() *string {
 	if len(parts) == 0 {
 		return nil
 	}
-	resunt := strings.Join(parts, ", ")
-	return &resunt
+	result := strings.Join(parts, ", ")
+	return &result
 }
 
 // SimpleId returns the first author's name and the year.
