@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/coreofscience/go-bibx/clients"
+	"github.com/coreofscience/go-bibx/clients/openalex"
 )
 
 func main() {
@@ -15,7 +15,7 @@ func main() {
 		Level: slog.LevelDebug,
 	}))
 	slog.SetDefault(logger)
-	openalexClient := clients.NewOpenAlexClient()
+	openalexClient := openalex.NewRestyClient()
 	recentWorks, err := openalexClient.ListRecentArticles(
 		context.Background(),
 		"bit patterned media",

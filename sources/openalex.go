@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/coreofscience/go-bibx/clients"
+	"github.com/coreofscience/go-bibx/clients/openalex"
 	"github.com/coreofscience/go-bibx/collections"
 	"github.com/coreofscience/go-bibx/models"
 )
@@ -27,7 +27,7 @@ type openAlexSource struct {
 	query  string
 	limit  int
 	enrich EnrichReferences
-	client clients.OpenAlexClient
+	client openalex.Client
 }
 
 type OpenAlexSourceOption func(*openAlexSource)
@@ -44,7 +44,7 @@ func WithEnrichReferences(enrich EnrichReferences) OpenAlexSourceOption {
 	}
 }
 
-func WithClient(client clients.OpenAlexClient) OpenAlexSourceOption {
+func WithClient(client openalex.Client) OpenAlexSourceOption {
 	return func(s *openAlexSource) {
 		s.client = client
 	}
@@ -55,7 +55,7 @@ func NewOpenAlexSource(query string, options ...OpenAlexSourceOption) Source {
 		query:  query,
 		limit:  100,
 		enrich: EnrichReferencesBasic,
-		client: clients.NewOpenAlexClient(),
+		client: openalex.NewRestyClient(),
 	}
 	for _, option := range options {
 		option(s)
@@ -68,7 +68,7 @@ func (s *openAlexSource) Build(ctx context.Context) (*models.Collection, error) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to list recent articles: %w", err)
 	}
-	cache := make(map[string]*clients.Work)
+	cache := make(map[string]*openalex.Work)
 	for _, work := range works {
 		cache[work.ID] = &work
 	}
