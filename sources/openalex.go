@@ -30,31 +30,37 @@ type openAlexSource struct {
 	client clients.OpenAlexClient
 }
 
-type NewOpenAlexSourceParams struct {
-	Query  string
-	Limit  int
-	Enrich EnrichReferences
-	Client clients.OpenAlexClient
+type OpenAlexSourceOption func(*openAlexSource)
+
+func WithLimit(limit int) OpenAlexSourceOption {
+	return func(s *openAlexSource) {
+		s.limit = limit
+	}
 }
 
-func NewOpenAlexSource(params NewOpenAlexSourceParams) Source {
-	if params.Limit <= 0 {
-		params.Limit = 100
+func WithEnrichReferences(enrich EnrichReferences) OpenAlexSourceOption {
+	return func(s *openAlexSource) {
+		s.enrich = enrich
 	}
-	if params.Enrich == "" {
-		params.Enrich = EnrichReferencesBasic
+}
+
+func WithClient(client clients.OpenAlexClient) OpenAlexSourceOption {
+	return func(s *openAlexSource) {
+		s.client = client
 	}
-	if params.Client == nil {
-		params.Client = clients.NewOpenAlexClient(
-			&clients.NewOpenAlexClientParams{},
-		)
+}
+
+func NewOpenAlexSource(query string, options ...OpenAlexSourceOption) Source {
+	s := &openAlexSource{
+		query:  query,
+		limit:  100,
+		enrich: EnrichReferencesBasic,
+		client: clients.NewOpenAlexClient(),
 	}
-	return &openAlexSource{
-		query:  params.Query,
-		limit:  params.Limit,
-		enrich: params.Enrich,
-		client: params.Client,
+	for _, option := range options {
+		option(s)
 	}
+	return s
 }
 
 func (s *openAlexSource) Build(ctx context.Context) (*models.Collection, error) {

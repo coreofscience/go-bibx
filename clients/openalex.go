@@ -61,7 +61,7 @@ type WorkLocationSource struct {
 }
 
 type WorkLocation struct {
-	IsOpenAcces    bool                `json:"is_oa"`
+	IsOpenAccess   bool                `json:"is_oa"`
 	LandingPageUrl *string             `json:"landing_page_url"`
 	PDFUrl         *string             `json:"pdf_url"`
 	Source         *WorkLocationSource `json:"source"`
@@ -112,35 +112,52 @@ type openAlexClient struct {
 	baseHeaders map[string]string
 }
 
-type NewOpenAlexClientParams struct {
-	BaseURL     string
-	HTTPClient  *resty.Client
-	Email       string
-	BaseHeaders map[string]string
+type OpenAlexClientOption func(*openAlexClient)
+
+func WithBaseURL(url string) OpenAlexClientOption {
+	return func(c *openAlexClient) {
+		c.baseURL = url
+	}
 }
 
-func NewOpenAlexClient(params *NewOpenAlexClientParams) OpenAlexClient {
-	if params.BaseURL == "" {
-		params.BaseURL = "https://api.openalex.org"
+func WithHTTPClient(client *resty.Client) OpenAlexClientOption {
+	return func(c *openAlexClient) {
+		c.client = client
 	}
-	if params.HTTPClient == nil {
-		params.HTTPClient = resty.New()
+}
+
+func WithHeader(key string, value string) OpenAlexClientOption {
+	return func(c *openAlexClient) {
+		if c.baseHeaders == nil {
+			c.baseHeaders = make(map[string]string)
+		}
+		c.baseHeaders[key] = value
 	}
-	if params.Email != "" {
-		params.Email = "technology@coreofscience.org"
+}
+
+func WithEmail(email string) OpenAlexClientOption {
+	return func(c *openAlexClient) {
+		if c.baseHeaders == nil {
+			c.baseHeaders = make(map[string]string)
+		}
+		c.baseHeaders["User-Agent"] = fmt.Sprintf("Go/resty/go-bibx mailto:%s", email)
 	}
-	if params.BaseHeaders == nil {
-		params.BaseHeaders = map[string]string{
+}
+
+func NewOpenAlexClient(options ...OpenAlexClientOption) OpenAlexClient {
+	client := &openAlexClient{
+		baseURL: "https://api.openalex.org",
+		client:  resty.New(),
+		baseHeaders: map[string]string{
 			"Accept":       "application/json",
 			"Content-Type": "application/json",
-			"User-Agent":   fmt.Sprintf("Go/resty/go-bibx mailto:%s", params.Email),
-		}
+			"User-Agent":   fmt.Sprintf("Go/resty/go-bibx mailto:%s", "technology@coreofscience.org"),
+		},
 	}
-	return &openAlexClient{
-		baseURL:     params.BaseURL,
-		client:      params.HTTPClient,
-		baseHeaders: params.BaseHeaders,
+	for _, option := range options {
+		option(client)
 	}
+	return client
 }
 
 func (c *openAlexClient) ListRecentArticles(ctx context.Context, params *ListRecentArticlesParams) ([]Work, error) {
@@ -148,7 +165,7 @@ func (c *openAlexClient) ListRecentArticles(ctx context.Context, params *ListRec
 		return nil, errors.New("params cannot be nil")
 	}
 
-	slelectFields := jsonFields(Work{})
+	selectFields := jsonFields(Work{})
 	queryFilter := fmt.Sprintf(
 		"title_and_abstract.search:%s",
 		strings.ReplaceAll(params.Query, " ", "+"),
@@ -177,7 +194,7 @@ func (c *openAlexClient) ListRecentArticles(ctx context.Context, params *ListRec
 			for page := range pages {
 				slog.Debug("fetching page from goroutine", "page", page, "goroutine", goroutineIndex)
 				queryParams := map[string]string{
-					"select":   strings.Join(slelectFields, ","),
+					"select":   strings.Join(selectFields, ","),
 					"filter":   strings.Join(filterParts, ","),
 					"sort":     "publication_year:desc",
 					"per_page": fmt.Sprintf("%d", MaxWorksPerPage),
@@ -197,10 +214,10 @@ func (c *openAlexClient) ListRecentArticles(ctx context.Context, params *ListRec
 					return fmt.Errorf("error fetching works: %s", response.Status())
 				}
 				result := response.Result().(*WorksResponse)
-				slog.Debug("fetched page", "page", page, "numWorks", len(result.Works))
 				if result == nil {
 					return errors.New("error parsing works response")
 				}
+				slog.Debug("fetched page", "page", page, "numWorks", len(result.Works))
 				if len(result.Works) == 0 {
 					slog.Debug("no more works, stopping", "page", page)
 					continue
@@ -249,11 +266,11 @@ func (c *openAlexClient) ListArticlesByIDs(ctx context.Context, params *ListArti
 		return []Work{}, nil
 	}
 
-	slelectFields := jsonFields(Work{})
+	selectFields := jsonFields(Work{})
 	idChunks := chunks(params.IDs, MaxIdsPerRequest)
 
 	group, ctx := errgroup.WithContext(ctx)
-	chunksChann := make(chan []string)
+	chunksChan := make(chan []string)
 	responses := make(chan *WorksResponse)
 
 	concurrency := min(MaxConcurrentRequests, len(idChunks))
@@ -262,11 +279,11 @@ func (c *openAlexClient) ListArticlesByIDs(ctx context.Context, params *ListArti
 	for i := range concurrency {
 		goroutineIndex := i
 		group.Go(func() error {
-			for idChunk := range chunksChann {
+			for idChunk := range chunksChan {
 				slog.Debug("fetching chunk from goroutine", "numIds", len(idChunk), "goroutine", goroutineIndex)
 				joinedIDs := strings.Join(idChunk, "|")
 				queryParams := map[string]string{
-					"select":   strings.Join(slelectFields, ","),
+					"select":   strings.Join(selectFields, ","),
 					"filter":   fmt.Sprintf("ids.openalex:%s,type:types/article", joinedIDs),
 					"per_page": fmt.Sprintf("%d", MaxIdsPerRequest),
 				}
@@ -289,9 +306,9 @@ func (c *openAlexClient) ListArticlesByIDs(ctx context.Context, params *ListArti
 	waitGroup.Go(func() {
 		slog.Debug("sending id chunks to workers", "numChunks", len(idChunks))
 		for _, idChunk := range idChunks {
-			chunksChann <- idChunk
+			chunksChan <- idChunk
 		}
-		close(chunksChann)
+		close(chunksChan)
 	})
 
 	works := make([]Work, 0)
@@ -337,7 +354,7 @@ func (c *openAlexClient) fetchWorks(ctx context.Context, queryParams map[string]
 	return result, nil
 }
 
-// List all the JSON fields for an arbitrary struct
+// list all the JSON fields for an arbitrary struct
 func jsonFields(t any) []string {
 	var fields []string
 	v := reflect.ValueOf(t)

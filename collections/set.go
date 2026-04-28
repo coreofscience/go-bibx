@@ -1,13 +1,13 @@
 package collections
 
 type Set[T comparable] struct {
-	elements map[T]bool
+	elements map[T]struct{}
 }
 
 // NewSet creates a new Set instance.
 func NewSet[T comparable](elements ...T) *Set[T] {
 	result := &Set[T]{
-		elements: make(map[T]bool),
+		elements: make(map[T]struct{}),
 	}
 	for _, elem := range elements {
 		result.Add(elem)
@@ -21,9 +21,9 @@ func (s *Set[T]) Add(elem T) {
 		return
 	}
 	if s.elements == nil {
-		s.elements = make(map[T]bool)
+		s.elements = make(map[T]struct{})
 	}
-	s.elements[elem] = true
+	s.elements[elem] = struct{}{}
 }
 
 // Len returns the number of elements in the set.
@@ -45,10 +45,10 @@ func (s *Set[T]) Union(other *Set[T]) *Set[T] {
 
 	unionSet := NewSet[T]()
 	for elem := range s.elements {
-		unionSet.elements[elem] = true
+		unionSet.elements[elem] = struct{}{}
 	}
 	for elem := range other.elements {
-		unionSet.elements[elem] = true
+		unionSet.elements[elem] = struct{}{}
 	}
 	return unionSet
 }

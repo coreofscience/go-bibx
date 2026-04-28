@@ -16,7 +16,7 @@ func main() {
 		Level: slog.LevelDebug,
 	}))
 	slog.SetDefault(logger)
-	openalexClient := clients.NewOpenAlexClient(&clients.NewOpenAlexClientParams{})
+	openalexClient := clients.NewOpenAlexClient()
 	recentWorks, err := openalexClient.ListRecentArticles(
 		context.Background(),
 		&clients.ListRecentArticlesParams{

@@ -22,7 +22,7 @@ func NewCounter[T comparable](items ...T) *Counter[T] {
 	}
 }
 
-// MostCommon returns the most common item and its count.
+// MostCommon returns the most common items and their counts.
 func (c *Counter[T]) MostCommon(count int) []CounterItem[T] {
 	if c == nil || len(c.counts) == 0 || count <= 0 {
 		return nil
