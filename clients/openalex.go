@@ -10,7 +10,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/coreofscience/go-bibx/utils"
 	"golang.org/x/sync/errgroup"
 	"resty.dev/v3"
 )
@@ -92,18 +91,9 @@ type WorksResponse struct {
 	Works []Work       `json:"results"`
 }
 
-type ListRecentArticlesParams struct {
-	Query string
-	Limit *int
-}
-
-type ListArticlesByIDsParams struct {
-	IDs []string
-}
-
 type OpenAlexClient interface {
-	ListRecentArticles(ctx context.Context, params *ListRecentArticlesParams) ([]Work, error)
-	ListArticlesByIDs(ctx context.Context, params *ListArticlesByIDsParams) ([]Work, error)
+	ListRecentArticles(ctx context.Context, query string, limit int) ([]Work, error)
+	ListArticlesByIDs(ctx context.Context, ids []string) ([]Work, error)
 }
 
 type openAlexClient struct {
@@ -160,15 +150,11 @@ func NewOpenAlexClient(options ...OpenAlexClientOption) OpenAlexClient {
 	return client
 }
 
-func (c *openAlexClient) ListRecentArticles(ctx context.Context, params *ListRecentArticlesParams) ([]Work, error) {
-	if params == nil {
-		return nil, errors.New("params cannot be nil")
-	}
-
+func (c *openAlexClient) ListRecentArticles(ctx context.Context, query string, limit int) ([]Work, error) {
 	selectFields := jsonFields(Work{})
 	queryFilter := fmt.Sprintf(
 		"title_and_abstract.search:%s",
-		strings.ReplaceAll(params.Query, " ", "+"),
+		strings.ReplaceAll(query, " ", "+"),
 	)
 	filterParts := []string{
 		queryFilter,
@@ -180,11 +166,7 @@ func (c *openAlexClient) ListRecentArticles(ctx context.Context, params *ListRec
 	pages := make(chan int)
 	responses := make(chan *WorksResponse)
 
-	if params.Limit == nil || *params.Limit <= 0 {
-		params.Limit = utils.NewRef(600)
-	}
-
-	maxPages := int(math.Ceil(float64(*params.Limit) / MaxWorksPerPage))
+	maxPages := int(math.Ceil(float64(limit) / MaxWorksPerPage))
 	concurrency := min(MaxConcurrentRequests, maxPages)
 	slog.Debug("fetching pages with concurrency", "maxPages", maxPages, "concurrency", concurrency)
 
@@ -234,7 +216,7 @@ func (c *openAlexClient) ListRecentArticles(ctx context.Context, params *ListRec
 	}
 	close(pages)
 
-	works := make([]Work, 0, *params.Limit)
+	works := make([]Work, 0, limit)
 	waitGroup := sync.WaitGroup{}
 	waitGroup.Go(func() {
 		slog.Debug("starting response collector")
@@ -257,17 +239,13 @@ func (c *openAlexClient) ListRecentArticles(ctx context.Context, params *ListRec
 	return works, nil
 }
 
-func (c *openAlexClient) ListArticlesByIDs(ctx context.Context, params *ListArticlesByIDsParams) ([]Work, error) {
-	if params == nil {
-		return nil, errors.New("params cannot be nil")
-	}
-
-	if len(params.IDs) == 0 {
+func (c *openAlexClient) ListArticlesByIDs(ctx context.Context, ids []string) ([]Work, error) {
+	if len(ids) == 0 {
 		return []Work{}, nil
 	}
 
 	selectFields := jsonFields(Work{})
-	idChunks := chunks(params.IDs, MaxIdsPerRequest)
+	idChunks := chunks(ids, MaxIdsPerRequest)
 
 	group, ctx := errgroup.WithContext(ctx)
 	chunksChan := make(chan []string)

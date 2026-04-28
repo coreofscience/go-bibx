@@ -64,10 +64,7 @@ func NewOpenAlexSource(query string, options ...OpenAlexSourceOption) Source {
 }
 
 func (s *openAlexSource) Build(ctx context.Context) (*models.Collection, error) {
-	works, err := s.client.ListRecentArticles(ctx, &clients.ListRecentArticlesParams{
-		Query: s.query,
-		Limit: &s.limit,
-	})
+	works, err := s.client.ListRecentArticles(ctx, s.query, s.limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list recent articles: %w", err)
 	}
@@ -105,9 +102,7 @@ func (s *openAlexSource) Build(ctx context.Context) (*models.Collection, error) 
 			}
 		}
 	}
-	referencedWorks, err := s.client.ListArticlesByIDs(ctx, &clients.ListArticlesByIDsParams{
-		IDs: missing.CopiedItems(),
-	})
+	referencedWorks, err := s.client.ListArticlesByIDs(ctx, missing.CopiedItems())
 	if err != nil {
 		return nil, fmt.Errorf("failed to list articles by IDs: %w", err)
 	}

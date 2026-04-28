@@ -9,7 +9,7 @@ import (
 
 type Articles []*Article
 
-// allArticles returns a slice of all articles including their references
+// All returns a slice of all articles including their references
 func (a *Articles) All() Articles {
 	if a == nil || *a == nil {
 		return nil
@@ -33,7 +33,7 @@ func (a *Articles) All() Articles {
 	return result
 }
 
-// uniqueArticlesById returns a map of unique articles by their IDs.
+// UniqueById returns a map of unique articles by their IDs.
 func (a *Articles) UniqueById() map[string]*Article {
 	if a == nil || *a == nil {
 		return nil
@@ -131,6 +131,7 @@ func (a *Articles) UniqueById() map[string]*Article {
 	return unique
 }
 
+// Deduplicate returns a slice of unique articles, preserving the order of the first occurrence of each article.
 func (a *Articles) Deduplicate() Articles {
 	if a == nil || *a == nil {
 		return nil

@@ -8,7 +8,6 @@ import (
 	"os"
 
 	"github.com/coreofscience/go-bibx/clients"
-	"github.com/coreofscience/go-bibx/utils"
 )
 
 func main() {
@@ -19,10 +18,8 @@ func main() {
 	openalexClient := clients.NewOpenAlexClient()
 	recentWorks, err := openalexClient.ListRecentArticles(
 		context.Background(),
-		&clients.ListRecentArticlesParams{
-			Query: "bit patterned media",
-			Limit: utils.NewRef(100),
-		},
+		"bit patterned media",
+		100,
 	)
 	if err != nil {
 		slog.Error("failed to list recent articles", "error", err)
@@ -36,9 +33,7 @@ func main() {
 	}
 	worksByID, err := openalexClient.ListArticlesByIDs(
 		context.Background(),
-		&clients.ListArticlesByIDsParams{
-			IDs: referencedWorks,
-		},
+		referencedWorks,
 	)
 	if err != nil {
 		slog.Error("failed to list articles by IDs", "error", err)
