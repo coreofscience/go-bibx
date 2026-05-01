@@ -7,6 +7,6 @@ import (
 )
 
 type Source interface {
-	// Build creates a new collection instance form the supplied files.
+	// Build creates a new collection instance from the supplied files.
 	Build(ctx context.Context) (*models.Collection, error)
 }
