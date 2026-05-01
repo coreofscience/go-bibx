@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -151,6 +152,46 @@ func (a *Article) SetSimpleLabel() *Article {
 		a.Label = *simpleLabel
 	}
 	return a
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (a *Article) MarshalJSON() ([]byte, error) {
+	references := make([]string, 0, len(a.References))
+	for _, ref := range a.References {
+		references = append(references, ref.Label)
+	}
+	article := struct {
+		Label      string                   `json:"label"`
+		IDs        *collections.Set[string] `json:"ids"`
+		Authors    []string                 `json:"authors"`
+		Year       *int                     `json:"year"`
+		Title      *string                  `json:"title"`
+		Journal    *string                  `json:"journal"`
+		Volume     *string                  `json:"volume"`
+		Issue      *string                  `json:"issue"`
+		Page       *string                  `json:"page"`
+		DOI        *string                  `json:"doi"`
+		Permalink  *string                  `json:"permalink"`
+		TimesCited *int                     `json:"times_cited"`
+		Keywords   []string                 `json:"keywords"`
+		References []string                 `json:"references"`
+	}{
+		Label:      a.Label,
+		IDs:        a.IDs,
+		Authors:    a.Authors,
+		Year:       a.Year,
+		Title:      a.Title,
+		Journal:    a.Journal,
+		Volume:     a.Volume,
+		Issue:      a.Issue,
+		Page:       a.Page,
+		DOI:        a.DOI,
+		Permalink:  a.Permalink,
+		TimesCited: a.TimesCited,
+		Keywords:   a.Keywords,
+		References: references,
+	}
+	return json.Marshal(article)
 }
 
 func keep[T any](a, b *T) *T {

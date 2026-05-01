@@ -110,7 +110,21 @@ func (s *openAlexSource) Build(ctx context.Context) (*models.Collection, error) 
 	for _, work := range referencedWorks {
 		cache[work.ID] = &work
 	}
-	return &models.Collection{}, nil
+	articleCache := make(map[string]*models.Article)
+	for id, work := range cache {
+		articleCache[id] = workToArticle(work)
+	}
+	articles := make([]*models.Article, 0, len(articleCache))
+	for _, work := range works {
+		article := articleCache[work.ID]
+		for i, reference := range work.ReferencedWorks {
+			if refArticle, exists := articleCache[reference]; exists {
+				article.References[i] = refArticle
+			}
+		}
+		articles = append(articles, article)
+	}
+	return models.NewCollection(articles), nil
 }
 
 func workToArticle(work *openalex.Work) *models.Article {

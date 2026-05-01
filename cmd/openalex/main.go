@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/coreofscience/go-bibx/clients/openalex"
+	"github.com/coreofscience/go-bibx/sources"
 )
 
 func main() {
@@ -15,34 +15,14 @@ func main() {
 		Level: slog.LevelDebug,
 	}))
 	slog.SetDefault(logger)
-	openalexClient := openalex.NewRestyClient()
-	recentWorks, err := openalexClient.ListRecentArticles(
-		context.Background(),
-		"bit patterned media",
-		100,
-	)
+	collection, err := sources.NewOpenAlexSource("bit patterned media").Build(context.Background())
 	if err != nil {
-		slog.Error("failed to list recent articles", "error", err)
+		slog.Error("failed to build collection", "error", err)
 		return
 	}
-	referencedWorks := make([]string, 0, len(recentWorks))
-	for _, work := range recentWorks {
-		if work.ReferencedWorks != nil {
-			referencedWorks = append(referencedWorks, work.ReferencedWorks...)
-		}
-	}
-	worksByID, err := openalexClient.ListArticlesByIDs(
-		context.Background(),
-		referencedWorks,
-	)
-	if err != nil {
-		slog.Error("failed to list articles by IDs", "error", err)
-		return
-	}
-	works := append(recentWorks, worksByID...)
-	worksJSON, err := json.MarshalIndent(works, "", "  ")
+	collectionJSON, err := json.MarshalIndent(collection, "", "  ")
 	if err != nil {
 		slog.Error("failed to marshal works to JSON", "error", err)
 	}
-	fmt.Println(string(worksJSON))
+	fmt.Println(string(collectionJSON))
 }
