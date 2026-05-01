@@ -1,18 +1,21 @@
 package collections
 
-import "sort"
+import (
+	"cmp"
+	"sort"
+)
 
-type CounterItem[T comparable] struct {
+type CounterItem[T cmp.Ordered] struct {
 	Item  T
 	Count int
 }
 
-type Counter[T comparable] struct {
+type Counter[T cmp.Ordered] struct {
 	counts map[T]int
 }
 
 // NewCounter creates a new Counter instance.
-func NewCounter[T comparable](items ...T) *Counter[T] {
+func NewCounter[T cmp.Ordered](items ...T) *Counter[T] {
 	counts := make(map[T]int)
 	for _, item := range items {
 		counts[item]++
@@ -32,6 +35,9 @@ func (c *Counter[T]) MostCommon(count int) []CounterItem[T] {
 		ss = append(ss, CounterItem[T]{k, v})
 	}
 	sort.Slice(ss, func(i, j int) bool {
+		if ss[i].Count == ss[j].Count {
+			return ss[i].Item < ss[j].Item
+		}
 		return ss[i].Count > ss[j].Count
 	})
 	if count > len(ss) {
