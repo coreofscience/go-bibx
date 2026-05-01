@@ -3,6 +3,7 @@ package sources
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/coreofscience/go-bibx/clients/openalex"
 	"github.com/coreofscience/go-bibx/collections"
@@ -110,4 +111,81 @@ func (s *openAlexSource) Build(ctx context.Context) (*models.Collection, error) 
 		cache[work.ID] = &work
 	}
 	return &models.Collection{}, nil
+}
+
+func workToArticle(work *openalex.Work) *models.Article {
+	ids := collections.NewSet[string]()
+	for source, id := range work.IDs {
+		if source == "doi" {
+			ids.Add(extractDOI(id))
+		} else {
+			ids.Add(id)
+		}
+	}
+	var authors []string
+	for _, author := range work.Authorships {
+		authors = append(authors, invertName(author.Author.DisplayName))
+	}
+	var journal *string
+	if work.PrimaryLocation != nil && work.PrimaryLocation.Source != nil {
+		journal = &work.PrimaryLocation.Source.DisplayName
+	}
+	var doi *string
+	if work.DOI != nil {
+		doiVal := extractDOI(*work.DOI)
+		doi = &doiVal
+	}
+	var permalink *string
+	if work.PrimaryLocation != nil && work.PrimaryLocation.LandingPageUrl != nil {
+		permalink = work.PrimaryLocation.LandingPageUrl
+	}
+	references := make([]*models.Article, len(work.ReferencedWorks))
+	for i, reference := range work.ReferencedWorks {
+		references[i] = referenceToArticle(reference)
+	}
+	keywords := make([]string, len(work.Keywords))
+	for i, keyword := range work.Keywords {
+		keywords[i] = keyword.DisplayName
+	}
+	return &models.Article{
+		Label:      work.ID,
+		IDs:        ids,
+		Authors:    authors,
+		Year:       work.PublicationYear,
+		Title:      work.Title,
+		Journal:    journal,
+		Volume:     work.Biblio.Volume,
+		Issue:      work.Biblio.Issue,
+		Page:       work.Biblio.FirstPage,
+		DOI:        doi,
+		Permalink:  permalink,
+		TimesCited: &work.CitedByCount,
+		References: references,
+		Keywords:   keywords,
+	}
+}
+
+func referenceToArticle(reference string) *models.Article {
+	return &models.Article{
+		Label:     reference,
+		IDs:       collections.NewSet(fmt.Sprintf("openalex:%s", reference)),
+		Permalink: &reference,
+	}
+}
+
+func extractDOI(url string) string {
+	const prefix = "https://doi.org/"
+	if len(url) > len(prefix) && url[:len(prefix)] == prefix {
+		return url[len(prefix):]
+	}
+	return url
+}
+
+func invertName(name string) string {
+	parts := strings.Split(name, " ")
+	if len(parts) == 1 {
+		return name
+	}
+	firstNames, lastName := parts[:len(parts)-1], parts[len(parts)-1]
+	return fmt.Sprintf("%s, %s", lastName, strings.Join(firstNames, " "))
 }
