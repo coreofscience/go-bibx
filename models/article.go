@@ -3,7 +3,6 @@ package models
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/coreofscience/go-bibx/collections"
@@ -23,6 +22,7 @@ type Article struct {
 	Permalink  *string
 	TimesCited *int
 	Keywords   []string
+	Abstract   *string
 	References []*Article
 }
 
@@ -61,10 +61,6 @@ func (a *Article) Key() *string {
 		return nil
 	}
 	items := a.IDs.Items()
-	sort.Slice(items, func(i, j int) bool {
-		// TODO: Maybe use the longest ID as the key?
-		return items[i] < items[j]
-	})
 	return &items[0]
 }
 
@@ -174,6 +170,7 @@ func (a *Article) MarshalJSON() ([]byte, error) {
 		Permalink  *string                  `json:"permalink"`
 		TimesCited *int                     `json:"times_cited"`
 		Keywords   []string                 `json:"keywords"`
+		Abstract   *string                  `json:"abstract"`
 		References []string                 `json:"references"`
 	}{
 		Label:      a.Label,
@@ -189,6 +186,7 @@ func (a *Article) MarshalJSON() ([]byte, error) {
 		Permalink:  a.Permalink,
 		TimesCited: a.TimesCited,
 		Keywords:   a.Keywords,
+		Abstract:   a.Abstract,
 		References: references,
 	}
 	return json.Marshal(article)

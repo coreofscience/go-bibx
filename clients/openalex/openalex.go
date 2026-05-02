@@ -90,9 +90,21 @@ func NewRestyClient(options ...OpenAlexClientOption) *RestyClient {
 	return c
 }
 
+var (
+	workFields     []string
+	workFieldsOnce sync.Once
+)
+
+func getWorkFields() []string {
+	workFieldsOnce.Do(func() {
+		workFields = jsonFields(Work{})
+	})
+	return workFields
+}
+
 // ListRecentArticles implements [Client]
 func (c *RestyClient) ListRecentArticles(ctx context.Context, query string, limit int) ([]Work, error) {
-	selectFields := jsonFields(Work{})
+	selectFields := getWorkFields()
 	queryFilter := fmt.Sprintf(
 		"title_and_abstract.search:%s",
 		strings.ReplaceAll(query, " ", "+"),
@@ -101,82 +113,32 @@ func (c *RestyClient) ListRecentArticles(ctx context.Context, query string, limi
 		queryFilter,
 		"type:types/article",
 		"cited_by_count:>1",
+		"has_abstract:true",
 	}
-
-	group, ctx := errgroup.WithContext(ctx)
-	pages := make(chan int)
-	responses := make(chan *WorksResponse)
 
 	maxPages := int(math.Ceil(float64(limit) / MaxWorksPerPage))
-	concurrency := min(MaxConcurrentRequests, maxPages)
-	slog.Debug("fetching pages with concurrency", "maxPages", maxPages, "concurrency", concurrency)
-
-	for i := range concurrency {
-		goroutineIndex := i
-		group.Go(func() error {
-			for page := range pages {
-				slog.Debug("fetching page from goroutine", "page", page, "goroutine", goroutineIndex)
-				queryParams := map[string]string{
-					"select":   strings.Join(selectFields, ","),
-					"filter":   strings.Join(filterParts, ","),
-					"sort":     "publication_year:desc",
-					"per_page": fmt.Sprintf("%d", MaxWorksPerPage),
-					"page":     fmt.Sprintf("%d", page),
-				}
-				response, err := c.client.R().
-					SetContext(ctx).
-					SetHeaders(c.baseHeaders).
-					SetQueryParams(queryParams).
-					SetResult(&WorksResponse{}).
-					Get(fmt.Sprintf("%s/works", c.baseURL))
-				if err != nil {
-					return fmt.Errorf("error fetching works: %w", err)
-				}
-				if response.IsError() {
-					slog.Debug("error response", "status", response.Status(), "body", response.String())
-					return fmt.Errorf("error fetching works: %s", response.Status())
-				}
-				result := response.Result().(*WorksResponse)
-				if result == nil {
-					return errors.New("error parsing works response")
-				}
-				slog.Debug("fetched page", "page", page, "numWorks", len(result.Works))
-				if len(result.Works) == 0 {
-					slog.Debug("no more works, stopping", "page", page)
-					continue
-				}
-				slog.Debug("sending response", "numWorks", len(result.Works))
-				responses <- result
-			}
-			return nil
-		})
+	pages := make([]int, maxPages)
+	for i := range maxPages {
+		pages[i] = i + 1
 	}
 
-	for page := 0; page < int(maxPages); page++ {
-		pages <- page + 1
-	}
-	close(pages)
-
-	works := make([]Work, 0, limit)
-	waitGroup := sync.WaitGroup{}
-	waitGroup.Go(func() {
-		slog.Debug("starting response collector")
-		for res := range responses {
-			if res != nil {
-				slog.Debug("received response", "numWorks", len(res.Works))
-				works = append(works, res.Works...)
-			}
+	works, err := fetchParallel(ctx, pages, func(ctx context.Context, page int) (*WorksResponse, error) {
+		queryParams := map[string]string{
+			"select":   strings.Join(selectFields, ","),
+			"filter":   strings.Join(filterParts, ","),
+			"sort":     "publication_year:desc",
+			"per_page": fmt.Sprintf("%d", MaxWorksPerPage),
+			"page":     fmt.Sprintf("%d", page),
 		}
-		slog.Debug("response collector done", "totalWorks", len(works))
+		return c.fetchWorks(ctx, queryParams)
 	})
-
-	err := group.Wait()
-	close(responses)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching works in parallel: %w", err)
 	}
-	waitGroup.Wait()
-	slog.Debug("all done", "totalWorks", len(works))
+
+	if len(works) > limit {
+		works = works[:limit]
+	}
 	return works, nil
 }
 
@@ -186,57 +148,67 @@ func (c *RestyClient) ListArticlesByIDs(ctx context.Context, ids []string) ([]Wo
 		return []Work{}, nil
 	}
 
-	selectFields := jsonFields(Work{})
+	selectFields := getWorkFields()
 	idChunks := chunks(ids, MaxIdsPerRequest)
 
+	return fetchParallel(ctx, idChunks, func(ctx context.Context, idChunk []string) (*WorksResponse, error) {
+		joinedIDs := strings.Join(idChunk, "|")
+		queryParams := map[string]string{
+			"select":   strings.Join(selectFields, ","),
+			"filter":   fmt.Sprintf("ids.openalex:%s,type:types/article", joinedIDs),
+			"per_page": fmt.Sprintf("%d", MaxIdsPerRequest),
+		}
+		return c.fetchWorks(ctx, queryParams)
+	})
+}
+
+func fetchParallel[I any](ctx context.Context, inputs []I, fetch func(context.Context, I) (*WorksResponse, error)) ([]Work, error) {
+	if len(inputs) == 0 {
+		return nil, nil
+	}
+
 	group, ctx := errgroup.WithContext(ctx)
-	chunksChan := make(chan []string)
+	inputChan := make(chan I)
 	responses := make(chan *WorksResponse)
 
-	concurrency := min(MaxConcurrentRequests, len(idChunks))
-	slog.Debug("fetching pages with concurrency", "numChunks", len(idChunks), "concurrency", concurrency)
+	concurrency := min(MaxConcurrentRequests, len(inputs))
+	slog.Debug("fetching in parallel", "numInputs", len(inputs), "concurrency", concurrency)
 
-	for i := range concurrency {
-		goroutineIndex := i
+	for range concurrency {
 		group.Go(func() error {
-			for idChunk := range chunksChan {
-				slog.Debug("fetching chunk from goroutine", "numIds", len(idChunk), "goroutine", goroutineIndex)
-				joinedIDs := strings.Join(idChunk, "|")
-				queryParams := map[string]string{
-					"select":   strings.Join(selectFields, ","),
-					"filter":   fmt.Sprintf("ids.openalex:%s,type:types/article", joinedIDs),
-					"per_page": fmt.Sprintf("%d", MaxIdsPerRequest),
-				}
-				response, err := c.fetchWorks(ctx, queryParams)
+			for input := range inputChan {
+				res, err := fetch(ctx, input)
 				if err != nil {
-					return fmt.Errorf("error fetching works: %w", err)
+					return err
 				}
-				if response == nil || len(response.Works) == 0 {
-					continue
+				if res != nil {
+					select {
+					case responses <- res:
+					case <-ctx.Done():
+						return ctx.Err()
+					}
 				}
-				slog.Debug("fetched chunk", "numWorks", len(response.Works))
-				responses <- response
 			}
 			return nil
 		})
 	}
 
 	waitGroup := sync.WaitGroup{}
-
 	waitGroup.Go(func() {
-		slog.Debug("sending id chunks to workers", "numChunks", len(idChunks))
-		for _, idChunk := range idChunks {
-			chunksChan <- idChunk
+		defer close(inputChan)
+		for _, input := range inputs {
+			select {
+			case inputChan <- input:
+			case <-ctx.Done():
+				return
+			}
 		}
-		close(chunksChan)
 	})
 
-	works := make([]Work, 0)
+	var works []Work
 	waitGroup.Go(func() {
-		slog.Debug("starting response collector")
 		for res := range responses {
 			if res != nil {
-				slog.Debug("received response", "numWorks", len(res.Works))
 				works = append(works, res.Works...)
 			}
 		}
@@ -245,9 +217,8 @@ func (c *RestyClient) ListArticlesByIDs(ctx context.Context, ids []string) ([]Wo
 	err := group.Wait()
 	close(responses)
 	if err != nil {
-		return nil, fmt.Errorf("error fetching works in parallel: %w", err)
+		return nil, err
 	}
-
 	waitGroup.Wait()
 
 	return works, nil
@@ -260,6 +231,7 @@ func (c *RestyClient) fetchWorks(ctx context.Context, queryParams map[string]str
 		SetQueryParams(queryParams).
 		SetResult(&WorksResponse{}).
 		Get(fmt.Sprintf("%s/works", c.baseURL))
+	slog.Debug("fetch works", "url", response.Request.URL)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching works: %w", err)
 	}

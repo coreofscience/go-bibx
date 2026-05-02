@@ -1,11 +1,17 @@
 package collections
 
-type Set[T comparable] struct {
+import (
+	"cmp"
+	"encoding/json"
+	"slices"
+)
+
+type Set[T cmp.Ordered] struct {
 	elements map[T]struct{}
 }
 
 // NewSet creates a new Set instance.
-func NewSet[T comparable](elements ...T) *Set[T] {
+func NewSet[T cmp.Ordered](elements ...T) *Set[T] {
 	internalElements := make(map[T]struct{})
 	for _, elem := range elements {
 		internalElements[elem] = struct{}{}
@@ -53,7 +59,7 @@ func (s *Set[T]) Union(other *Set[T]) *Set[T] {
 	return unionSet
 }
 
-// Items returns an unsorted slice of the elements in the set.
+// Items returns a sorted slice of the elements in the set.
 func (s *Set[T]) Items() []T {
 	if s == nil {
 		return nil
@@ -62,5 +68,11 @@ func (s *Set[T]) Items() []T {
 	for elem := range s.elements {
 		items = append(items, elem)
 	}
+	slices.Sort(items)
 	return items
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (s *Set[T]) MarshalJSON() ([]byte, error) {
+	return json.Marshal(s.Items())
 }

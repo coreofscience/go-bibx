@@ -130,11 +130,11 @@ func (s *openAlexSource) Build(ctx context.Context) (*models.Collection, error) 
 func workToArticle(work *openalex.Work) *models.Article {
 	ids := collections.NewSet[string]()
 	for source, id := range work.IDs {
+		realID := id
 		if source == "doi" {
-			ids.Add(extractDOI(id))
-		} else {
-			ids.Add(id)
+			realID = extractDOI(id)
 		}
+		ids.Add(fmt.Sprintf("%s:%s", source, realID))
 	}
 	var authors []string
 	for _, author := range work.Authorships {
@@ -161,6 +161,7 @@ func workToArticle(work *openalex.Work) *models.Article {
 	for i, keyword := range work.Keywords {
 		keywords[i] = keyword.DisplayName
 	}
+	abstract := invertAbstract(work.AbstractInvertedIndex)
 	return &models.Article{
 		Label:      work.ID,
 		IDs:        ids,
@@ -176,6 +177,7 @@ func workToArticle(work *openalex.Work) *models.Article {
 		TimesCited: &work.CitedByCount,
 		References: references,
 		Keywords:   keywords,
+		Abstract:   &abstract,
 	}
 }
 
@@ -187,19 +189,58 @@ func referenceToArticle(reference string) *models.Article {
 	}
 }
 
-func extractDOI(url string) string {
-	const prefix = "https://doi.org/"
-	if len(url) > len(prefix) && url[:len(prefix)] == prefix {
-		return url[len(prefix):]
+func extractDOI(doi string) string {
+	doi = strings.TrimSpace(doi)
+	prefixes := []string{
+		"https://doi.org/",
+		"http://doi.org/",
+		"https://dx.doi.org/",
+		"http://dx.doi.org/",
+		"doi:",
 	}
-	return url
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(strings.ToLower(doi), prefix) {
+			return doi[len(prefix):]
+		}
+	}
+	return doi
 }
 
 func invertName(name string) string {
-	parts := strings.Split(name, " ")
-	if len(parts) == 1 {
+	name = strings.TrimSpace(name)
+	if name == "" || strings.Contains(name, ",") {
 		return name
 	}
-	firstNames, lastName := parts[:len(parts)-1], parts[len(parts)-1]
+	parts := strings.Fields(name)
+	if len(parts) < 2 {
+		return name
+	}
+	lastName := parts[len(parts)-1]
+	firstNames := parts[:len(parts)-1]
 	return fmt.Sprintf("%s, %s", lastName, strings.Join(firstNames, " "))
+}
+
+func invertAbstract(abstractInvertedIndex *map[string][]int) string {
+	if abstractInvertedIndex == nil {
+		return ""
+	}
+	length := 0
+	for _, indices := range *abstractInvertedIndex {
+		maxIndex := 0
+		for _, index := range indices {
+			if index > maxIndex {
+				maxIndex = index
+			}
+		}
+		if maxIndex > length {
+			length = maxIndex
+		}
+	}
+	words := make([]string, length+1)
+	for word, indices := range *abstractInvertedIndex {
+		for _, index := range indices {
+			words[index] = word
+		}
+	}
+	return strings.Join(words, " ")
 }

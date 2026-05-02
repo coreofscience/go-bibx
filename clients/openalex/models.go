@@ -47,17 +47,18 @@ type WorkLocation struct {
 }
 
 type Work struct {
-	ID              string            `json:"id"`
-	IDs             map[string]string `json:"ids"`
-	DOI             *string           `json:"doi"`
-	Title           *string           `json:"title"`
-	PublicationYear *int              `json:"publication_year"`
-	Authorships     []WorkAuthorship  `json:"authorships"`
-	CitedByCount    int               `json:"cited_by_count"`
-	Keywords        []WorkKeyword     `json:"keywords"`
-	ReferencedWorks []string          `json:"referenced_works"`
-	Biblio          WorkBiblio        `json:"biblio"`
-	PrimaryLocation *WorkLocation     `json:"primary_location"`
+	ID                    string            `json:"id"`
+	IDs                   map[string]string `json:"ids"`
+	DOI                   *string           `json:"doi"`
+	Title                 *string           `json:"title"`
+	PublicationYear       *int              `json:"publication_year"`
+	Authorships           []WorkAuthorship  `json:"authorships"`
+	CitedByCount          int               `json:"cited_by_count"`
+	Keywords              []WorkKeyword     `json:"keywords"`
+	AbstractInvertedIndex *map[string][]int `json:"abstract_inverted_index"`
+	ReferencedWorks       []string          `json:"referenced_works"`
+	Biblio                WorkBiblio        `json:"biblio"`
+	PrimaryLocation       *WorkLocation     `json:"primary_location"`
 }
 
 type ResponseMeta struct {
