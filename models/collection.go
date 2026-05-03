@@ -1,5 +1,7 @@
 package models
 
+import "encoding/json"
+
 // Collection represents a collection of articles with methods to manage them.
 type Collection struct {
 	articles Articles
@@ -50,4 +52,9 @@ func (c *Collection) CitationPairs() [][2]*Article {
 		}
 	}
 	return pairs
+}
+
+// MarshalJSON implements the json.Marshaler interface for Collection.
+func (c *Collection) MarshalJSON() ([]byte, error) {
+	return json.Marshal(c.articles)
 }

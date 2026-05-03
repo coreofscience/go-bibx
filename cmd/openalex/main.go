@@ -7,47 +7,59 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/coreofscience/go-bibx/clients"
-	"github.com/coreofscience/go-bibx/utils"
+	"github.com/coreofscience/go-bibx/sources"
+	"github.com/urfave/cli/v3"
 )
 
 func main() {
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}))
-	slog.SetDefault(logger)
-	openalexClient := clients.NewOpenAlexClient(&clients.NewOpenAlexClientParams{})
-	recentWorks, err := openalexClient.ListRecentArticles(
-		context.Background(),
-		&clients.ListRecentArticlesParams{
-			Query: "bit patterned media",
-			Limit: utils.NewRef(100),
+	cmd := cli.Command{
+		Name:  "openalex",
+		Usage: "fetch works from OpenAlex",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:  "query",
+				Usage: "search query",
+				Value: "bit patterned media",
+			},
+			&cli.IntFlag{
+				Name:  "limit",
+				Usage: "maximum number of results",
+				Value: 500,
+			},
+			&cli.BoolFlag{
+				Name:  "verbose",
+				Usage: "verbose output",
+				Value: false,
+			},
 		},
-	)
-	if err != nil {
-		slog.Error("failed to list recent articles", "error", err)
-		return
-	}
-	referencedWorks := make([]string, 0, len(recentWorks))
-	for _, work := range recentWorks {
-		if work.ReferencedWorks != nil {
-			referencedWorks = append(referencedWorks, work.ReferencedWorks...)
-		}
-	}
-	worksByID, err := openalexClient.ListArticlesByIDs(
-		context.Background(),
-		&clients.ListArticlesByIDsParams{
-			IDs: referencedWorks,
+		Action: func(ctx context.Context, c *cli.Command) error {
+			logLevel := slog.LevelInfo
+			if c.Bool("verbose") {
+				logLevel = slog.LevelDebug
+			}
+			logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+				Level: logLevel,
+			}))
+			slog.SetDefault(logger)
+			collection, err := sources.NewOpenAlexSource(
+				c.String("query"),
+				sources.WithLimit(c.Int("limit")),
+				sources.WithEnrichReferences(sources.EnrichReferencesCommon),
+			).Build(context.Background())
+			if err != nil {
+				slog.Error("failed to build collection", "error", err)
+				return err
+			}
+			collectionJSON, err := json.MarshalIndent(collection, "", "  ")
+			if err != nil {
+				slog.Error("failed to marshal works to JSON", "error", err)
+			}
+			fmt.Println(string(collectionJSON))
+			return nil
 		},
-	)
-	if err != nil {
-		slog.Error("failed to list articles by IDs", "error", err)
-		return
 	}
-	works := append(recentWorks, worksByID...)
-	worksJSON, err := json.MarshalIndent(works, "", "  ")
-	if err != nil {
-		slog.Error("failed to marshal works to JSON", "error", err)
+	if err := cmd.Run(context.Background(), os.Args); err != nil {
+		slog.Error("failed to run command", "error", err)
+		os.Exit(1)
 	}
-	fmt.Println(string(worksJSON))
 }
