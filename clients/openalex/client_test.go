@@ -11,6 +11,7 @@ import (
 
 	"github.com/coreofscience/go-bibx/clients/openalex"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestListArticlesByIDs(t *testing.T) {
@@ -33,7 +34,8 @@ func TestListArticlesByIDs(t *testing.T) {
 				},
 			}
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(resp)
+			err := json.NewEncoder(w).Encode(resp)
+			require.NoError(t, err)
 		}))
 		defer server.Close()
 
@@ -73,10 +75,12 @@ func TestListArticlesByIDs(t *testing.T) {
 			w.Header().Set("Content-Type", "application/json")
 			if strings.Contains(filter, "W0") {
 				resp := openalex.WorksResponse{Works: make([]openalex.Work, 80)}
-				json.NewEncoder(w).Encode(resp)
+				err := json.NewEncoder(w).Encode(resp)
+				require.NoError(t, err)
 			} else {
 				resp := openalex.WorksResponse{Works: make([]openalex.Work, 5)}
-				json.NewEncoder(w).Encode(resp)
+				err := json.NewEncoder(w).Encode(resp)
+				require.NoError(t, err)
 			}
 		}))
 		defer server.Close()
@@ -99,7 +103,8 @@ func TestListRecentArticles(t *testing.T) {
 				},
 			}
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(resp)
+			err := json.NewEncoder(w).Encode(resp)
+			require.NoError(t, err)
 		}))
 		defer server.Close()
 
