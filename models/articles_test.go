@@ -6,6 +6,7 @@ import (
 	"github.com/coreofscience/go-bibx/collections"
 	"github.com/coreofscience/go-bibx/models"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestArticles_All(t *testing.T) {
@@ -91,16 +92,19 @@ func TestArticles_UniqueById(t *testing.T) {
 		// Named input parameters for target function.
 		articles models.Articles
 		want     map[string]*models.Article
+		wantErr  bool
 	}{
 		{
 			name:     "nil articles",
 			articles: nil,
 			want:     nil,
+			wantErr:  true,
 		},
 		{
 			name:     "empty articles",
 			articles: models.Articles{},
 			want:     map[string]*models.Article{},
+			wantErr:  false,
 		},
 		{
 			name: "single article with IDs",
@@ -118,6 +122,7 @@ func TestArticles_UniqueById(t *testing.T) {
 					References: nil,
 				},
 			},
+			wantErr: false,
 		},
 		{
 			name: "multiple articles with unique IDs",
@@ -145,6 +150,7 @@ func TestArticles_UniqueById(t *testing.T) {
 					References: nil,
 				},
 			},
+			wantErr: false,
 		},
 		{
 			name: "articles with overlapping IDs",
@@ -177,6 +183,7 @@ func TestArticles_UniqueById(t *testing.T) {
 					References: nil,
 				},
 			},
+			wantErr: false,
 		},
 		{
 			name: "articles that are also references",
@@ -231,11 +238,17 @@ func TestArticles_UniqueById(t *testing.T) {
 					References: nil,
 				},
 			},
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.articles.UniqueById()
+			got, err := tt.articles.UniqueById()
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
 			assert.Equal(t, tt.want, got, "uniqueArticlesById() = %v, want %v", got, tt.want)
 		})
 	}
@@ -254,7 +267,8 @@ func TestArticles_UniqueById_ArticlesWithSharedIdsShareExactlyTheSameMemoryAddre
 			References: nil,
 		},
 	}
-	result := articles.UniqueById()
+	result, err := articles.UniqueById()
+	require.NoError(t, err)
 	assert.Len(t, result, 3, "Expected 3 unique articles")
 	assert.Same(t, result["id1"], result["shared"], "Expected articles with shared IDs to share the same memory address")
 	assert.Same(t, result["id2"], result["shared"], "Expected articles with shared IDs to share the same memory address")
@@ -265,16 +279,19 @@ func TestArticles_Deduplicate(t *testing.T) {
 		name     string // description of this test case
 		articles models.Articles
 		want     models.Articles
+		wantErr  bool
 	}{
 		{
 			name:     "nil articles",
 			articles: nil,
 			want:     nil,
+			wantErr:  true,
 		},
 		{
 			name:     "empty articles",
 			articles: models.Articles{},
 			want:     models.Articles{},
+			wantErr:  false,
 		},
 		{
 			name: "single article",
@@ -292,6 +309,7 @@ func TestArticles_Deduplicate(t *testing.T) {
 					References: nil,
 				},
 			},
+			wantErr: false,
 		},
 		{
 			name: "duplicate articles",
@@ -314,6 +332,7 @@ func TestArticles_Deduplicate(t *testing.T) {
 					References: nil,
 				},
 			},
+			wantErr: false,
 		},
 		{
 			name: "articles with overlapping IDs",
@@ -336,6 +355,7 @@ func TestArticles_Deduplicate(t *testing.T) {
 					References: nil,
 				},
 			},
+			wantErr: false,
 		},
 		{
 			name: "articles that are also references",
@@ -393,11 +413,17 @@ func TestArticles_Deduplicate(t *testing.T) {
 					},
 				},
 			},
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.articles.Deduplicate()
+			got, err := tt.articles.Deduplicate()
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
 			assert.Equal(t, tt.want, got, "Deduplicate() = %v, want %v", got, tt.want)
 		})
 	}
@@ -428,7 +454,8 @@ func TestArticles_Deduplicate_ReferencesShareExactlyTheSameMemoryAddress(t *test
 			},
 		},
 	}
-	result := articles.Deduplicate()
+	result, err := articles.Deduplicate()
+	require.NoError(t, err)
 	assert.Len(t, result, 2, "Expected 2 unique articles")
 	assert.Same(t, result[0].References[0], result[1], "Expected references to share the same memory address")
 }
