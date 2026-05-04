@@ -1,6 +1,9 @@
 package models
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 // Collection represents a collection of articles with methods to manage them.
 type Collection struct {
@@ -8,8 +11,12 @@ type Collection struct {
 }
 
 // NewCollection creates a new Collection instance with deduplicated articles.
-func NewCollection(articles Articles) *Collection {
-	return &Collection{articles: articles.Deduplicate()}
+func NewCollection(articles Articles) (*Collection, error) {
+	articles, err := articles.Deduplicate()
+	if err != nil {
+		return nil, fmt.Errorf("failed to deduplicate articles: %w", err)
+	}
+	return &Collection{articles: articles}, nil
 }
 
 // Len returns the number of articles in the collection.
@@ -21,15 +28,19 @@ func (c *Collection) Len() int {
 }
 
 // Merge merges another collection into the current collection.
-func (c *Collection) Merge(other *Collection) *Collection {
+func (c *Collection) Merge(other *Collection) (*Collection, error) {
 	if c == nil {
-		return other
+		return other, nil
 	}
 	if other == nil {
-		return c
+		return c, nil
 	}
 	mergedArticles := append(c.articles, other.articles...)
-	return &Collection{articles: mergedArticles.Deduplicate()}
+	mergedArticles, err := mergedArticles.Deduplicate()
+	if err != nil {
+		return nil, fmt.Errorf("failed to deduplicate merged articles: %w", err)
+	}
+	return &Collection{articles: mergedArticles}, nil
 }
 
 // Citation pairs returns a list of citation pairs from the articles in the collection.

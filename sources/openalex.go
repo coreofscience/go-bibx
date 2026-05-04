@@ -124,7 +124,11 @@ func (s *openAlexSource) Build(ctx context.Context) (*models.Collection, error) 
 		}
 		articles = append(articles, article)
 	}
-	return models.NewCollection(articles), nil
+	collection, err := models.NewCollection(articles)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create collection: %w", err)
+	}
+	return collection, nil
 }
 
 func workToArticle(work *openalex.Work) *models.Article {
