@@ -1,10 +1,11 @@
-package models_test
+package collection_test
 
 import (
 	"testing"
 
-	"github.com/coreofscience/go-bibx/collections"
-	"github.com/coreofscience/go-bibx/models"
+	"github.com/coreofscience/go-bibx/articles"
+	"github.com/coreofscience/go-bibx/collection"
+	"github.com/coreofscience/go-bibx/internal/collections"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -12,7 +13,7 @@ import (
 func TestCollection_Len(t *testing.T) {
 	tests := []struct {
 		name     string
-		articles models.Articles
+		articles articles.Articles
 		want     int
 	}{
 		{
@@ -22,12 +23,12 @@ func TestCollection_Len(t *testing.T) {
 		},
 		{
 			name:     "empty collection",
-			articles: models.Articles{},
+			articles: articles.Articles{},
 			want:     0,
 		},
 		{
 			name: "single article",
-			articles: models.Articles{
+			articles: articles.Articles{
 				{
 					Label:      "single",
 					IDs:        collections.NewSet("single1"),
@@ -38,7 +39,7 @@ func TestCollection_Len(t *testing.T) {
 		},
 		{
 			name: "multiple articles",
-			articles: models.Articles{
+			articles: articles.Articles{
 				{
 					Label:      "article1",
 					IDs:        collections.NewSet("id1"),
@@ -54,7 +55,7 @@ func TestCollection_Len(t *testing.T) {
 		},
 		{
 			name: "duplicate articles",
-			articles: models.Articles{
+			articles: articles.Articles{
 				{
 					Label:      "article1",
 					IDs:        collections.NewSet("id1"),
@@ -71,7 +72,7 @@ func TestCollection_Len(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := models.NewCollection(tt.articles)
+			c, err := collection.New(tt.articles)
 			if tt.articles == nil {
 				require.Error(t, err)
 				assert.Equal(t, tt.want, c.Len())
@@ -87,29 +88,29 @@ func TestCollection_Len(t *testing.T) {
 func TestCollection_Merge(t *testing.T) {
 	tests := []struct {
 		name          string
-		articles      models.Articles
-		otherArticles models.Articles
-		wantArticles  models.Articles
+		articles      articles.Articles
+		otherArticles articles.Articles
+		wantArticles  articles.Articles
 		otherNil      bool
 	}{
 		{
 			name:          "merge with nil collection",
-			articles:      models.Articles{},
+			articles:      articles.Articles{},
 			otherArticles: nil,
-			wantArticles:  models.Articles{},
+			wantArticles:  articles.Articles{},
 			otherNil:      true,
 		},
 		{
 			name:     "merge nil collection with another",
 			articles: nil,
-			otherArticles: models.Articles{
+			otherArticles: articles.Articles{
 				{
 					Label:      "article1",
 					IDs:        collections.NewSet("id1"),
 					References: nil,
 				},
 			},
-			wantArticles: models.Articles{
+			wantArticles: articles.Articles{
 				{
 					Label:      "article1",
 					IDs:        collections.NewSet("id1"),
@@ -119,21 +120,21 @@ func TestCollection_Merge(t *testing.T) {
 		},
 		{
 			name: "merge two non-empty collections",
-			articles: models.Articles{
+			articles: articles.Articles{
 				{
 					Label:      "article1",
 					IDs:        collections.NewSet("id1"),
 					References: nil,
 				},
 			},
-			otherArticles: models.Articles{
+			otherArticles: articles.Articles{
 				{
 					Label:      "article2",
 					IDs:        collections.NewSet("id2"),
 					References: nil,
 				},
 			},
-			wantArticles: models.Articles{
+			wantArticles: articles.Articles{
 				{
 					Label:      "article1",
 					IDs:        collections.NewSet("id1"),
@@ -148,18 +149,18 @@ func TestCollection_Merge(t *testing.T) {
 		},
 		{
 			name: "merge collections with duplicate articles",
-			articles: models.Articles{
+			articles: articles.Articles{
 				{
 					Label:      "article1",
 					IDs:        collections.NewSet("id1"),
 					References: nil,
 				},
 			},
-			otherArticles: models.Articles{
+			otherArticles: articles.Articles{
 				{
 					Label: "article1",
 					IDs:   collections.NewSet("id1"),
-					References: []*models.Article{
+					References: []*articles.Article{
 						{
 							Label: "ref1",
 							IDs:   collections.NewSet("refid1"),
@@ -167,11 +168,11 @@ func TestCollection_Merge(t *testing.T) {
 					},
 				},
 			},
-			wantArticles: models.Articles{
+			wantArticles: articles.Articles{
 				{
 					Label: "article1",
 					IDs:   collections.NewSet("id1"),
-					References: []*models.Article{
+					References: []*articles.Article{
 						{
 							Label: "ref1",
 							IDs:   collections.NewSet("refid1"),
@@ -183,25 +184,25 @@ func TestCollection_Merge(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var c *models.Collection
+			var c *collection.Collection
 			var err error
 			if tt.articles != nil {
-				c, err = models.NewCollection(tt.articles)
+				c, err = collection.New(tt.articles)
 				require.NoError(t, err)
 			}
 
-			var other *models.Collection
+			var other *collection.Collection
 			if !tt.otherNil && tt.otherArticles != nil {
-				other, err = models.NewCollection(tt.otherArticles)
+				other, err = collection.New(tt.otherArticles)
 				require.NoError(t, err)
 			}
 
 			got, err := c.Merge(other)
 			require.NoError(t, err)
 
-			var want *models.Collection
+			var want *collection.Collection
 			if tt.wantArticles != nil {
-				want, err = models.NewCollection(tt.wantArticles)
+				want, err = collection.New(tt.wantArticles)
 				require.NoError(t, err)
 			}
 			assert.Equal(t, want, got)
@@ -212,8 +213,8 @@ func TestCollection_Merge(t *testing.T) {
 func TestCollection_CitationPairs(t *testing.T) {
 	tests := []struct {
 		name     string
-		articles models.Articles
-		want     [][2]*models.Article
+		articles articles.Articles
+		want     [][2]*articles.Article
 	}{
 		{
 			name:     "nil collection",
@@ -222,12 +223,12 @@ func TestCollection_CitationPairs(t *testing.T) {
 		},
 		{
 			name:     "empty collection",
-			articles: models.Articles{},
+			articles: articles.Articles{},
 			want:     nil,
 		},
 		{
 			name: "single article with no references",
-			articles: models.Articles{
+			articles: articles.Articles{
 				{
 					Label:      "article1",
 					IDs:        collections.NewSet("id1"),
@@ -238,11 +239,11 @@ func TestCollection_CitationPairs(t *testing.T) {
 		},
 		{
 			name: "single article with references",
-			articles: models.Articles{
+			articles: articles.Articles{
 				{
 					Label: "article1",
 					IDs:   collections.NewSet("id1"),
-					References: []*models.Article{
+					References: []*articles.Article{
 						{
 							Label: "ref1",
 							IDs:   collections.NewSet("refid1"),
@@ -250,19 +251,19 @@ func TestCollection_CitationPairs(t *testing.T) {
 					},
 				},
 			},
-			want: [][2]*models.Article{
+			want: [][2]*articles.Article{
 				{
-					&models.Article{
+					&articles.Article{
 						Label: "article1",
 						IDs:   collections.NewSet("id1"),
-						References: []*models.Article{
+						References: []*articles.Article{
 							{
 								Label: "ref1",
 								IDs:   collections.NewSet("refid1"),
 							},
 						},
 					},
-					&models.Article{
+					&articles.Article{
 						Label:      "ref1",
 						IDs:        collections.NewSet("refid1"),
 						References: nil,
@@ -273,7 +274,7 @@ func TestCollection_CitationPairs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := models.NewCollection(tt.articles)
+			c, err := collection.New(tt.articles)
 			if tt.articles == nil {
 				require.Error(t, err)
 				assert.Nil(t, c)

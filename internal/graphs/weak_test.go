@@ -3,7 +3,7 @@ package graphs_test
 import (
 	"testing"
 
-	"github.com/coreofscience/go-bibx/graphs"
+	"github.com/coreofscience/go-bibx/internal/graphs"
 	"github.com/hmdsefi/gograph"
 	"github.com/stretchr/testify/assert"
 )

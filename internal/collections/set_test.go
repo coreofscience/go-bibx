@@ -3,7 +3,7 @@ package collections_test
 import (
 	"testing"
 
-	"github.com/coreofscience/go-bibx/collections"
+	"github.com/coreofscience/go-bibx/internal/collections"
 	"github.com/stretchr/testify/assert"
 )
 

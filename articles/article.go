@@ -1,11 +1,11 @@
-package models
+package articles
 
 import (
 	"encoding/json"
 	"fmt"
 	"strings"
 
-	"github.com/coreofscience/go-bibx/collections"
+	"github.com/coreofscience/go-bibx/internal/collections"
 )
 
 type Article struct {
