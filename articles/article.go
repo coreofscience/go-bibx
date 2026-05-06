@@ -125,6 +125,17 @@ func (a *Article) GetPermalink() *string {
 	return nil
 }
 
+// Reference returns the reference of the Article.
+func (a *Article) Reference() *Reference {
+	if a == nil {
+		return nil
+	}
+	return &Reference{
+		Label: a.Label,
+		IDs:   a.IDs,
+	}
+}
+
 // AddSimpleId adds a simple ID to the Article's IDs set.
 func (a *Article) AddSimpleId() *Article {
 	if a == nil {
