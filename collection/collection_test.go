@@ -160,7 +160,7 @@ func TestCollection_Merge(t *testing.T) {
 				{
 					Label: "article1",
 					IDs:   collections.NewSet("id1"),
-					References: []*articles.Article{
+					References: []*articles.Reference{
 						{
 							Label: "ref1",
 							IDs:   collections.NewSet("refid1"),
@@ -172,7 +172,7 @@ func TestCollection_Merge(t *testing.T) {
 				{
 					Label: "article1",
 					IDs:   collections.NewSet("id1"),
-					References: []*articles.Article{
+					References: []*articles.Reference{
 						{
 							Label: "ref1",
 							IDs:   collections.NewSet("refid1"),
@@ -206,83 +206,6 @@ func TestCollection_Merge(t *testing.T) {
 				require.NoError(t, err)
 			}
 			assert.Equal(t, want, got)
-		})
-	}
-}
-
-func TestCollection_CitationPairs(t *testing.T) {
-	tests := []struct {
-		name     string
-		articles articles.Articles
-		want     [][2]*articles.Article
-	}{
-		{
-			name:     "nil collection",
-			articles: nil,
-			want:     nil,
-		},
-		{
-			name:     "empty collection",
-			articles: articles.Articles{},
-			want:     nil,
-		},
-		{
-			name: "single article with no references",
-			articles: articles.Articles{
-				{
-					Label:      "article1",
-					IDs:        collections.NewSet("id1"),
-					References: nil,
-				},
-			},
-			want: nil,
-		},
-		{
-			name: "single article with references",
-			articles: articles.Articles{
-				{
-					Label: "article1",
-					IDs:   collections.NewSet("id1"),
-					References: []*articles.Article{
-						{
-							Label: "ref1",
-							IDs:   collections.NewSet("refid1"),
-						},
-					},
-				},
-			},
-			want: [][2]*articles.Article{
-				{
-					&articles.Article{
-						Label: "article1",
-						IDs:   collections.NewSet("id1"),
-						References: []*articles.Article{
-							{
-								Label: "ref1",
-								IDs:   collections.NewSet("refid1"),
-							},
-						},
-					},
-					&articles.Article{
-						Label:      "ref1",
-						IDs:        collections.NewSet("refid1"),
-						References: nil,
-					},
-				},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c, err := collection.New(tt.articles)
-			if tt.articles == nil {
-				require.Error(t, err)
-				assert.Nil(t, c)
-				return
-			}
-			require.NoError(t, err)
-			got := c.CitationPairs()
-			assert.Equal(t, tt.want, got)
 		})
 	}
 }

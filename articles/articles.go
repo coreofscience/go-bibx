@@ -24,13 +24,6 @@ func (a *Articles) All() Articles {
 		}
 		result = append(result, article)
 		seen[article] = true
-		for _, reference := range article.References {
-			if reference == nil || seen[reference] {
-				continue
-			}
-			result = append(result, reference)
-			seen[reference] = true
-		}
 	}
 	return result
 }
@@ -160,7 +153,7 @@ func (a *Articles) Deduplicate() (Articles, error) {
 		if article == nil || article.References == nil || len(article.References) == 0 {
 			continue
 		}
-		dedupedReferences := make([]*Article, 0, len(article.References))
+		dedupedReferences := make([]*Reference, 0, len(article.References))
 		seenRefs := make(map[*Article]bool)
 		for _, ref := range article.References {
 			if ref == nil || ref.IDs.Len() == 0 {
@@ -169,9 +162,10 @@ func (a *Articles) Deduplicate() (Articles, error) {
 			firstRefID := ref.IDs.Items()[0]
 			dedupedRef, exists := uniqueMap[firstRefID]
 			if !exists || dedupedRef == nil || seenRefs[dedupedRef] {
+				dedupedReferences = append(dedupedReferences, ref)
 				continue
 			}
-			dedupedReferences = append(dedupedReferences, dedupedRef)
+			dedupedReferences = append(dedupedReferences, dedupedRef.Reference())
 			seenRefs[dedupedRef] = true
 		}
 		article.References = dedupedReferences

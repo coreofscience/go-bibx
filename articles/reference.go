@@ -6,6 +6,7 @@ import "github.com/coreofscience/go-bibx/internal/collections"
 type Reference struct {
 	Label string                   `json:"label"`
 	IDs   *collections.Set[string] `json:"ids"`
+	Title *string                  `json:"title,omitempty"`
 }
 
 // Key returns the first ID of the Reference if it exists.

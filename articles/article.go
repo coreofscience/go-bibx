@@ -9,21 +9,21 @@ import (
 )
 
 type Article struct {
-	Label      string
-	IDs        *collections.Set[string]
-	Authors    []string
-	Year       *int
-	Title      *string
-	Journal    *string
-	Volume     *string
-	Issue      *string
-	Page       *string
-	DOI        *string
-	Permalink  *string
-	TimesCited *int
-	Keywords   []string
-	Abstract   *string
-	References []*Article
+	Label      string                   `json:"label"`
+	IDs        *collections.Set[string] `json:"ids"`
+	Authors    []string                 `json:"authors"`
+	Year       *int                     `json:"year"`
+	Title      *string                  `json:"title"`
+	Journal    *string                  `json:"journal"`
+	Volume     *string                  `json:"volume"`
+	Issue      *string                  `json:"issue"`
+	Page       *string                  `json:"page"`
+	DOI        *string                  `json:"doi"`
+	Permalink  *string                  `json:"permalink"`
+	TimesCited *int                     `json:"times_cited"`
+	Keywords   []string                 `json:"keywords"`
+	Abstract   *string                  `json:"abstract"`
+	References []*Reference             `json:"references"`
 }
 
 // Merge creates a new Article by merging the fields of the current Article with another Article.
@@ -133,6 +133,7 @@ func (a *Article) Reference() *Reference {
 	return &Reference{
 		Label: a.Label,
 		IDs:   a.IDs,
+		Title: a.Title,
 	}
 }
 

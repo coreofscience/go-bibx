@@ -128,9 +128,9 @@ func TestArticle_Merge(t *testing.T) {
 		},
 		{
 			name:    "Keeps the longest list of references",
-			article: &articles.Article{References: []*articles.Article{{Label: "Ref1"}, {Label: "Ref2"}}},
-			other:   &articles.Article{References: []*articles.Article{{Label: "Ref1"}}},
-			want:    &articles.Article{References: []*articles.Article{{Label: "Ref1"}, {Label: "Ref2"}}},
+			article: &articles.Article{References: []*articles.Reference{{Label: "Ref1"}, {Label: "Ref2"}}},
+			other:   &articles.Article{References: []*articles.Reference{{Label: "Ref1"}}},
+			want:    &articles.Article{References: []*articles.Reference{{Label: "Ref1"}, {Label: "Ref2"}}},
 		},
 	}
 	for _, tt := range tests {

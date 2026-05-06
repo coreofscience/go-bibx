@@ -54,7 +54,7 @@ func TestArticles_All(t *testing.T) {
 				{
 					Label:      "main",
 					IDs:        collections.NewSet("main1"),
-					References: articles.Articles{referenced},
+					References: []*articles.Reference{referenced.Reference()},
 				},
 				referenced,
 			},
@@ -62,7 +62,7 @@ func TestArticles_All(t *testing.T) {
 				{
 					Label:      "main",
 					IDs:        collections.NewSet("main1"),
-					References: []*articles.Article{referenced},
+					References: []*articles.Reference{referenced.Reference()},
 				},
 				referenced,
 			},
@@ -191,16 +191,14 @@ func TestArticles_UniqueById(t *testing.T) {
 				{
 					Label: "main",
 					IDs:   collections.NewSet("main1"),
-					References: []*articles.Article{
+					References: []*articles.Reference{
 						{
-							Label:      "ref1",
-							IDs:        collections.NewSet("ref1"),
-							References: nil,
+							Label: "ref1",
+							IDs:   collections.NewSet("ref1"),
 						},
 						{
-							Label:      "ref2",
-							IDs:        collections.NewSet("ref2"),
-							References: nil,
+							Label: "ref2",
+							IDs:   collections.NewSet("ref2"),
 						},
 					},
 				},
@@ -214,27 +212,20 @@ func TestArticles_UniqueById(t *testing.T) {
 				"main1": {
 					Label: "main",
 					IDs:   collections.NewSet("main1"),
-					References: []*articles.Article{
+					References: []*articles.Reference{
 						{
-							Label:      "ref1",
-							IDs:        collections.NewSet("ref1"),
-							References: nil,
+							Label: "ref1",
+							IDs:   collections.NewSet("ref1"),
 						},
 						{
-							Label:      "ref2",
-							IDs:        collections.NewSet("ref2"),
-							References: nil,
+							Label: "ref2",
+							IDs:   collections.NewSet("ref2"),
 						},
 					},
 				},
 				"ref1": {
 					Label:      "ref1",
 					IDs:        collections.NewSet("ref1"),
-					References: nil,
-				},
-				"ref2": {
-					Label:      "ref2",
-					IDs:        collections.NewSet("ref2"),
 					References: nil,
 				},
 			},
@@ -363,22 +354,20 @@ func TestArticles_Deduplicate(t *testing.T) {
 				{
 					Label: "main",
 					IDs:   collections.NewSet("main1"),
-					References: articles.Articles{
+					References: []*articles.Reference{
 						{
-							Label:      "ref1",
-							IDs:        collections.NewSet("ref1"),
-							References: nil,
+							Label: "ref1",
+							IDs:   collections.NewSet("ref1"),
 						},
 					},
 				},
 				{
 					Label: "ref1",
 					IDs:   collections.NewSet("ref1"),
-					References: []*articles.Article{
+					References: []*articles.Reference{
 						{
-							Label:      "ref2",
-							IDs:        collections.NewSet("ref2"),
-							References: nil,
+							Label: "ref2",
+							IDs:   collections.NewSet("ref2"),
 						},
 					},
 				},
@@ -387,28 +376,20 @@ func TestArticles_Deduplicate(t *testing.T) {
 				{
 					Label: "main",
 					IDs:   collections.NewSet("main1"),
-					References: articles.Articles{
+					References: []*articles.Reference{
 						{
 							Label: "ref1",
 							IDs:   collections.NewSet("ref1"),
-							References: []*articles.Article{
-								{
-									Label:      "ref2",
-									IDs:        collections.NewSet("ref2"),
-									References: nil,
-								},
-							},
 						},
 					},
 				},
 				{
 					Label: "ref1",
 					IDs:   collections.NewSet("ref1"),
-					References: []*articles.Article{
+					References: []*articles.Reference{
 						{
-							Label:      "ref2",
-							IDs:        collections.NewSet("ref2"),
-							References: nil,
+							Label: "ref2",
+							IDs:   collections.NewSet("ref2"),
 						},
 					},
 				},
@@ -427,35 +408,4 @@ func TestArticles_Deduplicate(t *testing.T) {
 			assert.Equal(t, tt.want, got, "Deduplicate() = %v, want %v", got, tt.want)
 		})
 	}
-}
-
-func TestArticles_Deduplicate_ReferencesShareExactlyTheSameMemoryAddress(t *testing.T) {
-	arts := articles.Articles{
-		{
-			Label: "main",
-			IDs:   collections.NewSet("main1"),
-			References: articles.Articles{
-				{
-					Label:      "ref1",
-					IDs:        collections.NewSet("ref1"),
-					References: nil,
-				},
-			},
-		},
-		{
-			Label: "ref1",
-			IDs:   collections.NewSet("ref1"),
-			References: []*articles.Article{
-				{
-					Label:      "ref2",
-					IDs:        collections.NewSet("ref2"),
-					References: nil,
-				},
-			},
-		},
-	}
-	result, err := arts.Deduplicate()
-	require.NoError(t, err)
-	assert.Len(t, result, 2, "Expected 2 unique articles")
-	assert.Same(t, result[0].References[0], result[1], "Expected references to share the same memory address")
 }

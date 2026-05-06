@@ -45,28 +45,6 @@ func (c *Collection) Merge(other *Collection) (*Collection, error) {
 	return &Collection{articles: mergedArticles}, nil
 }
 
-// Citation pairs returns a list of citation pairs from the articles in the collection.
-func (c *Collection) CitationPairs() [][2]*articles.Article {
-	if c == nil || c.articles == nil {
-		return nil
-	}
-	var pairs [][2]*articles.Article
-	seen := make(map[*articles.Article]bool)
-	for _, article := range c.articles {
-		if article == nil || article.IDs.Len() == 0 || seen[article] {
-			continue
-		}
-		seen[article] = true
-		for _, ref := range article.References {
-			if ref == nil || ref.IDs.Len() == 0 {
-				continue
-			}
-			pairs = append(pairs, [2]*articles.Article{article, ref})
-		}
-	}
-	return pairs
-}
-
 // MarshalJSON implements the json.Marshaler interface for Collection.
 func (c *Collection) MarshalJSON() ([]byte, error) {
 	return json.Marshal(c.articles)

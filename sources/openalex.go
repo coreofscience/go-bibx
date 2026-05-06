@@ -120,7 +120,7 @@ func (s *openAlexSource) Build(ctx context.Context) (*collection.Collection, err
 		article := articleCache[work.ID]
 		for i, reference := range work.ReferencedWorks {
 			if refArticle, exists := articleCache[reference]; exists {
-				article.References[i] = refArticle
+				article.References[i] = refArticle.Reference()
 			}
 		}
 		articles = append(articles, article)
@@ -158,9 +158,9 @@ func workToArticle(work *openalex.Work) *articles.Article {
 	if work.PrimaryLocation != nil && work.PrimaryLocation.LandingPageUrl != nil {
 		permalink = work.PrimaryLocation.LandingPageUrl
 	}
-	references := make([]*articles.Article, len(work.ReferencedWorks))
+	references := make([]*articles.Reference, len(work.ReferencedWorks))
 	for i, reference := range work.ReferencedWorks {
-		references[i] = referenceToArticle(reference)
+		references[i] = referenceToReference(reference)
 	}
 	keywords := make([]string, len(work.Keywords))
 	for i, keyword := range work.Keywords {
@@ -186,11 +186,10 @@ func workToArticle(work *openalex.Work) *articles.Article {
 	}
 }
 
-func referenceToArticle(reference string) *articles.Article {
-	return &articles.Article{
-		Label:     reference,
-		IDs:       collections.NewSet(fmt.Sprintf("openalex:%s", reference)),
-		Permalink: &reference,
+func referenceToReference(reference string) *articles.Reference {
+	return &articles.Reference{
+		Label: reference,
+		IDs:   collections.NewSet(fmt.Sprintf("openalex:%s", reference)),
 	}
 }
 
