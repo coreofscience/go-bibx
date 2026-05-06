@@ -70,9 +70,9 @@ func (s *openAlexSource) Build(ctx context.Context) (*collection.Collection, err
 	if err != nil {
 		return nil, fmt.Errorf("failed to list recent articles: %w", err)
 	}
-	cache := make(map[string]*openalex.Work)
+	existingWorkIDs := collections.NewSet[string]()
 	for _, work := range works {
-		cache[work.ID] = &work
+		existingWorkIDs.Add(work.ID)
 	}
 	allReferences := make([]string, 0)
 	for _, work := range works {
@@ -99,7 +99,7 @@ func (s *openAlexSource) Build(ctx context.Context) (*collection.Collection, err
 			toFetch = allReferences
 		}
 		for _, refID := range toFetch {
-			if _, exists := cache[refID]; !exists {
+			if !existingWorkIDs.Contains(refID) {
 				missing.Add(refID)
 			}
 		}
@@ -108,22 +108,10 @@ func (s *openAlexSource) Build(ctx context.Context) (*collection.Collection, err
 	if err != nil {
 		return nil, fmt.Errorf("failed to list articles by IDs: %w", err)
 	}
-	for _, work := range referencedWorks {
-		cache[work.ID] = &work
-	}
-	articleCache := make(map[string]*articles.Article)
-	for id, work := range cache {
-		articleCache[id] = workToArticle(work)
-	}
-	articles := make([]*articles.Article, 0, len(articleCache))
-	for _, work := range works {
-		article := articleCache[work.ID]
-		for i, reference := range work.ReferencedWorks {
-			if refArticle, exists := articleCache[reference]; exists {
-				article.References[i] = refArticle.Reference()
-			}
-		}
-		articles = append(articles, article)
+	works = append(works, referencedWorks...)
+	articles := make([]*articles.Article, len(works))
+	for i, work := range works {
+		articles[i] = workToArticle(&work)
 	}
 	collection, err := collection.New(articles)
 	if err != nil {
