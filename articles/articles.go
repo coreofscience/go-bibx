@@ -1,11 +1,11 @@
-package models
+package articles
 
 import (
 	"errors"
 	"fmt"
 	"log/slog"
 
-	"github.com/coreofscience/go-bibx/graphs"
+	"github.com/coreofscience/go-bibx/internal/graphs"
 	"github.com/hmdsefi/gograph"
 )
 
