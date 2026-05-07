@@ -257,8 +257,8 @@ func jsonFields(t any) []string {
 		return fields
 	}
 	tType := v.Type()
-	for i := 0; i < tType.NumField(); i++ {
-		field := tType.Field(i)
+	for field := range tType.Fields() {
+		field := field
 		jsonTag := field.Tag.Get("json")
 		if jsonTag != "" && jsonTag != "-" {
 			fields = append(fields, jsonTag)
