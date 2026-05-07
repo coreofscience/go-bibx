@@ -124,13 +124,13 @@ func (s *openAlexSource) Build(ctx context.Context) (*collection.Collection, err
 }
 
 func workToArticle(work *openalex.Work) *articles.Article {
-	ids := collections.NewSet[string]()
+	ids := make(map[string]string)
 	for source, id := range work.IDs {
 		realID := id
 		if source == "doi" {
 			realID = extractDOI(id)
 		}
-		ids.Add(fmt.Sprintf("%s:%s", source, realID))
+		ids[source] = realID
 	}
 	var authors []string
 	for _, author := range work.Authorships {
@@ -180,7 +180,9 @@ func workToArticle(work *openalex.Work) *articles.Article {
 func referenceToReference(reference string) *articles.Reference {
 	return &articles.Reference{
 		Label: reference,
-		IDs:   collections.NewSet(fmt.Sprintf("openalex:%s", reference)),
+		IDs: map[string]string{
+			"openalex": reference,
+		},
 	}
 }
 

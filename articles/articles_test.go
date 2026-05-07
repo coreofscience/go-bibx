@@ -4,15 +4,17 @@ import (
 	"testing"
 
 	"github.com/coreofscience/go-bibx/articles"
-	"github.com/coreofscience/go-bibx/internal/collections"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestArticles_All(t *testing.T) {
 	referenced := &articles.Article{
-		Label:      "referenced",
-		IDs:        collections.NewSet("ref1", "ref2"),
+		Label: "referenced",
+		IDs: map[string]string{
+			"doi":   "ref1",
+			"arxiv": "ref2",
+		},
 		References: nil,
 	}
 	tests := []struct {
@@ -36,14 +38,14 @@ func TestArticles_All(t *testing.T) {
 			articles: articles.Articles{
 				{
 					Label:      "single",
-					IDs:        collections.NewSet("single1"),
+					IDs:        map[string]string{"doi": "single1"},
 					References: nil,
 				},
 			},
 			want: articles.Articles{
 				{
 					Label:      "single",
-					IDs:        collections.NewSet("single1"),
+					IDs:        map[string]string{"doi": "single1"},
 					References: nil,
 				},
 			},
@@ -53,7 +55,7 @@ func TestArticles_All(t *testing.T) {
 			articles: articles.Articles{
 				{
 					Label:      "main",
-					IDs:        collections.NewSet("main1"),
+					IDs:        map[string]string{"doi": "main1"},
 					References: []*articles.Reference{referenced.Reference()},
 				},
 				referenced,
@@ -61,7 +63,7 @@ func TestArticles_All(t *testing.T) {
 			want: articles.Articles{
 				{
 					Label:      "main",
-					IDs:        collections.NewSet("main1"),
+					IDs:        map[string]string{"doi": "main1"},
 					References: []*articles.Reference{referenced.Reference()},
 				},
 				referenced,
@@ -111,14 +113,14 @@ func TestArticles_UniqueById(t *testing.T) {
 			articles: articles.Articles{
 				{
 					Label:      "single",
-					IDs:        collections.NewSet("single1"),
+					IDs:        map[string]string{"doi": "single1"},
 					References: nil,
 				},
 			},
 			want: map[string]*articles.Article{
 				"single1": {
 					Label:      "single",
-					IDs:        collections.NewSet("single1"),
+					IDs:        map[string]string{"doi": "single1"},
 					References: nil,
 				},
 			},
@@ -129,24 +131,24 @@ func TestArticles_UniqueById(t *testing.T) {
 			articles: articles.Articles{
 				{
 					Label:      "article1",
-					IDs:        collections.NewSet("id1"),
+					IDs:        map[string]string{"doi": "id1"},
 					References: nil,
 				},
 				{
 					Label:      "article2",
-					IDs:        collections.NewSet("id2"),
+					IDs:        map[string]string{"doi": "id2"},
 					References: nil,
 				},
 			},
 			want: map[string]*articles.Article{
 				"id1": {
 					Label:      "article1",
-					IDs:        collections.NewSet("id1"),
+					IDs:        map[string]string{"doi": "id1"},
 					References: nil,
 				},
 				"id2": {
 					Label:      "article2",
-					IDs:        collections.NewSet("id2"),
+					IDs:        map[string]string{"doi": "id2"},
 					References: nil,
 				},
 			},
@@ -157,29 +159,29 @@ func TestArticles_UniqueById(t *testing.T) {
 			articles: articles.Articles{
 				{
 					Label:      "article1",
-					IDs:        collections.NewSet("id1", "shared"),
+					IDs:        map[string]string{"doi": "id1", "arxiv": "shared"},
 					References: nil,
 				},
 				{
 					Label:      "article2",
-					IDs:        collections.NewSet("id2", "shared"),
+					IDs:        map[string]string{"mag": "id2", "arxiv": "shared"},
 					References: nil,
 				},
 			},
 			want: map[string]*articles.Article{
 				"id1": {
 					Label:      "article1",
-					IDs:        collections.NewSet("id1", "id2", "shared"),
+					IDs:        map[string]string{"doi": "id1", "mag": "id2", "arxiv": "shared"},
 					References: nil,
 				},
 				"id2": {
 					Label:      "article1",
-					IDs:        collections.NewSet("id1", "id2", "shared"),
+					IDs:        map[string]string{"doi": "id1", "mag": "id2", "arxiv": "shared"},
 					References: nil,
 				},
 				"shared": {
 					Label:      "article1",
-					IDs:        collections.NewSet("id1", "id2", "shared"),
+					IDs:        map[string]string{"doi": "id1", "mag": "id2", "arxiv": "shared"},
 					References: nil,
 				},
 			},
@@ -190,42 +192,42 @@ func TestArticles_UniqueById(t *testing.T) {
 			articles: articles.Articles{
 				{
 					Label: "main",
-					IDs:   collections.NewSet("main1"),
+					IDs:   map[string]string{"doi": "main1"},
 					References: []*articles.Reference{
 						{
 							Label: "ref1",
-							IDs:   collections.NewSet("ref1"),
+							IDs:   map[string]string{"doi": "ref1"},
 						},
 						{
 							Label: "ref2",
-							IDs:   collections.NewSet("ref2"),
+							IDs:   map[string]string{"doi": "ref2"},
 						},
 					},
 				},
 				{
 					Label:      "ref1",
-					IDs:        collections.NewSet("ref1"),
+					IDs:        map[string]string{"doi": "ref1"},
 					References: nil,
 				},
 			},
 			want: map[string]*articles.Article{
 				"main1": {
 					Label: "main",
-					IDs:   collections.NewSet("main1"),
+					IDs:   map[string]string{"doi": "main1"},
 					References: []*articles.Reference{
 						{
 							Label: "ref1",
-							IDs:   collections.NewSet("ref1"),
+							IDs:   map[string]string{"doi": "ref1"},
 						},
 						{
 							Label: "ref2",
-							IDs:   collections.NewSet("ref2"),
+							IDs:   map[string]string{"doi": "ref2"},
 						},
 					},
 				},
 				"ref1": {
 					Label:      "ref1",
-					IDs:        collections.NewSet("ref1"),
+					IDs:        map[string]string{"doi": "ref1"},
 					References: nil,
 				},
 			},
@@ -249,12 +251,12 @@ func TestArticles_UniqueById_ArticlesWithSharedIdsShareExactlyTheSameMemoryAddre
 	arts := articles.Articles{
 		{
 			Label:      "article1",
-			IDs:        collections.NewSet("id1", "shared"),
+			IDs:        map[string]string{"doi": "ref1", "arxiv": "shared"},
 			References: nil,
 		},
 		{
 			Label:      "article2",
-			IDs:        collections.NewSet("id2", "shared"),
+			IDs:        map[string]string{"mag": "ref2", "arxiv": "shared"},
 			References: nil,
 		},
 	}
@@ -283,14 +285,14 @@ func TestArticles_Deduplicate(t *testing.T) {
 			articles: articles.Articles{
 				{
 					Label:      "single",
-					IDs:        collections.NewSet("single1"),
+					IDs:        map[string]string{"doi": "single1"},
 					References: nil,
 				},
 			},
 			want: articles.Articles{
 				{
 					Label:      "single",
-					IDs:        collections.NewSet("single1"),
+					IDs:        map[string]string{"doi": "single1"},
 					References: nil,
 				},
 			},
@@ -301,19 +303,19 @@ func TestArticles_Deduplicate(t *testing.T) {
 			articles: articles.Articles{
 				{
 					Label:      "dup",
-					IDs:        collections.NewSet("id1", "id2"),
+					IDs:        map[string]string{"doi": "id1", "arxiv": "id2"},
 					References: nil,
 				},
 				{
 					Label:      "dup",
-					IDs:        collections.NewSet("id2", "id1"),
+					IDs:        map[string]string{"arxiv": "id2", "doi": "id1"},
 					References: nil,
 				},
 			},
 			want: articles.Articles{
 				{
 					Label:      "dup",
-					IDs:        collections.NewSet("id1", "id2"),
+					IDs:        map[string]string{"doi": "id1", "arxiv": "id2"},
 					References: nil,
 				},
 			},
@@ -324,19 +326,19 @@ func TestArticles_Deduplicate(t *testing.T) {
 			articles: articles.Articles{
 				{
 					Label:      "article1",
-					IDs:        collections.NewSet("id1", "shared"),
+					IDs:        map[string]string{"doi": "id1", "arxiv": "shared"},
 					References: nil,
 				},
 				{
 					Label:      "article2",
-					IDs:        collections.NewSet("id2", "shared"),
+					IDs:        map[string]string{"mag": "id2", "arxiv": "shared"},
 					References: nil,
 				},
 			},
 			want: articles.Articles{
 				{
 					Label:      "article1",
-					IDs:        collections.NewSet("id1", "id2", "shared"),
+					IDs:        map[string]string{"doi": "id1", "mag": "id2", "arxiv": "shared"},
 					References: nil,
 				},
 			},
@@ -347,21 +349,21 @@ func TestArticles_Deduplicate(t *testing.T) {
 			articles: articles.Articles{
 				{
 					Label: "main",
-					IDs:   collections.NewSet("main1"),
+					IDs:   map[string]string{"doi": "main1"},
 					References: []*articles.Reference{
 						{
 							Label: "ref1",
-							IDs:   collections.NewSet("ref1"),
+							IDs:   map[string]string{"doi": "ref1"},
 						},
 					},
 				},
 				{
 					Label: "ref1",
-					IDs:   collections.NewSet("ref1"),
+					IDs:   map[string]string{"doi": "ref1"},
 					References: []*articles.Reference{
 						{
 							Label: "ref2",
-							IDs:   collections.NewSet("ref2"),
+							IDs:   map[string]string{"doi": "ref2"},
 						},
 					},
 				},
@@ -369,21 +371,21 @@ func TestArticles_Deduplicate(t *testing.T) {
 			want: articles.Articles{
 				{
 					Label: "main",
-					IDs:   collections.NewSet("main1"),
+					IDs:   map[string]string{"doi": "main1"},
 					References: []*articles.Reference{
 						{
 							Label: "ref1",
-							IDs:   collections.NewSet("ref1"),
+							IDs:   map[string]string{"doi": "ref1"},
 						},
 					},
 				},
 				{
 					Label: "ref1",
-					IDs:   collections.NewSet("ref1"),
+					IDs:   map[string]string{"doi": "ref1"},
 					References: []*articles.Reference{
 						{
 							Label: "ref2",
-							IDs:   collections.NewSet("ref2"),
+							IDs:   map[string]string{"doi": "ref2"},
 						},
 					},
 				},

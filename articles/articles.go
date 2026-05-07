@@ -36,10 +36,10 @@ func (a *Articles) UniqueById() (map[string]*Article, error) {
 	graph := gograph.New[string]()
 	idToArticle := make(map[string][]*Article)
 	for _, article := range a.All() {
-		if article == nil || article.IDs == nil || article.IDs.Len() == 0 {
+		if article == nil || article.IDs == nil || len(article.IDs) == 0 {
 			continue
 		}
-		allIDs := article.IDs.Items()
+		allIDs := article.SortedIDs()
 		firstID := allIDs[0]
 		remainingIDs := allIDs[1:]
 		firstVertex := gograph.NewVertex(firstID)
@@ -136,10 +136,10 @@ func (a *Articles) Deduplicate() (Articles, error) {
 	uniqueArticles := make(Articles, 0, len(*a))
 	seen := make(map[*Article]bool)
 	for _, article := range *a {
-		if article == nil || article.IDs.Len() == 0 {
+		if article == nil || len(article.IDs) == 0 {
 			continue
 		}
-		firstID := article.IDs.Items()[0]
+		firstID := article.SortedIDs()[0]
 		uniqueArticle, exists := uniqueMap[firstID]
 		if !exists || uniqueArticle == nil || seen[uniqueArticle] {
 			continue
@@ -156,10 +156,10 @@ func (a *Articles) Deduplicate() (Articles, error) {
 		dedupedReferences := make([]*Reference, 0, len(article.References))
 		seenRefs := make(map[*Article]bool)
 		for _, ref := range article.References {
-			if ref == nil || ref.IDs.Len() == 0 {
+			if ref == nil || len(ref.IDs) == 0 {
 				continue
 			}
-			firstRefID := ref.IDs.Items()[0]
+			firstRefID := ref.SortedIDs()[0]
 			dedupedRef, exists := uniqueMap[firstRefID]
 			if !exists || dedupedRef == nil || seenRefs[dedupedRef] {
 				dedupedReferences = append(dedupedReferences, ref)

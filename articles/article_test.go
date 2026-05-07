@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/coreofscience/go-bibx/articles"
-	"github.com/coreofscience/go-bibx/internal/collections"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -42,18 +41,18 @@ func TestArticle_Merge(t *testing.T) {
 		},
 		{
 			name:    "Merge makes an union of IDs",
-			article: &articles.Article{IDs: collections.NewSet("id1", "id2")},
-			other:   &articles.Article{IDs: collections.NewSet("id2", "id3")},
-			want:    &articles.Article{IDs: collections.NewSet("id1", "id2", "id3")},
+			article: &articles.Article{IDs: map[string]string{"doi": "id1", "arxiv": "id2"}},
+			other:   &articles.Article{IDs: map[string]string{"arxiv": "id2", "mag": "id3"}},
+			want:    &articles.Article{IDs: map[string]string{"doi": "id1", "arxiv": "id2", "mag": "id3"}},
 		},
 		{
-			name:    "Merge keeps the longers list of authors",
+			name:    "Merge keeps the longer list of authors",
 			article: &articles.Article{Authors: []string{"Alice", "Bob"}},
 			other:   &articles.Article{Authors: []string{"Alice"}},
 			want:    &articles.Article{Authors: []string{"Alice", "Bob"}},
 		},
 		{
-			name:    "Merge keeps the longers list of authors when longest is in the other",
+			name:    "Merge keeps the longer list of authors when longest is in the other",
 			article: &articles.Article{Authors: []string{"Alice"}},
 			other:   &articles.Article{Authors: []string{"Alice", "Bob"}},
 			want:    &articles.Article{Authors: []string{"Alice", "Bob"}},
@@ -309,12 +308,12 @@ func TestArticle_AddSimpleId(t *testing.T) {
 			article: &articles.Article{
 				Authors: []string{"Alice Smith"},
 				Year:    new(2021),
-				IDs:     collections.NewSet[string](),
+				IDs:     map[string]string{},
 			},
 			want: &articles.Article{
 				Authors: []string{"Alice Smith"},
 				Year:    new(2021),
-				IDs:     collections.NewSet("simple:alice2021"),
+				IDs:     map[string]string{"simple": "alice2021"},
 			},
 		},
 		{
@@ -322,12 +321,12 @@ func TestArticle_AddSimpleId(t *testing.T) {
 			article: &articles.Article{
 				Authors: []string{"Alice Smith"},
 				Year:    nil,
-				IDs:     collections.NewSet[string](),
+				IDs:     map[string]string{},
 			},
 			want: &articles.Article{
 				Authors: []string{"Alice Smith"},
 				Year:    nil,
-				IDs:     collections.NewSet[string](),
+				IDs:     map[string]string{},
 			},
 		},
 	}

@@ -2,27 +2,40 @@ package articles
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
-
-	"github.com/coreofscience/go-bibx/internal/collections"
 )
 
 type Article struct {
-	Label      string                   `json:"label"`
-	IDs        *collections.Set[string] `json:"ids"`
-	Authors    []string                 `json:"authors"`
-	Year       *int                     `json:"year"`
-	Title      *string                  `json:"title"`
-	Journal    *string                  `json:"journal"`
-	Volume     *string                  `json:"volume"`
-	Issue      *string                  `json:"issue"`
-	Page       *string                  `json:"page"`
-	DOI        *string                  `json:"doi"`
-	Permalink  *string                  `json:"permalink"`
-	TimesCited *int                     `json:"timesCited"`
-	Keywords   []string                 `json:"keywords"`
-	Abstract   *string                  `json:"abstract"`
-	References []*Reference             `json:"references"`
+	Label      string            `json:"label"`
+	IDs        map[string]string `json:"ids"`
+	Authors    []string          `json:"authors"`
+	Year       *int              `json:"year"`
+	Title      *string           `json:"title"`
+	Journal    *string           `json:"journal"`
+	Volume     *string           `json:"volume"`
+	Issue      *string           `json:"issue"`
+	Page       *string           `json:"page"`
+	DOI        *string           `json:"doi"`
+	Permalink  *string           `json:"permalink"`
+	TimesCited *int              `json:"timesCited"`
+	Keywords   []string          `json:"keywords"`
+	Abstract   *string           `json:"abstract"`
+	References []*Reference      `json:"references"`
+}
+
+// SortedIDs returns a sorted slice of the Article's IDs in the format "source:id".
+func (a *Article) SortedIDs() []string {
+	if a == nil || a.IDs == nil {
+		return nil
+	}
+	ids := make([]string, 0, len(a.IDs))
+	for source, id := range a.IDs {
+		ids = append(ids, fmt.Sprintf("%s:%s", source, id))
+	}
+	slices.Sort(ids)
+	return ids
 }
 
 // Merge creates a new Article by merging the fields of the current Article with another Article.
@@ -33,10 +46,12 @@ func (a *Article) Merge(other *Article) *Article {
 	if other == nil {
 		return a
 	}
-
+	newIDs := make(map[string]string)
+	maps.Copy(newIDs, a.IDs)
+	maps.Copy(newIDs, other.IDs)
 	merged := &Article{
 		Label:      *keepLongestString(a.Label, other.Label),
-		IDs:        a.IDs.Union(other.IDs),
+		IDs:        newIDs,
 		Authors:    keepLongestSlice(a.Authors, other.Authors),
 		Year:       keep(a.Year, other.Year),
 		Title:      keep(a.Title, other.Title),
@@ -134,8 +149,7 @@ func (a *Article) AddSimpleId() *Article {
 	}
 	simpleId := a.SimpleId()
 	if simpleId != nil && *simpleId != "" {
-		id := fmt.Sprintf("simple:%s", *simpleId)
-		a.IDs.Add(id)
+		a.IDs["simple"] = *simpleId
 	}
 	return a
 }

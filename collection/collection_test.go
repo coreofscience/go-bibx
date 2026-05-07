@@ -5,7 +5,6 @@ import (
 
 	"github.com/coreofscience/go-bibx/articles"
 	"github.com/coreofscience/go-bibx/collection"
-	"github.com/coreofscience/go-bibx/internal/collections"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -31,7 +30,7 @@ func TestCollection_Len(t *testing.T) {
 			articles: articles.Articles{
 				{
 					Label:      "single",
-					IDs:        collections.NewSet("single1"),
+					IDs:        map[string]string{"doi": "single1"},
 					References: nil,
 				},
 			},
@@ -42,12 +41,12 @@ func TestCollection_Len(t *testing.T) {
 			articles: articles.Articles{
 				{
 					Label:      "article1",
-					IDs:        collections.NewSet("id1"),
+					IDs:        map[string]string{"doi": "id1"},
 					References: nil,
 				},
 				{
 					Label:      "article2",
-					IDs:        collections.NewSet("id2"),
+					IDs:        map[string]string{"doi": "id2"},
 					References: nil,
 				},
 			},
@@ -58,12 +57,12 @@ func TestCollection_Len(t *testing.T) {
 			articles: articles.Articles{
 				{
 					Label:      "article1",
-					IDs:        collections.NewSet("id1"),
+					IDs:        map[string]string{"doi": "id1"},
 					References: nil,
 				},
 				{
 					Label:      "article1",
-					IDs:        collections.NewSet("id1"),
+					IDs:        map[string]string{"doi": "id1"},
 					References: nil,
 				},
 			},
@@ -106,14 +105,14 @@ func TestCollection_Merge(t *testing.T) {
 			otherArticles: articles.Articles{
 				{
 					Label:      "article1",
-					IDs:        collections.NewSet("id1"),
+					IDs:        map[string]string{"doi": "id1"},
 					References: nil,
 				},
 			},
 			wantArticles: articles.Articles{
 				{
 					Label:      "article1",
-					IDs:        collections.NewSet("id1"),
+					IDs:        map[string]string{"doi": "id1"},
 					References: nil,
 				},
 			},
@@ -123,26 +122,26 @@ func TestCollection_Merge(t *testing.T) {
 			articles: articles.Articles{
 				{
 					Label:      "article1",
-					IDs:        collections.NewSet("id1"),
+					IDs:        map[string]string{"doi": "id1"},
 					References: nil,
 				},
 			},
 			otherArticles: articles.Articles{
 				{
 					Label:      "article2",
-					IDs:        collections.NewSet("id2"),
+					IDs:        map[string]string{"doi": "id2"},
 					References: nil,
 				},
 			},
 			wantArticles: articles.Articles{
 				{
 					Label:      "article1",
-					IDs:        collections.NewSet("id1"),
+					IDs:        map[string]string{"doi": "id1"},
 					References: nil,
 				},
 				{
 					Label:      "article2",
-					IDs:        collections.NewSet("id2"),
+					IDs:        map[string]string{"doi": "id2"},
 					References: nil,
 				},
 			},
@@ -152,18 +151,18 @@ func TestCollection_Merge(t *testing.T) {
 			articles: articles.Articles{
 				{
 					Label:      "article1",
-					IDs:        collections.NewSet("id1"),
+					IDs:        map[string]string{"doi": "id1"},
 					References: nil,
 				},
 			},
 			otherArticles: articles.Articles{
 				{
 					Label: "article1",
-					IDs:   collections.NewSet("id1"),
+					IDs:   map[string]string{"doi": "id1"},
 					References: []*articles.Reference{
 						{
 							Label: "ref1",
-							IDs:   collections.NewSet("refid1"),
+							IDs:   map[string]string{"doi": "refid1"},
 						},
 					},
 				},
@@ -171,11 +170,11 @@ func TestCollection_Merge(t *testing.T) {
 			wantArticles: articles.Articles{
 				{
 					Label: "article1",
-					IDs:   collections.NewSet("id1"),
+					IDs:   map[string]string{"doi": "id1"},
 					References: []*articles.Reference{
 						{
 							Label: "ref1",
-							IDs:   collections.NewSet("refid1"),
+							IDs:   map[string]string{"doi": "refid1"},
 						},
 					},
 				},

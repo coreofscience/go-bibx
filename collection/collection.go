@@ -1,7 +1,6 @@
 package collection
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/coreofscience/go-bibx/articles"
@@ -51,9 +50,4 @@ func (c *Collection) Merge(other *Collection) (*Collection, error) {
 		return nil, fmt.Errorf("failed to deduplicate merged articles: %w", err)
 	}
 	return &Collection{Articles: mergedArticles}, nil
-}
-
-// MarshalJSON implements the json.Marshaler interface for Collection.
-func (c *Collection) MarshalJSON() ([]byte, error) {
-	return json.Marshal(c.Articles)
 }
