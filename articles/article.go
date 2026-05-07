@@ -19,7 +19,7 @@ type Article struct {
 	Page       *string                  `json:"page"`
 	DOI        *string                  `json:"doi"`
 	Permalink  *string                  `json:"permalink"`
-	TimesCited *int                     `json:"times_cited"`
+	TimesCited *int                     `json:"timesCited"`
 	Keywords   []string                 `json:"keywords"`
 	Abstract   *string                  `json:"abstract"`
 	References []*Reference             `json:"references"`

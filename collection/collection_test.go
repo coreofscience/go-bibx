@@ -18,7 +18,7 @@ func TestCollection_Len(t *testing.T) {
 	}{
 		{
 			name:     "nil collection",
-			articles: nil,
+			articles: articles.Articles{},
 			want:     0,
 		},
 		{
@@ -72,7 +72,7 @@ func TestCollection_Len(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := collection.New(tt.articles)
+			c, err := collection.New(tt.articles, nil)
 			if tt.articles == nil {
 				require.Error(t, err)
 				assert.Equal(t, tt.want, c.Len())
@@ -187,13 +187,13 @@ func TestCollection_Merge(t *testing.T) {
 			var c *collection.Collection
 			var err error
 			if tt.articles != nil {
-				c, err = collection.New(tt.articles)
+				c, err = collection.New(tt.articles, nil)
 				require.NoError(t, err)
 			}
 
 			var other *collection.Collection
 			if !tt.otherNil && tt.otherArticles != nil {
-				other, err = collection.New(tt.otherArticles)
+				other, err = collection.New(tt.otherArticles, nil)
 				require.NoError(t, err)
 			}
 
@@ -202,7 +202,7 @@ func TestCollection_Merge(t *testing.T) {
 
 			var want *collection.Collection
 			if tt.wantArticles != nil {
-				want, err = collection.New(tt.wantArticles)
+				want, err = collection.New(tt.wantArticles, nil)
 				require.NoError(t, err)
 			}
 			assert.Equal(t, want, got)

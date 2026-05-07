@@ -273,12 +273,6 @@ func TestArticles_Deduplicate(t *testing.T) {
 		wantErr  bool
 	}{
 		{
-			name:     "nil articles",
-			articles: nil,
-			want:     nil,
-			wantErr:  true,
-		},
-		{
 			name:     "empty articles",
 			articles: articles.Articles{},
 			want:     articles.Articles{},

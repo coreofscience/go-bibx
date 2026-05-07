@@ -108,12 +108,15 @@ func (s *openAlexSource) Build(ctx context.Context) (*collection.Collection, err
 	if err != nil {
 		return nil, fmt.Errorf("failed to list articles by IDs: %w", err)
 	}
-	works = append(works, referencedWorks...)
-	articles := make([]*articles.Article, len(works))
+	arts := make([]*articles.Article, len(works))
 	for i, work := range works {
-		articles[i] = workToArticle(&work)
+		arts[i] = workToArticle(&work)
 	}
-	collection, err := collection.New(articles)
+	enrichedReferences := make(articles.Articles, len(referencedWorks))
+	for i, work := range referencedWorks {
+		enrichedReferences[i] = workToArticle(&work)
+	}
+	collection, err := collection.New(arts, enrichedReferences)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create collection: %w", err)
 	}

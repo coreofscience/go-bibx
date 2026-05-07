@@ -126,7 +126,7 @@ func (a *Articles) UniqueById() (map[string]*Article, error) {
 // Deduplicate returns a slice of unique articles, preserving the order of the first occurrence of each article.
 func (a *Articles) Deduplicate() (Articles, error) {
 	if a == nil || *a == nil {
-		return nil, errors.New("articles are empty")
+		return nil, nil
 	}
 	uniqueMap, err := a.UniqueById()
 	if err != nil {
