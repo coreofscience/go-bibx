@@ -54,15 +54,6 @@ func (a *Article) Merge(other *Article) *Article {
 	return merged
 }
 
-// Key returns the first ID of the Article if it exists.
-func (a *Article) Key() *string {
-	if a == nil || a.IDs.Len() == 0 {
-		return nil
-	}
-	items := a.IDs.Items()
-	return &items[0]
-}
-
 // SimpleLabel returns a simplified label for the Article.
 func (a *Article) SimpleLabel() *string {
 	if a == nil {

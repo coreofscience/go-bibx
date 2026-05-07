@@ -8,12 +8,3 @@ type Reference struct {
 	IDs   *collections.Set[string] `json:"ids"`
 	Title *string                  `json:"title,omitempty"`
 }
-
-// Key returns the first ID of the Reference if it exists.
-func (r *Reference) Key() *string {
-	if r == nil || r.IDs.Len() == 0 {
-		return nil
-	}
-	items := r.IDs.Items()
-	return &items[0]
-}

@@ -133,36 +133,6 @@ func TestArticle_Merge(t *testing.T) {
 	}
 }
 
-func TestArticle_Key(t *testing.T) {
-	tests := []struct {
-		name    string            // description of this test case
-		article *articles.Article // the receiver type
-		want    *string
-	}{
-		{
-			name:    "Key returns nil when IDs is nil",
-			article: &articles.Article{},
-			want:    nil,
-		},
-		{
-			name:    "Key returns nil when no IDs are present",
-			article: &articles.Article{IDs: collections.NewSet[string]()},
-			want:    nil,
-		},
-		{
-			name:    "Key returns the first ID when IDs are present",
-			article: &articles.Article{IDs: collections.NewSet("id1", "id2")},
-			want:    new("id1"),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := tt.article.Key()
-			assert.Equal(t, tt.want, got, "Key() result mismatch")
-		})
-	}
-}
-
 func TestArticle_SimpleLabel(t *testing.T) {
 	tests := []struct {
 		name    string            // description of this test case
