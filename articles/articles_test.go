@@ -90,8 +90,7 @@ func TestArticles_All(t *testing.T) {
 
 func TestArticles_UniqueById(t *testing.T) {
 	tests := []struct {
-		name string // description of this test case
-		// Named input parameters for target function.
+		name     string
 		articles articles.Articles
 		want     map[string]*articles.Article
 		wantErr  bool
@@ -118,7 +117,7 @@ func TestArticles_UniqueById(t *testing.T) {
 				},
 			},
 			want: map[string]*articles.Article{
-				"single1": {
+				"doi:single1": {
 					Label:      "single",
 					IDs:        map[string]string{"doi": "single1"},
 					References: nil,
@@ -141,12 +140,12 @@ func TestArticles_UniqueById(t *testing.T) {
 				},
 			},
 			want: map[string]*articles.Article{
-				"id1": {
+				"doi:id1": {
 					Label:      "article1",
 					IDs:        map[string]string{"doi": "id1"},
 					References: nil,
 				},
-				"id2": {
+				"doi:id2": {
 					Label:      "article2",
 					IDs:        map[string]string{"doi": "id2"},
 					References: nil,
@@ -169,17 +168,17 @@ func TestArticles_UniqueById(t *testing.T) {
 				},
 			},
 			want: map[string]*articles.Article{
-				"id1": {
+				"doi:id1": {
 					Label:      "article1",
 					IDs:        map[string]string{"doi": "id1", "mag": "id2", "arxiv": "shared"},
 					References: nil,
 				},
-				"id2": {
+				"mag:id2": {
 					Label:      "article1",
 					IDs:        map[string]string{"doi": "id1", "mag": "id2", "arxiv": "shared"},
 					References: nil,
 				},
-				"shared": {
+				"arxiv:shared": {
 					Label:      "article1",
 					IDs:        map[string]string{"doi": "id1", "mag": "id2", "arxiv": "shared"},
 					References: nil,
@@ -211,7 +210,7 @@ func TestArticles_UniqueById(t *testing.T) {
 				},
 			},
 			want: map[string]*articles.Article{
-				"main1": {
+				"doi:main1": {
 					Label: "main",
 					IDs:   map[string]string{"doi": "main1"},
 					References: []*articles.Reference{
@@ -225,7 +224,7 @@ func TestArticles_UniqueById(t *testing.T) {
 						},
 					},
 				},
-				"ref1": {
+				"doi:ref1": {
 					Label:      "ref1",
 					IDs:        map[string]string{"doi": "ref1"},
 					References: nil,
@@ -269,7 +268,7 @@ func TestArticles_UniqueById_ArticlesWithSharedIdsShareExactlyTheSameMemoryAddre
 
 func TestArticles_Deduplicate(t *testing.T) {
 	tests := []struct {
-		name     string // description of this test case
+		name     string
 		articles articles.Articles
 		want     articles.Articles
 		wantErr  bool

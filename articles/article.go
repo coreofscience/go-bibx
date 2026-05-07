@@ -46,9 +46,7 @@ func (a *Article) Merge(other *Article) *Article {
 	if other == nil {
 		return a
 	}
-	newIDs := make(map[string]string)
-	maps.Copy(newIDs, a.IDs)
-	maps.Copy(newIDs, other.IDs)
+	newIDs := mergeMaps(a.IDs, other.IDs)
 	merged := &Article{
 		Label:      *keepLongestString(a.Label, other.Label),
 		IDs:        newIDs,
@@ -171,6 +169,19 @@ func keep[T any](a, b *T) *T {
 		return a
 	}
 	return b
+}
+
+func mergeMaps[K comparable, V any](ms ...map[K]V) map[K]V {
+	var newMap map[K]V
+	for _, m := range ms {
+		if m != nil {
+			if newMap == nil {
+				newMap = make(map[K]V)
+			}
+			maps.Copy(newMap, m)
+		}
+	}
+	return newMap
 }
 
 func keepLongestString(a, b string) *string {

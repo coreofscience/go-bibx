@@ -9,9 +9,8 @@ import (
 
 func TestArticle_Merge(t *testing.T) {
 	tests := []struct {
-		name string // description of this test case
-		// Named input parameters for target function.
-		article *articles.Article // the receiver type
+		name    string
+		article *articles.Article
 		other   *articles.Article
 		want    *articles.Article
 	}{
@@ -134,8 +133,8 @@ func TestArticle_Merge(t *testing.T) {
 
 func TestArticle_SimpleLabel(t *testing.T) {
 	tests := []struct {
-		name    string            // description of this test case
-		article *articles.Article // the receiver type
+		name    string
+		article *articles.Article
 		want    *string
 	}{
 		{
@@ -216,8 +215,8 @@ func TestArticle_SimpleLabel(t *testing.T) {
 
 func TestArticle_SimpleId(t *testing.T) {
 	tests := []struct {
-		name    string            // description of this test case
-		article *articles.Article // the receiver type
+		name    string
+		article *articles.Article
 		want    *string
 	}{
 		{
@@ -261,8 +260,8 @@ func TestArticle_SimpleId(t *testing.T) {
 
 func TestArticle_GetPermalink(t *testing.T) {
 	tests := []struct {
-		name    string            // description of this test case
-		article *articles.Article // the receiver type
+		name    string
+		article *articles.Article
 		want    *string
 	}{
 		{
@@ -299,8 +298,8 @@ func TestArticle_GetPermalink(t *testing.T) {
 
 func TestArticle_AddSimpleId(t *testing.T) {
 	tests := []struct {
-		name    string            // description of this test case
-		article *articles.Article // the receiver type
+		name    string
+		article *articles.Article
 		want    *articles.Article
 	}{
 		{
@@ -341,8 +340,8 @@ func TestArticle_AddSimpleId(t *testing.T) {
 
 func TestArticle_SetSimpleLabel(t *testing.T) {
 	tests := []struct {
-		name    string            // description of this test case
-		article *articles.Article // the receiver type
+		name    string
+		article *articles.Article
 		want    *articles.Article
 	}{
 		{
