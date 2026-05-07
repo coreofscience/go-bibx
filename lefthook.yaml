@@ -1,0 +1,22 @@
+pre-commit:
+  parallel: true
+  commands:
+    format:
+      glob: "*.go"
+      run: gofmt -s -w ./
+
+    lint:
+      tags: backend style
+      glob: "*.go"
+      run: golangci-lint run
+
+    mod-tidy:
+      run: go mod tidy
+
+    docs:
+      run: make docs
+
+pre-push:
+  commands:
+    tests:
+      run: go test ./... -short
