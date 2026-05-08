@@ -8,14 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func intPtr(i int) *int {
-	return &i
-}
-
-func stringPtr(s string) *string {
-	return &s
-}
-
 func TestArticle_Merge(t *testing.T) {
 	tests := []struct {
 		name string // description of this test case
@@ -69,50 +61,50 @@ func TestArticle_Merge(t *testing.T) {
 		{
 			name:    "Merge keeps the year if present",
 			article: &articles.Article{},
-			other:   &articles.Article{Year: intPtr(2021)},
-			want:    &articles.Article{Year: intPtr(2021)},
+			other:   &articles.Article{Year: new(2021)},
+			want:    &articles.Article{Year: new(2021)},
 		},
 		{
 			name:    "Merge keeps the title if present",
 			article: &articles.Article{},
-			other:   &articles.Article{Title: stringPtr("Title B")},
-			want:    &articles.Article{Title: stringPtr("Title B")},
+			other:   &articles.Article{Title: new("Title B")},
+			want:    &articles.Article{Title: new("Title B")},
 		},
 		{
 			name:    "Merge keeps the journal if present",
 			article: &articles.Article{},
-			other:   &articles.Article{Journal: stringPtr("Journal B")},
-			want:    &articles.Article{Journal: stringPtr("Journal B")},
+			other:   &articles.Article{Journal: new("Journal B")},
+			want:    &articles.Article{Journal: new("Journal B")},
 		},
 		{
 			name:    "Merge keeps the volume if present",
 			article: &articles.Article{},
-			other:   &articles.Article{Volume: stringPtr("Volume B")},
-			want:    &articles.Article{Volume: stringPtr("Volume B")},
+			other:   &articles.Article{Volume: new("Volume B")},
+			want:    &articles.Article{Volume: new("Volume B")},
 		},
 		{
 			name:    "Merge keeps the issue if present",
 			article: &articles.Article{},
-			other:   &articles.Article{Issue: stringPtr("Issue B")},
-			want:    &articles.Article{Issue: stringPtr("Issue B")},
+			other:   &articles.Article{Issue: new("Issue B")},
+			want:    &articles.Article{Issue: new("Issue B")},
 		},
 		{
 			name:    "Merge keeps the page if present",
 			article: &articles.Article{},
-			other:   &articles.Article{Page: stringPtr("Page B")},
-			want:    &articles.Article{Page: stringPtr("Page B")},
+			other:   &articles.Article{Page: new("Page B")},
+			want:    &articles.Article{Page: new("Page B")},
 		},
 		{
 			name:    "Merge keeps the DOI if present",
 			article: &articles.Article{},
-			other:   &articles.Article{DOI: stringPtr("DOI B")},
-			want:    &articles.Article{DOI: stringPtr("DOI B")},
+			other:   &articles.Article{DOI: new("DOI B")},
+			want:    &articles.Article{DOI: new("DOI B")},
 		},
 		{
 			name:    "Merge keeps the permalink if present",
 			article: &articles.Article{},
-			other:   &articles.Article{Permalink: stringPtr("Permalink B")},
-			want:    &articles.Article{Permalink: stringPtr("Permalink B")},
+			other:   &articles.Article{Permalink: new("Permalink B")},
+			want:    &articles.Article{Permalink: new("Permalink B")},
 		},
 		{
 			name:    "Keeps the longest list of keywords",
@@ -160,7 +152,7 @@ func TestArticle_Key(t *testing.T) {
 		{
 			name:    "Key returns the first ID when IDs are present",
 			article: &articles.Article{IDs: collections.NewSet("id1", "id2")},
-			want:    stringPtr("id1"),
+			want:    new("id1"),
 		},
 	}
 	for _, tt := range tests {
@@ -190,59 +182,59 @@ func TestArticle_SimpleLabel(t *testing.T) {
 		{
 			name:    "SimpleLabel returns the first author when available",
 			article: &articles.Article{Authors: []string{"Alice"}},
-			want:    stringPtr("Alice"),
+			want:    new("Alice"),
 		},
 		{
 			name:    "SimpleLabel returns the first author and year when available",
-			article: &articles.Article{Authors: []string{"Alice"}, Year: intPtr(2021)},
-			want:    stringPtr("Alice, 2021"),
+			article: &articles.Article{Authors: []string{"Alice"}, Year: new(2021)},
+			want:    new("Alice, 2021"),
 		},
 		{
 			name:    "SimpleLabel returns the first author and year with multiple authors",
-			article: &articles.Article{Authors: []string{"Alice", "Bob"}, Year: intPtr(2021)},
-			want:    stringPtr("Alice, 2021"),
+			article: &articles.Article{Authors: []string{"Alice", "Bob"}, Year: new(2021)},
+			want:    new("Alice, 2021"),
 		},
 		{
 			name: "SimpleLabel returns the first author, year and journal when available",
 			article: &articles.Article{
 				Authors: []string{"Alice"},
-				Year:    intPtr(2021),
-				Journal: stringPtr("Journal A"),
+				Year:    new(2021),
+				Journal: new("Journal A"),
 			},
-			want: stringPtr("Alice, 2021, Journal A"),
+			want: new("Alice, 2021, Journal A"),
 		},
 		{
 			name: "SimpleLabel returns the first author, year, journal and volume when available",
 			article: &articles.Article{
 				Authors: []string{"Alice"},
-				Year:    intPtr(2021),
-				Journal: stringPtr("Journal A"),
-				Volume:  stringPtr("1"),
+				Year:    new(2021),
+				Journal: new("Journal A"),
+				Volume:  new("1"),
 			},
-			want: stringPtr("Alice, 2021, Journal A, V1"),
+			want: new("Alice, 2021, Journal A, V1"),
 		},
 		{
 			name: "SimpleLabel returns the first author, year, journal, volume and page when available",
 			article: &articles.Article{
 				Authors: []string{"Alice"},
-				Year:    intPtr(2021),
-				Journal: stringPtr("Journal A"),
-				Volume:  stringPtr("1"),
-				Page:    stringPtr("10"),
+				Year:    new(2021),
+				Journal: new("Journal A"),
+				Volume:  new("1"),
+				Page:    new("10"),
 			},
-			want: stringPtr("Alice, 2021, Journal A, V1, P10"),
+			want: new("Alice, 2021, Journal A, V1, P10"),
 		},
 		{
 			name: "SimpleLabel returns the first author, year, journal, volume, page and DOI when available",
 			article: &articles.Article{
 				Authors: []string{"Alice"},
-				Year:    intPtr(2021),
-				Journal: stringPtr("Journal A"),
-				Volume:  stringPtr("1"),
-				Page:    stringPtr("10"),
-				DOI:     stringPtr("10.1000/xyz123"),
+				Year:    new(2021),
+				Journal: new("Journal A"),
+				Volume:  new("1"),
+				Page:    new("10"),
+				DOI:     new("10.1000/xyz123"),
 			},
-			want: stringPtr("Alice, 2021, Journal A, V1, P10, DOI 10.1000/xyz123"),
+			want: new("Alice, 2021, Journal A, V1, P10, DOI 10.1000/xyz123"),
 		},
 	}
 	for _, tt := range tests {
@@ -266,7 +258,7 @@ func TestArticle_SimpleId(t *testing.T) {
 		},
 		{
 			name:    "SimpleId returns nil when no authors are present",
-			article: &articles.Article{Authors: []string{}, Year: intPtr(2021)},
+			article: &articles.Article{Authors: []string{}, Year: new(2021)},
 			want:    nil,
 		},
 		{
@@ -276,18 +268,18 @@ func TestArticle_SimpleId(t *testing.T) {
 		},
 		{
 			name:    "SimpleId returns first author's name and year",
-			article: &articles.Article{Authors: []string{"Alice Smith"}, Year: intPtr(2021)},
-			want:    stringPtr("alice2021"),
+			article: &articles.Article{Authors: []string{"Alice Smith"}, Year: new(2021)},
+			want:    new("alice2021"),
 		},
 		{
 			name:    "SimpleId returns first author's name and year with multiple authors",
-			article: &articles.Article{Authors: []string{"Alice Smith", "Bob Johnson"}, Year: intPtr(2021)},
-			want:    stringPtr("alice2021"),
+			article: &articles.Article{Authors: []string{"Alice Smith", "Bob Johnson"}, Year: new(2021)},
+			want:    new("alice2021"),
 		},
 		{
 			name:    "SimpleId returns first author's name and year with comma in name",
-			article: &articles.Article{Authors: []string{"Smith, Alice"}, Year: intPtr(2021)},
-			want:    stringPtr("smith2021"),
+			article: &articles.Article{Authors: []string{"Smith, Alice"}, Year: new(2021)},
+			want:    new("smith2021"),
 		},
 	}
 	for _, tt := range tests {
@@ -312,15 +304,15 @@ func TestArticle_GetPermalink(t *testing.T) {
 		{
 			name: "GetPermalink returns the permalink when permalink is set regardless of DOI",
 			article: &articles.Article{
-				Permalink: stringPtr("https://example.com/article"),
-				DOI:       stringPtr("10.1000/xyz123"),
+				Permalink: new("https://example.com/article"),
+				DOI:       new("10.1000/xyz123"),
 			},
-			want: stringPtr("https://example.com/article"),
+			want: new("https://example.com/article"),
 		},
 		{
 			name:    "GetPermalink returns the DOI as permalink when permalink is not set",
-			article: &articles.Article{DOI: stringPtr("10.1000/xyz123")},
-			want:    stringPtr("https://doi.org/10.1000/xyz123"),
+			article: &articles.Article{DOI: new("10.1000/xyz123")},
+			want:    new("https://doi.org/10.1000/xyz123"),
 		},
 		{
 			name:    "GetPermalink returns nil when neither permalink nor DOI is set",
@@ -346,12 +338,12 @@ func TestArticle_AddSimpleId(t *testing.T) {
 			name: "AddSimpleId adds simple ID when SimpleId is available",
 			article: &articles.Article{
 				Authors: []string{"Alice Smith"},
-				Year:    intPtr(2021),
+				Year:    new(2021),
 				IDs:     collections.NewSet[string](),
 			},
 			want: &articles.Article{
 				Authors: []string{"Alice Smith"},
-				Year:    intPtr(2021),
+				Year:    new(2021),
 				IDs:     collections.NewSet("simple:alice2021"),
 			},
 		},
@@ -388,11 +380,11 @@ func TestArticle_SetSimpleLabel(t *testing.T) {
 			name: "SetSimpleLabel sets simple label when SimpleLabel is available",
 			article: &articles.Article{
 				Authors: []string{"Alice Smith"},
-				Year:    intPtr(2021),
+				Year:    new(2021),
 			},
 			want: &articles.Article{
 				Authors: []string{"Alice Smith"},
-				Year:    intPtr(2021),
+				Year:    new(2021),
 				Label:   "Alice Smith, 2021",
 			},
 		},
