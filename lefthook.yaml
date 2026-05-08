@@ -11,7 +11,7 @@ pre-commit:
       run: golangci-lint run
 
     mod-tidy:
-      run: go mod tidy
+      run: go mod tidy -diff
 
 pre-push:
   commands:
