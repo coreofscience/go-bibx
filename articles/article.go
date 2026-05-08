@@ -1,7 +1,6 @@
 package articles
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -9,21 +8,44 @@ import (
 )
 
 type Article struct {
-	Label      string
-	IDs        *collections.Set[string]
-	Authors    []string
-	Year       *int
-	Title      *string
-	Journal    *string
-	Volume     *string
-	Issue      *string
-	Page       *string
-	DOI        *string
-	Permalink  *string
-	TimesCited *int
-	Keywords   []string
-	Abstract   *string
-	References []*Article
+	Label      string                   `json:"label,omitempty"`
+	IDs        *collections.Set[string] `json:"ids,omitempty"`
+	Authors    []string                 `json:"authors,omitempty"`
+	Year       *int                     `json:"year,omitempty"`
+	Title      *string                  `json:"title,omitempty"`
+	Journal    *string                  `json:"journal,omitempty"`
+	Volume     *string                  `json:"volume,omitempty"`
+	Issue      *string                  `json:"issue,omitempty"`
+	Page       *string                  `json:"page,omitempty"`
+	DOI        *string                  `json:"doi,omitempty"`
+	Permalink  *string                  `json:"permalink,omitempty"`
+	TimesCited *int                     `json:"times_cited,omitempty"`
+	Keywords   []string                 `json:"keywords,omitempty"`
+	Abstract   *string                  `json:"abstract,omitempty"`
+	References References               `json:"references,omitempty"`
+}
+
+func (a *Article) Copy() *Article {
+	if a == nil {
+		return nil
+	}
+	return &Article{
+		Label:      a.Label,
+		IDs:        a.IDs,
+		Authors:    a.Authors,
+		Year:       a.Year,
+		Title:      a.Title,
+		Journal:    a.Journal,
+		Volume:     a.Volume,
+		Issue:      a.Issue,
+		Page:       a.Page,
+		DOI:        a.DOI,
+		Permalink:  a.Permalink,
+		TimesCited: a.TimesCited,
+		Keywords:   a.Keywords,
+		Abstract:   a.Abstract,
+		References: a.References,
+	}
 }
 
 // Merge creates a new Article by merging the fields of the current Article with another Article.
@@ -148,48 +170,6 @@ func (a *Article) SetSimpleLabel() *Article {
 		a.Label = *simpleLabel
 	}
 	return a
-}
-
-// MarshalJSON implements the json.Marshaler interface.
-func (a *Article) MarshalJSON() ([]byte, error) {
-	references := make([]string, 0, len(a.References))
-	for _, ref := range a.References {
-		references = append(references, ref.Label)
-	}
-	article := struct {
-		Label      string                   `json:"label"`
-		IDs        *collections.Set[string] `json:"ids"`
-		Authors    []string                 `json:"authors"`
-		Year       *int                     `json:"year"`
-		Title      *string                  `json:"title"`
-		Journal    *string                  `json:"journal"`
-		Volume     *string                  `json:"volume"`
-		Issue      *string                  `json:"issue"`
-		Page       *string                  `json:"page"`
-		DOI        *string                  `json:"doi"`
-		Permalink  *string                  `json:"permalink"`
-		TimesCited *int                     `json:"times_cited"`
-		Keywords   []string                 `json:"keywords"`
-		Abstract   *string                  `json:"abstract"`
-		References []string                 `json:"references"`
-	}{
-		Label:      a.Label,
-		IDs:        a.IDs,
-		Authors:    a.Authors,
-		Year:       a.Year,
-		Title:      a.Title,
-		Journal:    a.Journal,
-		Volume:     a.Volume,
-		Issue:      a.Issue,
-		Page:       a.Page,
-		DOI:        a.DOI,
-		Permalink:  a.Permalink,
-		TimesCited: a.TimesCited,
-		Keywords:   a.Keywords,
-		Abstract:   a.Abstract,
-		References: references,
-	}
-	return json.Marshal(article)
 }
 
 func keep[T any](a, b *T) *T {

@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/coreofscience/go-bibx/sources"
+	"github.com/lmittmann/tint"
 	"github.com/urfave/cli/v3"
 )
 
@@ -24,7 +26,7 @@ func main() {
 			&cli.IntFlag{
 				Name:  "limit",
 				Usage: "maximum number of results",
-				Value: 500,
+				Value: 20,
 			},
 			&cli.BoolFlag{
 				Name:  "verbose",
@@ -37,8 +39,9 @@ func main() {
 			if c.Bool("verbose") {
 				logLevel = slog.LevelDebug
 			}
-			logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-				Level: logLevel,
+			logger := slog.New(tint.NewHandler(os.Stderr, &tint.Options{
+				Level:      logLevel,
+				TimeFormat: time.Kitchen,
 			}))
 			slog.SetDefault(logger)
 			collection, err := sources.NewOpenAlexSource(
@@ -50,6 +53,36 @@ func main() {
 				slog.Error("failed to build collection", "error", err)
 				return err
 			}
+			collection, err = collection.RemoveCycles()
+			if err != nil {
+				slog.Error("failed to remove cycles", "error", err)
+				return err
+			}
+			collection, err = collection.RemoveIrrelevant()
+			if err != nil {
+				slog.Error("failed to remove irrelevant articles", "error", err)
+				return err
+			}
+			collections, err := collection.Split()
+			if err != nil {
+				slog.Error("failed to split collection", "error", err)
+				return err
+			}
+
+			if len(collections) < 1 {
+				slog.Warn("we found no collections", "count", len(collections))
+				fmt.Println("{}")
+				return nil
+			}
+			for _, c := range collections {
+				graph, err := c.CitationGraph()
+				if err != nil {
+					slog.Error("failed to build citation graph", "error", err)
+					return err
+				}
+				slog.Debug("found a collection", "mainArticleCount", c.Len(), "nodes", graph.Order(), "edges", graph.Size())
+			}
+			collection = collections[0]
 			collectionJSON, err := json.MarshalIndent(collection, "", "  ")
 			if err != nil {
 				slog.Error("failed to marshal works to JSON", "error", err)

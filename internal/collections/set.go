@@ -21,6 +21,15 @@ func NewSet[T cmp.Ordered](elements ...T) *Set[T] {
 	}
 }
 
+// Contains returns true if the set contains the given element.
+func (s *Set[T]) Contains(elem T) bool {
+	if s == nil {
+		return false
+	}
+	_, ok := s.elements[elem]
+	return ok
+}
+
 // Add adds an element to the set.
 func (s *Set[T]) Add(elem T) {
 	if s == nil {

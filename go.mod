@@ -4,6 +4,7 @@ go 1.26
 
 require (
 	github.com/hmdsefi/gograph v0.5.0
+	github.com/lmittmann/tint v1.1.3
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli/v3 v3.8.0
 	golang.org/x/sync v0.16.0
