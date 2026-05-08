@@ -3,6 +3,7 @@ package articles
 import (
 	"errors"
 	"fmt"
+	"iter"
 	"log/slog"
 
 	"github.com/coreofscience/go-bibx/internal/graphs"
@@ -12,27 +13,31 @@ import (
 type Articles []*Article
 
 // All returns a slice of all articles including their references
-func (a *Articles) All() Articles {
-	if a == nil || *a == nil {
-		return nil
-	}
-	seen := make(map[*Article]bool)
-	result := make(Articles, 0, len(*a))
-	for _, article := range *a {
-		if article == nil || seen[article] {
-			continue
+func (a *Articles) All() iter.Seq[*Article] {
+	return func(yield func(*Article) bool) {
+		if a == nil {
+			return
 		}
-		result = append(result, article)
-		seen[article] = true
-		for _, reference := range article.References {
-			if reference == nil || seen[reference] {
+		seen := make(map[*Article]struct{})
+		for _, article := range *a {
+			if _, ok := seen[article]; ok {
 				continue
 			}
-			result = append(result, reference)
-			seen[reference] = true
+			seen[article] = struct{}{}
+			if !yield(article) {
+				return
+			}
+			for _, reference := range article.References {
+				if _, ok := seen[reference]; ok {
+					continue
+				}
+				seen[reference] = struct{}{}
+				if !yield(reference) {
+					return
+				}
+			}
 		}
 	}
-	return result
 }
 
 // UniqueById returns a map of unique articles by their IDs.
@@ -42,7 +47,7 @@ func (a *Articles) UniqueById() (map[string]*Article, error) {
 	}
 	graph := gograph.New[string]()
 	idToArticle := make(map[string][]*Article)
-	for _, article := range a.All() {
+	for article := range a.All() {
 		if article == nil || article.IDs == nil || article.IDs.Len() == 0 {
 			continue
 		}
@@ -59,15 +64,15 @@ func (a *Articles) UniqueById() (map[string]*Article, error) {
 		}
 	}
 	unique := make(map[string]*Article, 0)
-	scss, err := graphs.WeaklyConnectedComponents(graph)
+	wccs, err := graphs.WeaklyConnectedComponents(graph)
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate weakly connected components: %w", err)
 	}
-	if len(scss) == 0 {
+	if len(wccs) == 0 {
 		return unique, nil
 	}
 	smallest, biggest := len(*a), 0
-	for _, sc := range scss {
+	for _, sc := range wccs {
 		if len(sc) < smallest {
 			smallest = len(sc)
 		}
@@ -75,8 +80,8 @@ func (a *Articles) UniqueById() (map[string]*Article, error) {
 			biggest = len(sc)
 		}
 	}
-	slog.Debug("found strongly connected components", "count", len(scss), "smallest", smallest, "biggest", biggest)
-	for _, sc := range scss {
+	slog.Debug("found weakly connected components", "count", len(wccs), "smallest", smallest, "biggest", biggest)
+	for _, sc := range wccs {
 		if len(sc) == 0 {
 			continue
 		}

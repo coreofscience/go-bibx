@@ -224,7 +224,7 @@ func TestCollection_CitationPairs(t *testing.T) {
 		{
 			name:     "empty collection",
 			articles: articles.Articles{},
-			want:     nil,
+			want:     [][2]*articles.Article{},
 		},
 		{
 			name: "single article with no references",
@@ -235,7 +235,7 @@ func TestCollection_CitationPairs(t *testing.T) {
 					References: nil,
 				},
 			},
-			want: nil,
+			want: [][2]*articles.Article{},
 		},
 		{
 			name: "single article with references",
@@ -281,7 +281,10 @@ func TestCollection_CitationPairs(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			got := c.CitationPairs()
+			got := make([][2]*articles.Article, 0, len(tt.articles))
+			for a, b := range c.CitationPairs() {
+				got = append(got, [2]*articles.Article{a, b})
+			}
 			assert.Equal(t, tt.want, got)
 		})
 	}

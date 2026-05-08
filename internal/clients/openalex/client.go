@@ -231,7 +231,6 @@ func (c *RestyClient) fetchWorks(ctx context.Context, queryParams map[string]str
 		SetQueryParams(queryParams).
 		SetResult(&WorksResponse{}).
 		Get(fmt.Sprintf("%s/works", c.baseURL))
-	slog.Debug("fetch works", "url", response.Request.URL)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching works: %w", err)
 	}

@@ -1,6 +1,7 @@
 package articles_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/coreofscience/go-bibx/articles"
@@ -16,10 +17,9 @@ func TestArticles_All(t *testing.T) {
 		References: nil,
 	}
 	tests := []struct {
-		name string // description of this test case
-		// Named input parameters for target function.
+		name     string
 		articles articles.Articles
-		want     articles.Articles
+		want     []*articles.Article
 	}{
 		{
 			name:     "nil articles",
@@ -29,7 +29,7 @@ func TestArticles_All(t *testing.T) {
 		{
 			name:     "empty articles",
 			articles: articles.Articles{},
-			want:     articles.Articles{},
+			want:     nil,
 		},
 		{
 			name: "single article",
@@ -62,7 +62,7 @@ func TestArticles_All(t *testing.T) {
 				{
 					Label:      "main",
 					IDs:        collections.NewSet("main1"),
-					References: []*articles.Article{referenced},
+					References: articles.References{referenced},
 				},
 				referenced,
 			},
@@ -73,14 +73,14 @@ func TestArticles_All(t *testing.T) {
 				referenced,
 				referenced, // duplicate
 			},
-			want: articles.Articles{
+			want: []*articles.Article{
 				referenced,
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.articles.All()
+			got := slices.Collect(tt.articles.All())
 			assert.Equal(t, tt.want, got, "allArticles() = %v, want %v", got, tt.want)
 		})
 	}

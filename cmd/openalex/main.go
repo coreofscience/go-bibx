@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/coreofscience/go-bibx/sources"
+	"github.com/lmittmann/tint"
 	"github.com/urfave/cli/v3"
 )
 
@@ -37,8 +39,9 @@ func main() {
 			if c.Bool("verbose") {
 				logLevel = slog.LevelDebug
 			}
-			logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-				Level: logLevel,
+			logger := slog.New(tint.NewHandler(os.Stderr, &tint.Options{
+				Level:      logLevel,
+				TimeFormat: time.Kitchen,
 			}))
 			slog.SetDefault(logger)
 			collection, err := sources.NewOpenAlexSource(
@@ -48,6 +51,11 @@ func main() {
 			).Build(context.Background())
 			if err != nil {
 				slog.Error("failed to build collection", "error", err)
+				return err
+			}
+			collection, err = collection.RemoveCycles()
+			if err != nil {
+				slog.Error("failed to remove cycles", "error", err)
 				return err
 			}
 			collectionJSON, err := json.MarshalIndent(collection, "", "  ")

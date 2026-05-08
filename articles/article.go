@@ -25,6 +25,29 @@ type Article struct {
 	References References               `json:"references,omitempty"`
 }
 
+func (a *Article) Copy() *Article {
+	if a == nil {
+		return nil
+	}
+	return &Article{
+		Label:      a.Label,
+		IDs:        a.IDs,
+		Authors:    a.Authors,
+		Year:       a.Year,
+		Title:      a.Title,
+		Journal:    a.Journal,
+		Volume:     a.Volume,
+		Issue:      a.Issue,
+		Page:       a.Page,
+		DOI:        a.DOI,
+		Permalink:  a.Permalink,
+		TimesCited: a.TimesCited,
+		Keywords:   a.Keywords,
+		Abstract:   a.Abstract,
+		References: a.References,
+	}
+}
+
 // Merge creates a new Article by merging the fields of the current Article with another Article.
 func (a *Article) Merge(other *Article) *Article {
 	if a == nil {
