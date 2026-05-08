@@ -54,7 +54,7 @@ func TestArticles_All(t *testing.T) {
 				{
 					Label:      "main",
 					IDs:        collections.NewSet("main1"),
-					References: articles.Articles{referenced},
+					References: articles.References{referenced},
 				},
 				referenced,
 			},
@@ -363,7 +363,7 @@ func TestArticles_Deduplicate(t *testing.T) {
 				{
 					Label: "main",
 					IDs:   collections.NewSet("main1"),
-					References: articles.Articles{
+					References: articles.References{
 						{
 							Label:      "ref1",
 							IDs:        collections.NewSet("ref1"),
@@ -387,7 +387,7 @@ func TestArticles_Deduplicate(t *testing.T) {
 				{
 					Label: "main",
 					IDs:   collections.NewSet("main1"),
-					References: articles.Articles{
+					References: articles.References{
 						{
 							Label: "ref1",
 							IDs:   collections.NewSet("ref1"),
@@ -434,7 +434,7 @@ func TestArticles_Deduplicate_ReferencesShareExactlyTheSameMemoryAddress(t *test
 		{
 			Label: "main",
 			IDs:   collections.NewSet("main1"),
-			References: articles.Articles{
+			References: articles.References{
 				{
 					Label:      "ref1",
 					IDs:        collections.NewSet("ref1"),

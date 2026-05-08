@@ -24,7 +24,7 @@ func main() {
 			&cli.IntFlag{
 				Name:  "limit",
 				Usage: "maximum number of results",
-				Value: 500,
+				Value: 20,
 			},
 			&cli.BoolFlag{
 				Name:  "verbose",
