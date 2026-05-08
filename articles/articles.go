@@ -80,7 +80,7 @@ func (a *Articles) UniqueById() (map[string]*Article, error) {
 			biggest = len(sc)
 		}
 	}
-	slog.Debug("found weakly connected components", "count", len(wccs), "smallest", smallest, "biggest", biggest)
+	slog.Debug("found articles to merge", "count", len(wccs), "smallest", smallest, "biggest", biggest)
 	for _, sc := range wccs {
 		if len(sc) == 0 {
 			continue

@@ -58,6 +58,31 @@ func main() {
 				slog.Error("failed to remove cycles", "error", err)
 				return err
 			}
+			collection, err = collection.RemoveIrrelevant()
+			if err != nil {
+				slog.Error("failed to remove irrelevant articles", "error", err)
+				return err
+			}
+			collections, err := collection.Split()
+			if err != nil {
+				slog.Error("failed to split collection", "error", err)
+				return err
+			}
+
+			if len(collections) < 1 {
+				slog.Warn("we found no collections", "count", len(collections))
+				fmt.Println("{}")
+				return nil
+			}
+			for _, c := range collections {
+				graph, err := c.CitationGraph()
+				if err != nil {
+					slog.Error("failed to build citation graph", "error", err)
+					return err
+				}
+				slog.Debug("found a collection", "mainArticleCount", c.Len(), "nodes", graph.Order(), "edges", graph.Size())
+			}
+			collection = collections[0]
 			collectionJSON, err := json.MarshalIndent(collection, "", "  ")
 			if err != nil {
 				slog.Error("failed to marshal works to JSON", "error", err)
