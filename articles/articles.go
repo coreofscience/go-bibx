@@ -1,10 +1,12 @@
-package models
+package articles
 
 import (
+	"errors"
+	"fmt"
 	"log/slog"
 
+	"github.com/coreofscience/go-bibx/internal/graphs"
 	"github.com/hmdsefi/gograph"
-	"github.com/hmdsefi/gograph/connectivity"
 )
 
 type Articles []*Article
@@ -34,9 +36,9 @@ func (a *Articles) All() Articles {
 }
 
 // UniqueById returns a map of unique articles by their IDs.
-func (a *Articles) UniqueById() map[string]*Article {
+func (a *Articles) UniqueById() (map[string]*Article, error) {
 	if a == nil || *a == nil {
-		return nil
+		return nil, errors.New("articles is nil or empty")
 	}
 	graph := gograph.New[string]()
 	idToArticle := make(map[string][]*Article)
@@ -57,9 +59,12 @@ func (a *Articles) UniqueById() map[string]*Article {
 		}
 	}
 	unique := make(map[string]*Article, 0)
-	scss := connectivity.Tarjan(graph)
+	scss, err := graphs.WeaklyConnectedComponents(graph)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate weakly connected components: %w", err)
+	}
 	if len(scss) == 0 {
-		return unique
+		return unique, nil
 	}
 	smallest, biggest := len(*a), 0
 	for _, sc := range scss {
@@ -122,16 +127,18 @@ func (a *Articles) UniqueById() map[string]*Article {
 			}
 		}
 	}
-	return unique
+	return unique, nil
 }
 
 // Deduplicate returns a slice of unique articles, preserving the order of the first occurrence of each article.
-func (a *Articles) Deduplicate() Articles {
+func (a *Articles) Deduplicate() (Articles, error) {
 	if a == nil || *a == nil {
-		return nil
+		return nil, errors.New("articles are empty")
 	}
-	uniqueMap := a.UniqueById()
-
+	uniqueMap, err := a.UniqueById()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get unique articles: %w", err)
+	}
 	// Create the list of unique articles
 	uniqueArticles := make(Articles, 0, len(*a))
 	seen := make(map[*Article]bool)
@@ -170,5 +177,5 @@ func (a *Articles) Deduplicate() Articles {
 		article.References = dedupedReferences
 	}
 
-	return uniqueArticles
+	return uniqueArticles, nil
 }

@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/coreofscience/go-bibx/clients/openalex"
-	"github.com/coreofscience/go-bibx/collections"
-	"github.com/coreofscience/go-bibx/models"
+	"github.com/coreofscience/go-bibx/articles"
+	"github.com/coreofscience/go-bibx/collection"
+	"github.com/coreofscience/go-bibx/internal/clients/openalex"
+	"github.com/coreofscience/go-bibx/internal/collections"
 )
 
 const (
@@ -64,7 +65,7 @@ func NewOpenAlexSource(query string, options ...OpenAlexSourceOption) Source {
 	return s
 }
 
-func (s *openAlexSource) Build(ctx context.Context) (*models.Collection, error) {
+func (s *openAlexSource) Build(ctx context.Context) (*collection.Collection, error) {
 	works, err := s.client.ListRecentArticles(ctx, s.query, s.limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list recent articles: %w", err)
@@ -110,11 +111,11 @@ func (s *openAlexSource) Build(ctx context.Context) (*models.Collection, error) 
 	for _, work := range referencedWorks {
 		cache[work.ID] = &work
 	}
-	articleCache := make(map[string]*models.Article)
+	articleCache := make(map[string]*articles.Article)
 	for id, work := range cache {
 		articleCache[id] = workToArticle(work)
 	}
-	articles := make([]*models.Article, 0, len(articleCache))
+	articles := make([]*articles.Article, 0, len(articleCache))
 	for _, work := range works {
 		article := articleCache[work.ID]
 		for i, reference := range work.ReferencedWorks {
@@ -124,10 +125,14 @@ func (s *openAlexSource) Build(ctx context.Context) (*models.Collection, error) 
 		}
 		articles = append(articles, article)
 	}
-	return models.NewCollection(articles), nil
+	collection, err := collection.New(articles)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create collection: %w", err)
+	}
+	return collection, nil
 }
 
-func workToArticle(work *openalex.Work) *models.Article {
+func workToArticle(work *openalex.Work) *articles.Article {
 	ids := collections.NewSet[string]()
 	for source, id := range work.IDs {
 		realID := id
@@ -153,7 +158,7 @@ func workToArticle(work *openalex.Work) *models.Article {
 	if work.PrimaryLocation != nil && work.PrimaryLocation.LandingPageUrl != nil {
 		permalink = work.PrimaryLocation.LandingPageUrl
 	}
-	references := make([]*models.Article, len(work.ReferencedWorks))
+	references := make([]*articles.Article, len(work.ReferencedWorks))
 	for i, reference := range work.ReferencedWorks {
 		references[i] = referenceToArticle(reference)
 	}
@@ -162,7 +167,7 @@ func workToArticle(work *openalex.Work) *models.Article {
 		keywords[i] = keyword.DisplayName
 	}
 	abstract := invertAbstract(work.AbstractInvertedIndex)
-	return &models.Article{
+	return &articles.Article{
 		Label:      work.ID,
 		IDs:        ids,
 		Authors:    authors,
@@ -181,8 +186,8 @@ func workToArticle(work *openalex.Work) *models.Article {
 	}
 }
 
-func referenceToArticle(reference string) *models.Article {
-	return &models.Article{
+func referenceToArticle(reference string) *articles.Article {
+	return &articles.Article{
 		Label:     reference,
 		IDs:       collections.NewSet(fmt.Sprintf("openalex:%s", reference)),
 		Permalink: &reference,
