@@ -151,9 +151,17 @@ func (c *Collection) CitationGraph() (gograph.Graph[string], error) {
 func (c *Collection) UndirectedCitationGraph() (gograph.Graph[string], error) {
 	graph := gograph.New[string]()
 	for _, article := range c.articles {
-		articleVertex := gograph.NewVertex(*article.Key())
+		vertexKey := article.Key()
+		if vertexKey == nil {
+			continue
+		}
+		articleVertex := gograph.NewVertex(*vertexKey)
 		for _, ref := range article.References {
-			refVertex := gograph.NewVertex(*ref.Key())
+			refKey := ref.Key()
+			if refKey == nil {
+				continue
+			}
+			refVertex := gograph.NewVertex(*refKey)
 			_, err := graph.AddEdge(articleVertex, refVertex)
 			if err != nil {
 				return nil, fmt.Errorf("failed to add edge: %w", err)
