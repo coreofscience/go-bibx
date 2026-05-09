@@ -9,7 +9,10 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/coreofscience/go-bibx/articles"
+	"github.com/coreofscience/go-bibx/internal/collections"
 	"golang.org/x/sync/errgroup"
 	"resty.dev/v3"
 )
@@ -75,9 +78,16 @@ func WithEmail(email string) OpenAlexClientOption {
 
 // NewRestyClient creates a new OpenAlex client with the given options.
 func NewRestyClient(options ...OpenAlexClientOption) *RestyClient {
+	restyClient := resty.New().
+		SetRetryCount(3).
+		SetRetryWaitTime(1 * time.Second).
+		SetRetryMaxWaitTime(10 * time.Second).
+		AddRetryConditions(func(r *resty.Response, err error) bool {
+			return r.StatusCode() == 429 || r.StatusCode() >= 500
+		})
 	c := &RestyClient{
 		baseURL: "https://api.openalex.org",
-		client:  resty.New(),
+		client:  restyClient,
 		baseHeaders: map[string]string{
 			"Accept":       "application/json",
 			"Content-Type": "application/json",
@@ -275,4 +285,126 @@ func chunks[T any](slice []T, chunkSize int) [][]T {
 		chunked = append(chunked, slice[i:end])
 	}
 	return chunked
+}
+
+// WorkToArticle transforms a Work to an Article.
+func WorkToArticle(work *Work) *articles.Article {
+	ids := collections.NewSet[string]()
+	for source, id := range work.IDs {
+		realID := id
+		if source == "doi" {
+			realID = extractDOI(id)
+		}
+		ids.Add(fmt.Sprintf("%s:%s", source, realID))
+	}
+	var authors []string
+	for _, author := range work.Authorships {
+		authors = append(authors, invertName(author.Author.DisplayName))
+	}
+	var journal *string
+	if work.PrimaryLocation != nil && work.PrimaryLocation.Source != nil {
+		journal = &work.PrimaryLocation.Source.DisplayName
+	}
+	var doi *string
+	if work.DOI != nil {
+		doiVal := extractDOI(*work.DOI)
+		doi = &doiVal
+	}
+	var permalink *string
+	if work.PrimaryLocation != nil && work.PrimaryLocation.LandingPageUrl != nil {
+		permalink = work.PrimaryLocation.LandingPageUrl
+	}
+	references := make([]*articles.Article, len(work.ReferencedWorks))
+	for i, reference := range work.ReferencedWorks {
+		references[i] = ReferenceToArticle(reference)
+	}
+	keywords := collections.NewSet[string]()
+	for _, keyword := range work.Keywords {
+		keywords.Add(keyword.DisplayName)
+	}
+	abstract := invertAbstract(work.AbstractInvertedIndex)
+	return &articles.Article{
+		Label:      work.ID,
+		IDs:        ids,
+		Authors:    authors,
+		Year:       work.PublicationYear,
+		Title:      work.Title,
+		Journal:    journal,
+		Volume:     work.Biblio.Volume,
+		Issue:      work.Biblio.Issue,
+		Page:       work.Biblio.FirstPage,
+		DOI:        doi,
+		Permalink:  permalink,
+		TimesCited: &work.CitedByCount,
+		References: references,
+		Keywords:   keywords,
+		Abstract:   &abstract,
+		Rich:       true,
+	}
+}
+
+// ReferenceToArticle transforms an OpenAlex ID to an Article.
+func ReferenceToArticle(reference string) *articles.Article {
+	return &articles.Article{
+		Label:     reference,
+		IDs:       collections.NewSet(fmt.Sprintf("openalex:%s", reference)),
+		Permalink: &reference,
+		Rich:      false,
+	}
+}
+
+func extractDOI(doi string) string {
+	doi = strings.TrimSpace(doi)
+	prefixes := []string{
+		"https://doi.org/",
+		"http://doi.org/",
+		"https://dx.doi.org/",
+		"http://dx.doi.org/",
+		"doi:",
+	}
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(strings.ToLower(doi), prefix) {
+			return doi[len(prefix):]
+		}
+	}
+	return doi
+}
+
+func invertName(name string) string {
+	name = strings.TrimSpace(name)
+	if name == "" || strings.Contains(name, ",") {
+		return name
+	}
+	parts := strings.Fields(name)
+	if len(parts) < 2 {
+		return name
+	}
+	lastName := parts[len(parts)-1]
+	firstNames := parts[:len(parts)-1]
+	return fmt.Sprintf("%s, %s", lastName, strings.Join(firstNames, " "))
+}
+
+func invertAbstract(abstractInvertedIndex *map[string][]int) string {
+	if abstractInvertedIndex == nil {
+		return ""
+	}
+	length := 0
+	for _, indices := range *abstractInvertedIndex {
+		maxIndex := 0
+		for _, index := range indices {
+			if index > maxIndex {
+				maxIndex = index
+			}
+		}
+		if maxIndex > length {
+			length = maxIndex
+		}
+	}
+	words := make([]string, length+1)
+	for word, indices := range *abstractInvertedIndex {
+		for _, index := range indices {
+			words[index] = word
+		}
+	}
+	return strings.Join(words, " ")
 }

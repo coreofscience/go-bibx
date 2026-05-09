@@ -21,6 +21,20 @@ func NewSet[T cmp.Ordered](elements ...T) *Set[T] {
 	}
 }
 
+// Clone returns a copy of the set.
+func (s *Set[T]) Clone() *Set[T] {
+	if s == nil {
+		return nil
+	}
+	internalElements := make(map[T]struct{})
+	for elem := range s.elements {
+		internalElements[elem] = struct{}{}
+	}
+	return &Set[T]{
+		elements: internalElements,
+	}
+}
+
 // Contains returns true if the set contains the given element.
 func (s *Set[T]) Contains(elem T) bool {
 	if s == nil {
@@ -66,6 +80,19 @@ func (s *Set[T]) Union(other *Set[T]) *Set[T] {
 		unionSet.elements[elem] = struct{}{}
 	}
 	return unionSet
+}
+
+func (s *Set[T]) Intersect(other *Set[T]) *Set[T] {
+	if s == nil || other == nil {
+		return nil
+	}
+	intersectSet := NewSet[T]()
+	for elem := range s.elements {
+		if other.Contains(elem) {
+			intersectSet.Add(elem)
+		}
+	}
+	return intersectSet
 }
 
 // Items returns a sorted slice of the elements in the set.

@@ -2,13 +2,14 @@ package articles
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/coreofscience/go-bibx/internal/collections"
 )
 
 type Article struct {
-	Label      string                   `json:"label,omitempty"`
+	Label      string                   `json:"label"`
 	IDs        *collections.Set[string] `json:"ids,omitempty"`
 	Authors    []string                 `json:"authors,omitempty"`
 	Year       *int                     `json:"year,omitempty"`
@@ -20,19 +21,28 @@ type Article struct {
 	DOI        *string                  `json:"doi,omitempty"`
 	Permalink  *string                  `json:"permalink,omitempty"`
 	TimesCited *int                     `json:"times_cited,omitempty"`
-	Keywords   []string                 `json:"keywords,omitempty"`
+	Keywords   *collections.Set[string] `json:"keywords,omitempty"`
 	Abstract   *string                  `json:"abstract,omitempty"`
 	References References               `json:"references,omitempty"`
+	Rich       bool                     `json:"rich"`
 }
 
-func (a *Article) Copy() *Article {
+type ArticleOption func(*Article)
+
+func WithReferences(references []*Article) ArticleOption {
+	return func(a *Article) {
+		a.References = references
+	}
+}
+
+func (a *Article) Clone(options ...ArticleOption) *Article {
 	if a == nil {
 		return nil
 	}
-	return &Article{
+	copied := &Article{
 		Label:      a.Label,
-		IDs:        a.IDs,
-		Authors:    a.Authors,
+		IDs:        a.IDs.Clone(),
+		Authors:    slices.Clone(a.Authors),
 		Year:       a.Year,
 		Title:      a.Title,
 		Journal:    a.Journal,
@@ -42,10 +52,15 @@ func (a *Article) Copy() *Article {
 		DOI:        a.DOI,
 		Permalink:  a.Permalink,
 		TimesCited: a.TimesCited,
-		Keywords:   a.Keywords,
+		Keywords:   a.Keywords.Clone(),
 		Abstract:   a.Abstract,
-		References: a.References,
+		References: slices.Clone(a.References),
+		Rich:       a.Rich,
 	}
+	for _, option := range options {
+		option(copied)
+	}
+	return copied
 }
 
 // Merge creates a new Article by merging the fields of the current Article with another Article.
@@ -56,7 +71,6 @@ func (a *Article) Merge(other *Article) *Article {
 	if other == nil {
 		return a
 	}
-
 	merged := &Article{
 		Label:      *keepLongestString(a.Label, other.Label),
 		IDs:        a.IDs.Union(other.IDs),
@@ -70,11 +84,44 @@ func (a *Article) Merge(other *Article) *Article {
 		DOI:        keep(a.DOI, other.DOI),
 		Permalink:  keep(a.Permalink, other.Permalink),
 		TimesCited: keep(a.TimesCited, other.TimesCited),
-		Keywords:   keepLongestSlice(a.Keywords, other.Keywords),
+		Keywords:   a.Keywords.Union(other.Keywords),
 		References: keepLongestSlice(a.References, other.References),
+		Rich:       a.Rich || other.Rich,
 	}
-
 	return merged
+}
+
+func (a *Article) ID(source string) (string, bool) {
+	if a == nil || a.IDs.Len() == 0 {
+		return "", false
+	}
+	items := a.IDs.Items()
+	for _, id := range items {
+		if id, found := strings.CutPrefix(id, fmt.Sprintf("%s:", source)); found {
+			return id, true
+		}
+	}
+	return "", false
+}
+
+func (a *Article) PurgeReferences(ids ...string) *Article {
+	if a == nil {
+		return nil
+	}
+	idSet := collections.NewSet(ids...)
+	shouldPurge := slices.ContainsFunc(a.References, func(ref *Article) bool {
+		return ref.IDs.Intersect(idSet).Len() > 0
+	})
+	if !shouldPurge {
+		return a
+	}
+	newReferences := make([]*Article, 0, len(a.References))
+	for _, ref := range a.References {
+		if ref.IDs.Intersect(idSet).Len() == 0 {
+			newReferences = append(newReferences, ref)
+		}
+	}
+	return a.Clone(WithReferences(newReferences))
 }
 
 // Key returns the first ID of the Article if it exists.
