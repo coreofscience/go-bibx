@@ -1,13 +1,16 @@
 package collection
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"iter"
 	"log/slog"
 	"slices"
+	"strings"
 
 	"github.com/coreofscience/go-bibx/articles"
+	"github.com/coreofscience/go-bibx/internal/clients/openalex"
 	"github.com/coreofscience/go-bibx/internal/collections"
 	"github.com/coreofscience/go-bibx/internal/graphs"
 	"github.com/hmdsefi/gograph"
@@ -197,9 +200,6 @@ func (c *Collection) RemoveCycles() (*Collection, error) {
 
 // RemoveIrrelevant removes articles that are not referenced by other articles.
 func (c *Collection) RemoveIrrelevant() (*Collection, error) {
-	// giant.remove_nodes_from(
-	//     [n for n in giant if giant.in_degree(n) == 1 and giant.out_degree(n) == 0]
-	// )
 	graph, err := c.CitationGraph()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build citation graph: %w", err)
@@ -245,6 +245,37 @@ func (c *Collection) Split() ([]*Collection, error) {
 		collections = append(collections, collection)
 	}
 	return collections, nil
+}
+
+func (c *Collection) Enrich(ctx context.Context) (*Collection, error) {
+	toEnrich := make(articles.Articles, 0, len(c.articles))
+	for article := range c.All() {
+		if !article.Rich {
+			toEnrich = append(toEnrich, article)
+		}
+	}
+	slog.Info("enriching articles", "count", len(toEnrich))
+	ids := make([]string, 0, len(toEnrich))
+	for _, article := range toEnrich {
+		for _, id := range article.IDs.Items() {
+			if id, ok := strings.CutPrefix("openalex:", id); ok {
+				ids = append(ids, id)
+			}
+		}
+	}
+	// TODO: Use different clients
+	slog.Debug("listing works by ids", "count", len(ids))
+	client := openalex.NewRestyClient()
+	works, err := client.ListArticlesByIDs(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list articles by ids: %w", err)
+	}
+	idToArticle := make(map[string]*articles.Article, len(works))
+	for _, work := range works {
+		idToArticle[work.ID] = openalex.WorkToArticle(&work)
+	}
+	// TODO: Enrich references with articles in idToArticle
+	return c, nil
 }
 
 // MarshalJSON implements the json.Marshaler interface for Collection.

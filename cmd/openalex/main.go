@@ -26,7 +26,7 @@ func main() {
 			&cli.IntFlag{
 				Name:  "limit",
 				Usage: "maximum number of results",
-				Value: 20,
+				Value: 200,
 			},
 			&cli.BoolFlag{
 				Name:  "verbose",
@@ -47,7 +47,7 @@ func main() {
 			collection, err := sources.NewOpenAlexSource(
 				c.String("query"),
 				sources.WithLimit(c.Int("limit")),
-				sources.WithEnrichReferences(sources.EnrichReferencesCommon),
+				sources.WithEnrichReferences(sources.EnrichReferencesNone),
 			).Build(context.Background())
 			if err != nil {
 				slog.Error("failed to build collection", "error", err)
@@ -83,6 +83,11 @@ func main() {
 				slog.Debug("found a collection", "mainArticleCount", c.Len(), "nodes", graph.Order(), "edges", graph.Size())
 			}
 			collection = collections[0]
+			collection, err = collection.Enrich(ctx)
+			if err != nil {
+				slog.Error("failed to enrich collection", "error", err)
+				return err
+			}
 			collectionJSON, err := json.MarshalIndent(collection, "", "  ")
 			if err != nil {
 				slog.Error("failed to marshal works to JSON", "error", err)

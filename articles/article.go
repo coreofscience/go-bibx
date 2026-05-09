@@ -23,6 +23,7 @@ type Article struct {
 	Keywords   []string                 `json:"keywords,omitempty"`
 	Abstract   *string                  `json:"abstract,omitempty"`
 	References References               `json:"references,omitempty"`
+	Rich       bool                     `json:"-"`
 }
 
 func (a *Article) Copy() *Article {
@@ -45,6 +46,7 @@ func (a *Article) Copy() *Article {
 		Keywords:   a.Keywords,
 		Abstract:   a.Abstract,
 		References: a.References,
+		Rich:       a.Rich,
 	}
 }
 
@@ -72,6 +74,7 @@ func (a *Article) Merge(other *Article) *Article {
 		TimesCited: keep(a.TimesCited, other.TimesCited),
 		Keywords:   keepLongestSlice(a.Keywords, other.Keywords),
 		References: keepLongestSlice(a.References, other.References),
+		Rich:       a.Rich || other.Rich,
 	}
 
 	return merged
