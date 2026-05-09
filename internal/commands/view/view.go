@@ -55,6 +55,8 @@ func New() *cli.Command {
 				w.Header().Set("Content-Type", "text/event-stream")
 				w.Header().Set("Cache-Control", "no-cache")
 				w.Header().Set("Connection", "keep-alive")
+				w.Header().Set("X-Accel-Buffering", "no") // Disables buffering in Nginx/proxies
+				w.Header().Set("Cache-Control", "no-cache")
 
 				// Just keep the connection open.
 				// When the server restarts, this connection breaks.
