@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Bibx Collection Viewer</title>
+    </head>
+    <body>
+        <div id="container"></div>
+    </body>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        #container {
+            width: 100dvw;
+            height: 100dvh;
+        }
+
+        svg {
+            display: block;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script type="module">
+        d3.json("/collection.json.gz").then((data) => {
+            const container = document.getElementById("container");
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            const svg = d3
+                .select(container)
+                .append("svg")
+                .attr("width", "100%")
+                .attr("height", "100%")
+                .attr(
+                    "viewBox",
+                    `0 0 ${container.clientWidth} ${container.clientHeight}`,
+                )
+                .attr("preserveAspectRatio", "xMidYMid meet");
+
+            const simulation = d3
+                .forceSimulation(data.nodes)
+                .force(
+                    "link",
+                    d3
+                        .forceLink(data.links)
+                        .id((d) => d.id)
+                        .distance(100)
+                        .strength(0.5),
+                )
+                .force(
+                    "charge",
+                    d3.forceManyBody().strength(-40).distanceMax(250),
+                )
+                .force("center", d3.forceCenter(width / 2, height / 2))
+                .force("collide", d3.forceCollide().radius(5));
+
+            const link = svg
+                .append("g")
+                .selectAll("line")
+                .data(data.links)
+                .join("line")
+                .attr("stroke", "#ccc")
+                .attr("stroke-opacity", 0.6);
+
+            const node = svg
+                .append("g")
+                .selectAll("circle")
+                .data(data.nodes)
+                .join("circle")
+                .attr("r", 5)
+                .attr("fill", "#999");
+
+            simulation.on("tick", () => {
+                link.style("display", "block")
+                    .attr("x1", (d) => d.source.x)
+                    .attr("y1", (d) => d.source.y)
+                    .attr("x2", (d) => d.target.x)
+                    .attr("y2", (d) => d.target.y);
+                node.attr("cx", (d) => d.x).attr("cy", (d) => d.y);
+            });
+
+            const drag = (simulation) => {
+                function dragStarted(event) {
+                    if (!event.active) simulation.alphaTarget(0.3).restart();
+                    event.subject.fx = event.x;
+                    event.subject.fy = event.y;
+                }
+                function dragged(event) {
+                    event.subject.fx = event.x;
+                    event.subject.fy = event.y;
+                }
+                function dragEnded(event) {
+                    if (!event.active) simulation.alphaTarget(0);
+                    event.subject.fx = null;
+                    event.subject.fy = null;
+                }
+                return d3
+                    .drag()
+                    .on("start", dragStarted)
+                    .on("drag", dragged)
+                    .on("end", dragEnded);
+            };
+
+            node.call(drag(simulation));
+
+            let resizeTimeout;
+            window.addEventListener("resize", () => {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(() => {
+                    const container = document.getElementById("container");
+                    const width = container.clientWidth;
+                    const height = container.clientHeight;
+                    svg.attr("viewBox", `0 0 ${width} ${height}`);
+                    simulation.force(
+                        "center",
+                        d3.forceCenter(width / 2, height / 2),
+                    );
+                    simulation.alpha(0.3).restart();
+                }, 200);
+            });
+        });
+    </script>
+    <script>
+        const evtSource = new EventSource("/events");
+        evtSource.onerror = () => {
+            // The connection broke because the server shut down.
+            // Wait a moment for the build to finish, then poll for restart.
+            setTimeout(() => {
+                location.reload();
+            }, 500);
+        };
+    </script>
+</html>

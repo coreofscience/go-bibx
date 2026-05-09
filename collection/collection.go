@@ -38,6 +38,22 @@ func (c *Collection) Len() int {
 	return len(c.articles)
 }
 
+// Main returns an iterator over the main articles in the collection, excluding duplicates.
+func (c *Collection) Main() iter.Seq[*articles.Article] {
+	return func(yield func(*articles.Article) bool) {
+		seen := make(map[*articles.Article]struct{}, 0)
+		for _, article := range c.articles {
+			if _, ok := seen[article]; ok {
+				continue
+			}
+			seen[article] = struct{}{}
+			if !yield(article) {
+				return
+			}
+		}
+	}
+}
+
 // All returns an iterator over all articles in the collection, including their references.
 func (c *Collection) All() iter.Seq[*articles.Article] {
 	return func(yield func(*articles.Article) bool) {
