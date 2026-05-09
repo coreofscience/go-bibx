@@ -91,17 +91,15 @@ func New() *cli.Command {
 				os.Exit(1)
 			}
 			slog.Debug("found a collection", "mainArticleCount", collection.Len(), "nodes", citationGraph.Order(), "edges", citationGraph.Size())
-			result, err := analysis.New(collection)
-			if err != nil {
-				slog.Error("failed to analyze collection", "error", err)
-				os.Exit(1)
-			}
+			result := analysis.New(collection)
 			dir := filepath.Dir(path)
+			slog.Debug("creating output directory", "dir", dir)
 			err = os.MkdirAll(dir, 0755)
 			if err != nil {
 				slog.Error("failed to create output directory", "error", err)
 				os.Exit(1)
 			}
+			slog.Debug("creating output file", "path", path)
 			file, err := os.Create(path)
 			if err != nil {
 				slog.Error("failed to create output file", "error", err)

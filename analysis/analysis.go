@@ -5,9 +5,21 @@ import (
 	"github.com/coreofscience/go-bibx/collection"
 )
 
+type Category string
+
+const (
+	CategoryRoot  Category = "root"
+	CategoryTrunk Category = "trunk"
+	CategoryLeaf  Category = "leaf"
+)
+
 type Node struct {
-	ID      string            `json:"id"`
-	Article *articles.Article `json:"article"`
+	ID       string            `json:"id"`
+	Category Category          `json:"category"`
+	Root     float64           `json:"root"`
+	Trunk    float64           `json:"trunk"`
+	Leaf     float64           `json:"leaf"`
+	Article  *articles.Article `json:"article"`
 }
 
 type Link struct {
@@ -20,7 +32,7 @@ type Analysis struct {
 	Links []*Link `json:"links"`
 }
 
-func New(c *collection.Collection) (*Analysis, error) {
+func New(c *collection.Collection) *Analysis {
 	nodes := make([]*Node, 0, c.Len())
 	for article := range c.All() {
 		articleKey := article.Key()
@@ -52,5 +64,5 @@ func New(c *collection.Collection) (*Analysis, error) {
 	return &Analysis{
 		Nodes: nodes,
 		Links: links,
-	}, nil
+	}
 }
