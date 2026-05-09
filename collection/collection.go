@@ -86,7 +86,7 @@ func (c *Collection) Keep(labels ...string) (*Collection, error) {
 		if !toKeep.Contains(*article.Key()) {
 			continue
 		}
-		newArticle := article.Copy()
+		newArticle := article.Clone()
 		shouldCleanUpReferences := slices.ContainsFunc(
 			newArticle.References,
 			func(a *articles.Article) bool { return !toKeep.Contains(*a.Key()) },
@@ -128,9 +128,17 @@ func (c *Collection) Purge(ids ...string) (*Collection, error) {
 func (c *Collection) CitationGraph() (gograph.Graph[string], error) {
 	graph := gograph.New[string](gograph.Directed())
 	for _, article := range c.articles {
-		articleVertex := gograph.NewVertex(*article.Key())
+		articleKey := article.Key()
+		if articleKey == nil {
+			continue
+		}
+		articleVertex := gograph.NewVertex(*articleKey)
 		for _, ref := range article.References {
-			refVertex := gograph.NewVertex(*ref.Key())
+			refKey := ref.Key()
+			if refKey == nil {
+				continue
+			}
+			refVertex := gograph.NewVertex(*refKey)
 			_, err := graph.AddEdge(articleVertex, refVertex)
 			if err != nil {
 				return nil, fmt.Errorf("failed to add edge: %w", err)
@@ -263,7 +271,7 @@ func (c *Collection) Enrich(ctx context.Context) (*Collection, error) {
 		if !article.Rich {
 			slog.Warn("found a main work still to enrich, which is weird")
 		}
-		newArticle := article.Copy()
+		newArticle := article.Clone()
 		newReferences := make(articles.References, 0, len(article.References))
 		for _, ref := range article.References {
 			id, ok := ref.ID("openalex")

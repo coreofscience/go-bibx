@@ -12,6 +12,7 @@ import (
 	"github.com/coreofscience/go-bibx/internal/clients/openalex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"resty.dev/v3"
 )
 
 func TestListArticlesByIDs(t *testing.T) {
@@ -55,7 +56,10 @@ func TestListArticlesByIDs(t *testing.T) {
 		}))
 		defer server.Close()
 
-		client := openalex.NewRestyClient(openalex.WithBaseURL(server.URL))
+		client := openalex.NewRestyClient(
+			openalex.WithBaseURL(server.URL),
+			openalex.WithHTTPClient(resty.New()), // Disable retries
+		)
 		_, err := client.ListArticlesByIDs(context.Background(), []string{"W1"})
 
 		assert.Error(t, err)
@@ -123,7 +127,10 @@ func TestListRecentArticles(t *testing.T) {
 		}))
 		defer server.Close()
 
-		client := openalex.NewRestyClient(openalex.WithBaseURL(server.URL))
+		client := openalex.NewRestyClient(
+			openalex.WithBaseURL(server.URL),
+			openalex.WithHTTPClient(resty.New()), // Disable retries
+		)
 		_, err := client.ListRecentArticles(context.Background(), "query", 10)
 
 		assert.Error(t, err)

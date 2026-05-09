@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/coreofscience/go-bibx/articles"
 	"github.com/coreofscience/go-bibx/internal/collections"
@@ -77,9 +78,16 @@ func WithEmail(email string) OpenAlexClientOption {
 
 // NewRestyClient creates a new OpenAlex client with the given options.
 func NewRestyClient(options ...OpenAlexClientOption) *RestyClient {
+	restyClient := resty.New().
+		SetRetryCount(3).
+		SetRetryWaitTime(1 * time.Second).
+		SetRetryMaxWaitTime(10 * time.Second).
+		AddRetryConditions(func(r *resty.Response, err error) bool {
+			return r.StatusCode() == 429 || r.StatusCode() >= 500
+		})
 	c := &RestyClient{
 		baseURL: "https://api.openalex.org",
-		client:  resty.New(),
+		client:  restyClient,
 		baseHeaders: map[string]string{
 			"Accept":       "application/json",
 			"Content-Type": "application/json",
@@ -310,9 +318,9 @@ func WorkToArticle(work *Work) *articles.Article {
 	for i, reference := range work.ReferencedWorks {
 		references[i] = ReferenceToArticle(reference)
 	}
-	keywords := make([]string, len(work.Keywords))
-	for i, keyword := range work.Keywords {
-		keywords[i] = keyword.DisplayName
+	keywords := collections.NewSet[string]()
+	for _, keyword := range work.Keywords {
+		keywords.Add(keyword.DisplayName)
 	}
 	abstract := invertAbstract(work.AbstractInvertedIndex)
 	return &articles.Article{
