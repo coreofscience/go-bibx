@@ -68,6 +68,19 @@ func (s *Set[T]) Union(other *Set[T]) *Set[T] {
 	return unionSet
 }
 
+func (s *Set[T]) Intersect(other *Set[T]) *Set[T] {
+	if s == nil || other == nil {
+		return nil
+	}
+	intersectSet := NewSet[T]()
+	for elem := range s.elements {
+		if other.Contains(elem) {
+			intersectSet.Add(elem)
+		}
+	}
+	return intersectSet
+}
+
 // Items returns a sorted slice of the elements in the set.
 func (s *Set[T]) Items() []T {
 	if s == nil {

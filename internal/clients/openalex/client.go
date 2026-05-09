@@ -400,4 +400,3 @@ func invertAbstract(abstractInvertedIndex *map[string][]int) string {
 	}
 	return strings.Join(words, " ")
 }
-

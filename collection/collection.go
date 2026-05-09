@@ -7,7 +7,6 @@ import (
 	"iter"
 	"log/slog"
 	"slices"
-	"strings"
 
 	"github.com/coreofscience/go-bibx/articles"
 	"github.com/coreofscience/go-bibx/internal/clients/openalex"
@@ -80,7 +79,7 @@ func (c *Collection) Merge(other *Collection) (*Collection, error) {
 	return &Collection{articles: mergedArticles}, nil
 }
 
-func (c *Collection) Keep(labels []string) (*Collection, error) {
+func (c *Collection) Keep(labels ...string) (*Collection, error) {
 	toKeep := collections.NewSet(labels...)
 	newArticles := make([]*articles.Article, 0, len(c.articles))
 	for _, article := range c.articles {
@@ -111,24 +110,15 @@ func (c *Collection) Purge(ids ...string) (*Collection, error) {
 	toRemove := collections.NewSet(ids...)
 	newArticles := make([]*articles.Article, 0, len(c.articles))
 	for _, article := range c.articles {
-		if toRemove.Contains(*article.Key()) {
+		if article.IDs.Intersect(toRemove).Len() > 0 {
 			continue
 		}
-		newArticle := article.Copy()
-		shouldPurgeReferences := slices.ContainsFunc(
-			newArticle.References,
-			func(a *articles.Article) bool { return toRemove.Contains(*a.Key()) },
-		)
-		if shouldPurgeReferences {
-			newReferences := make([]*articles.Article, 0, len(newArticle.References))
-			for _, ref := range newArticle.References {
-				if toRemove.Contains(*ref.Key()) {
-					continue
-				}
-				newReferences = append(newReferences, ref)
-			}
-			newArticle.References = newReferences
+		newArticle := article.PurgeReferences(ids...)
+		newReferences := make([]*articles.Article, 0, len(newArticle.References))
+		for _, ref := range newArticle.References {
+			newReferences = append(newReferences, ref.PurgeReferences(ids...))
 		}
+		newArticle.References = newReferences
 		newArticles = append(newArticles, newArticle)
 	}
 	return New(newArticles)
@@ -198,8 +188,8 @@ func (c *Collection) RemoveCycles() (*Collection, error) {
 	return c.Purge(toRemove...)
 }
 
-// RemoveIrrelevant removes articles that are not referenced by other articles.
-func (c *Collection) RemoveIrrelevant() (*Collection, error) {
+// RemoveDangling removes articles that are not referenced by other articles.
+func (c *Collection) RemoveDangling() (*Collection, error) {
 	graph, err := c.CitationGraph()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build citation graph: %w", err)
@@ -210,12 +200,12 @@ func (c *Collection) RemoveIrrelevant() (*Collection, error) {
 			toRemove = append(toRemove, vertex.Label())
 		}
 	}
-	slog.Debug("removing articles", "numArticles", len(toRemove), "outOf", graph.Order())
+	slog.Debug("removing dangling articles", "numArticles", len(toRemove), "outOf", graph.Order())
 	return c.Purge(toRemove...)
 }
 
-// Split splits the collection into connected components and returns a slice of collections.
-func (c *Collection) Split() ([]*Collection, error) {
+// Giant splits the collection into connected components and returns a slice of collections.
+func (c *Collection) Giant() (*Collection, error) {
 	graph, err := c.UndirectedCitationGraph()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build citation graph: %w", err)
@@ -236,15 +226,10 @@ func (c *Collection) Split() ([]*Collection, error) {
 		return len(b) - len(a)
 	})
 	slog.Debug("found sub collections", "size", len(wccsLabels), "largest", len(wccsLabels[0]), "smallest", len(wccsLabels[len(wccsLabels)-1]))
-	collections := make([]*Collection, 0, len(wccsLabels))
-	for _, labels := range wccsLabels {
-		collection, err := c.Keep(labels)
-		if err != nil {
-			return nil, fmt.Errorf("failed to keep labels: %w", err)
-		}
-		collections = append(collections, collection)
+	if len(wccsLabels) == 0 {
+		return nil, fmt.Errorf("no sub collections found")
 	}
-	return collections, nil
+	return c.Keep(wccsLabels[0]...)
 }
 
 func (c *Collection) Enrich(ctx context.Context) (*Collection, error) {
@@ -254,13 +239,12 @@ func (c *Collection) Enrich(ctx context.Context) (*Collection, error) {
 			toEnrich = append(toEnrich, article)
 		}
 	}
-	slog.Info("enriching articles", "count", len(toEnrich))
+	slog.Debug("enriching articles", "count", len(toEnrich))
 	ids := make([]string, 0, len(toEnrich))
 	for _, article := range toEnrich {
-		for _, id := range article.IDs.Items() {
-			if id, ok := strings.CutPrefix("openalex:", id); ok {
-				ids = append(ids, id)
-			}
+		id, ok := article.ID("openalex")
+		if ok {
+			ids = append(ids, id)
 		}
 	}
 	// TODO: Use different clients
@@ -274,8 +258,29 @@ func (c *Collection) Enrich(ctx context.Context) (*Collection, error) {
 	for _, work := range works {
 		idToArticle[work.ID] = openalex.WorkToArticle(&work)
 	}
-	// TODO: Enrich references with articles in idToArticle
-	return c, nil
+	newArticles := make(articles.Articles, 0, len(c.articles))
+	for _, article := range c.articles {
+		if !article.Rich {
+			slog.Warn("found a main work still to enrich, which is weird")
+		}
+		newArticle := article.Copy()
+		newReferences := make(articles.References, 0, len(article.References))
+		for _, ref := range article.References {
+			id, ok := ref.ID("openalex")
+			if !ok {
+				newReferences = append(newReferences, ref)
+				continue
+			}
+			if enriched, ok := idToArticle[id]; ok {
+				newReferences = append(newReferences, enriched)
+			} else {
+				newReferences = append(newReferences, ref)
+			}
+		}
+		newArticle.References = newReferences
+		newArticles = append(newArticles, newArticle)
+	}
+	return New(newArticles)
 }
 
 // MarshalJSON implements the json.Marshaler interface for Collection.
