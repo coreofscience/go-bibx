@@ -29,7 +29,88 @@
     </style>
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
     <script type="module">
+        function color(node) {
+            switch (node.category) {
+                case "none":
+                    return "lightgray";
+                case "root":
+                    return "yellow";
+                case "trunk":
+                    return "brown";
+                case "leaf":
+                    return "green";
+                default:
+                    return "#ddd";
+            }
+        }
+
         d3.json("/collection.json.gz").then((data) => {
+            const getMinPositive = (data, key) => {
+                const values = data.map((d) => d[key]).filter((v) => v > 0);
+                return values.length > 0 ? d3.min(values) : 1; // Fallback to 1 if all are 0
+            };
+
+            const bounds = {
+                root: {
+                    min: getMinPositive(data.nodes, "rootness"),
+                    max: d3.max(data.nodes, (d) => d.rootness),
+                },
+                trunk: {
+                    min: getMinPositive(data.nodes, "trunkness"),
+                    max: d3.max(data.nodes, (d) => d.trunkness),
+                },
+                leaf: {
+                    min: getMinPositive(data.nodes, "leafness"),
+                    max: d3.max(data.nodes, (d) => d.leafness),
+                },
+            };
+
+            const normalizeLog = (val, min, max) => {
+                if (val <= 0) return 0;
+                // Map the value from [min, max] to [0.1, 1] logarithmically
+                // We start at 0.1 so that the smallest positive value still has some "weight"
+                const scale = d3
+                    .scaleSymlog()
+                    .domain([min, max])
+                    .range([0.01, 1]);
+                return scale(val);
+            };
+
+            const areaScale = d3
+                .scaleSymlog()
+                .domain([0, 1])
+                .range([Math.PI * 5 ** 2, Math.PI * 30 ** 2])
+                .constant(0.1); // Small constant for sensitivity at low values
+
+            // 3. The "Fair" Radius Function
+            const getFairRadius = (d) => {
+                const nRoot = normalizeLog(
+                    d.rootness,
+                    bounds.root.min,
+                    bounds.root.max,
+                );
+                const nTrunk = normalizeLog(
+                    d.trunkness,
+                    bounds.trunk.min,
+                    bounds.trunk.max,
+                );
+                const nLeaf = normalizeLog(
+                    d.leafness,
+                    bounds.leaf.min,
+                    bounds.leaf.max,
+                );
+
+                // Pick the winner
+                const winner = Math.max(nRoot, nTrunk, nLeaf);
+
+                // Calculate radius from area
+                return Math.sqrt(areaScale(winner) / Math.PI);
+            };
+
+            data.nodes.forEach((d) => {
+                d.radius = getFairRadius(d);
+            });
+
             const container = document.getElementById("container");
             let width = container.clientWidth;
             let height = container.clientHeight;
@@ -39,10 +120,7 @@
                 .append("svg")
                 .attr("width", "100%")
                 .attr("height", "100%")
-                .attr(
-                    "viewBox",
-                    `0 0 ${container.clientWidth} ${container.clientHeight}`,
-                )
+                .attr("viewBox", `0 0 ${width} ${height}`)
                 .attr("preserveAspectRatio", "xMidYMid meet");
 
             const simulation = d3
@@ -53,20 +131,45 @@
                         .forceLink(data.links)
                         .id((d) => d.id)
                         .distance(100)
-                        .strength(0.5),
+                        .strength(0.01),
                 )
                 .force(
                     "charge",
                     d3
                         .forceManyBody()
-                        .strength(-20)
+                        .strength((d) => {
+                            if (d.category === "leaf") return -100; // Stronger repulsion for leaves
+                            if (d.category === "trunk") return -20; // Medium repulsion
+                            return -20; // Roots stay close together
+                        })
                         .distanceMax(width / 4),
                 )
-                .force("center", d3.forceCenter(width / 2, height / 2))
-                .force("collide", d3.forceCollide().radius(5))
+                .force(
+                    "y",
+                    d3
+                        .forceY()
+                        .y((d) => {
+                            // We use the same categories you defined for your metrics
+                            if (d.category === "root") return height * 0.85;
+                            if (d.category === "trunk") return height * 0.5;
+                            if (d.category === "leaf") return height * 0.25;
+                            return height / 2;
+                        })
+                        .strength((d) => {
+                            if (d.category === "none") return 0.1;
+                            if (d.category === "leaf") return 0.3;
+                            return 0.15;
+                        }), // Strength of the "lane" gravity
+                )
+                .force("x", d3.forceX(width / 2).strength(0.1))
+                .force(
+                    "collide",
+                    d3.forceCollide().radius((d) => d.radius + 1),
+                )
                 .force("boundary", () => {
+                    const padding = 30;
                     for (let node of data.nodes) {
-                        const r = 5;
+                        const r = 5 + padding;
                         // If node goes past the left edge, give it a positive velocity boost
                         if (node.x < r) node.vx += (r - node.x) * 0.1;
                         // If node goes past the right edge, give it a negative boost
@@ -80,28 +183,15 @@
                     }
                 });
 
-            const link = svg
-                .append("g")
-                .selectAll("line")
-                .data(data.links)
-                .join("line")
-                .attr("stroke", "#ccc")
-                .attr("stroke-opacity", 0.6);
-
             const node = svg
                 .append("g")
                 .selectAll("circle")
                 .data(data.nodes)
                 .join("circle")
-                .attr("r", 5)
-                .attr("fill", "#999");
+                .attr("r", (d) => d.radius)
+                .attr("fill", (node) => color(node));
 
             simulation.on("tick", () => {
-                link.style("display", "block")
-                    .attr("x1", (d) => d.source.x)
-                    .attr("y1", (d) => d.source.y)
-                    .attr("x2", (d) => d.target.x)
-                    .attr("y2", (d) => d.target.y);
                 node.attr("cx", (d) => d.x).attr("cy", (d) => d.y);
             });
 
@@ -142,7 +232,7 @@
                         d3.forceCenter(width / 2, height / 2),
                     );
                     simulation.alpha(0.3).restart();
-                }, 200);
+                }, 500);
             });
         });
     </script>
@@ -153,7 +243,7 @@
             // Wait a moment for the build to finish, then poll for restart.
             setTimeout(() => {
                 location.reload();
-            }, 100);
+            }, 500);
         };
     </script>
 </html>
