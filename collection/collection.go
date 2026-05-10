@@ -194,20 +194,31 @@ func (c *Collection) RemoveCycles() (*Collection, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to build citation graph: %w", err)
 	}
-	cycles := slices.DeleteFunc(connectivity.Tarjan(graph), func(cycle []*gograph.Vertex[string]) bool {
-		return len(cycle) == 1
-	})
-	if len(cycles) == 0 {
-		slog.Debug("no cycles found in graph")
+	cycles := slices.DeleteFunc(
+		connectivity.Tarjan(graph),
+		func(cycle []*gograph.Vertex[string]) bool {
+			return len(cycle) == 1
+		},
+	)
+	selfLoops := make([]string, 0, len(cycles))
+	for _, edge := range graph.AllEdges() {
+		if edge.Source().Label() == edge.Destination().Label() {
+			selfLoops = append(selfLoops, edge.Source().Label())
+		}
+	}
+	slog.Debug("found self-loops", "numSelfLoops", len(selfLoops))
+	if len(cycles) == 0 && len(selfLoops) == 0 {
+		slog.Debug("no cycles or self-loops found in graph")
 		return c, nil
 	}
-	slog.Warn("found cycles in the citation graph", "numCycles", len(cycles))
+	slog.Warn("found cycles in the citation graph", "numCycles", len(cycles), "numSelfLoops", len(selfLoops))
 	toRemove := make([]string, 0, len(cycles))
 	for _, cycle := range cycles {
 		for _, vertex := range cycle {
 			toRemove = append(toRemove, vertex.Label())
 		}
 	}
+	toRemove = append(toRemove, selfLoops...)
 	slog.Debug("removing articles", "numArticles", len(toRemove))
 	return c.Purge(toRemove...)
 }

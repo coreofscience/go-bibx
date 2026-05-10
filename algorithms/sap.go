@@ -88,11 +88,13 @@ func (s *Sap) computeRootness() map[string]float64 {
 	for _, root := range roots {
 		rootness[root.label] = root.prop
 	}
+	slog.Debug("found root nodes", "count", len(rootness))
 	return rootness
 }
 
 func (s *Sap) computeLeafness(rootness map[string]float64) map[string]float64 {
 	rootConnections := s.computeRootConnections(rootness)
+	slog.Debug("found root connections", "count", len(rootConnections))
 	potentialLeaves := make([]property, 0, s.leaves)
 	for _, vertex := range s.graph.GetAllVertices() {
 		if vertex.InDegree() > 0 {
@@ -126,6 +128,7 @@ func (s *Sap) computeRootConnections(rootness map[string]float64) map[string]int
 	}
 	order, err := graphs.ReverseTopologicalOrder(s.graph)
 	if err != nil {
+		slog.Error("failed to compute root connections", "error", err)
 		return nil
 	}
 	for _, vertex := range order {

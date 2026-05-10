@@ -85,12 +85,6 @@ func New() *cli.Command {
 				slog.Error("failed to enrich collection", "error", err)
 				os.Exit(1)
 			}
-			citationGraph, err := collection.CitationGraph()
-			if err != nil {
-				slog.Error("failed to build citation graph", "error", err)
-				os.Exit(1)
-			}
-			slog.Debug("found a collection", "mainArticleCount", collection.Len(), "nodes", citationGraph.Order(), "edges", citationGraph.Size())
 			result := analysis.New(collection)
 			dir := filepath.Dir(path)
 			slog.Debug("creating output directory", "dir", dir)
