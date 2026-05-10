@@ -26,22 +26,22 @@
         svg {
             display: block;
         }
+
+        circle.selected {
+            filter: brightness(0.8);
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
     <script type="module">
+        const colorMap = {
+            none: "lightgray",
+            root: "rgb(240, 151, 47)",
+            trunk: "rgb(144, 76, 20)",
+            leaf: "rgb(0, 157, 53)",
+        };
+
         function color(node) {
-            switch (node.category) {
-                case "none":
-                    return "lightgray";
-                case "root":
-                    return "yellow";
-                case "trunk":
-                    return "brown";
-                case "leaf":
-                    return "green";
-                default:
-                    return "#ddd";
-            }
+            return colorMap[node.category] || "#ddd";
         }
 
         d3.json("/collection.json.gz").then((data) => {
@@ -115,6 +115,11 @@
             let width = container.clientWidth;
             let height = container.clientHeight;
 
+            data.nodes.forEach((d) => {
+                d.x = Math.random() * width;
+                d.y = Math.random() * height;
+            });
+
             const svg = d3
                 .select(container)
                 .append("svg")
@@ -161,7 +166,7 @@
                             return 0.15;
                         }), // Strength of the "lane" gravity
                 )
-                .force("x", d3.forceX(width / 2).strength(0.1))
+                .force("x", d3.forceX(width / 2).strength(0.3))
                 .force(
                     "collide",
                     d3.forceCollide().radius((d) => d.radius + 1),
@@ -189,7 +194,10 @@
                 .data(data.nodes)
                 .join("circle")
                 .attr("r", (d) => d.radius)
-                .attr("fill", (node) => color(node));
+                .attr("fill", (node) => color(node))
+                .on("click", (event, node) => {
+                    event.currentTarget.classList.toggle("selected");
+                });
 
             simulation.on("tick", () => {
                 node.attr("cx", (d) => d.x).attr("cy", (d) => d.y);
