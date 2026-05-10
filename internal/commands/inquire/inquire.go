@@ -8,7 +8,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 
 	"github.com/coreofscience/go-bibx/analysis"
 	"github.com/coreofscience/go-bibx/internal/utils"
@@ -20,7 +19,7 @@ func New() *cli.Command {
 	return &cli.Command{
 		Name:      "inquire",
 		Usage:     "inquire for a research topic",
-		ArgsUsage: "<query>...",
+		ArgsUsage: "<query>",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "root",
@@ -43,6 +42,15 @@ func New() *cli.Command {
 				Value: 200,
 			},
 		},
+		Arguments: []cli.Argument{
+			&cli.StringArg{
+				Name:      "query",
+				UsageText: "search query for the collection",
+				Config: cli.StringConfig{
+					TrimSpace: true,
+				},
+			},
+		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			utils.SetDefaultLogger(c.Bool("verbose"))
 			path := path.Join(c.String("root"), ".bibx", "collection.json.gz")
@@ -50,11 +58,7 @@ func New() *cli.Command {
 				slog.Error("file already exists", "path", path)
 				os.Exit(1)
 			}
-			if len(c.Args().Slice()) == 0 {
-				slog.Error("no query provided")
-				os.Exit(1)
-			}
-			query := strings.Join(c.Args().Slice(), " ")
+			query := c.StringArg("query")
 			slog.Debug("inquiring for collection", "query", query)
 			collection, err := sources.NewOpenAlexSource(
 				query,
