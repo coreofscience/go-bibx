@@ -32,3 +32,19 @@ func TestSet_Add(t *testing.T) {
 	set.Add("a")
 	assert.Equal(t, 3, set.Len(), "Set should still contain 3 elements after adding duplicate 'a'")
 }
+
+func TestSet_JSON(t *testing.T) {
+	set := collections.NewSet[string]("a", "b", "c")
+
+	data, err := set.MarshalJSON()
+	assert.NoError(t, err)
+	assert.Equal(t, `["a","b","c"]`, string(data))
+
+	var newSet collections.Set[string]
+	err = newSet.UnmarshalJSON(data)
+	assert.NoError(t, err)
+	assert.Equal(t, set.Len(), newSet.Len())
+	assert.True(t, newSet.Contains("a"))
+	assert.True(t, newSet.Contains("b"))
+	assert.True(t, newSet.Contains("c"))
+}

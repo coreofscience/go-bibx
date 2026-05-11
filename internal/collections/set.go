@@ -3,6 +3,7 @@ package collections
 import (
 	"cmp"
 	"encoding/json"
+	"fmt"
 	"slices"
 )
 
@@ -111,4 +112,17 @@ func (s *Set[T]) Items() []T {
 // MarshalJSON implements the json.Marshaler interface.
 func (s *Set[T]) MarshalJSON() ([]byte, error) {
 	return json.Marshal(s.Items())
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface.
+func (s *Set[T]) UnmarshalJSON(data []byte) error {
+	var items []T
+	if err := json.Unmarshal(data, &items); err != nil {
+		return fmt.Errorf("failed to unmarshal set: %w", err)
+	}
+	s.elements = make(map[T]struct{})
+	for _, item := range items {
+		s.elements[item] = struct{}{}
+	}
+	return nil
 }
