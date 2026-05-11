@@ -52,7 +52,7 @@ func New() *cli.Command {
 			&cli.StringFlag{
 				Name:  "format",
 				Usage: "format to output results in (markdown, json, etc.)",
-				Value: "markdown",
+				Value: "json",
 				Validator: func(value string) error {
 					if value == "" {
 						return cli.Exit("format is required", 1)
@@ -83,7 +83,7 @@ func New() *cli.Command {
 			}
 			switch c.String("format") {
 			case "json":
-				bytes, err := json.Marshal(results)
+				bytes, err := json.MarshalIndent(results, "", "  ")
 				if err != nil {
 					slog.Error("failed to marshal results", "error", err)
 					os.Exit(1)
