@@ -16,7 +16,7 @@ import (
 var articleTemplateRaw string
 
 var articleTemplate = template.Must(template.New("article").Funcs(template.FuncMap{
-	"wrap": func(limit int, v any) string {
+	"wrap": func(limit int, indent int, v any) string {
 		var s string
 		switch t := v.(type) {
 		case string:
@@ -37,8 +37,8 @@ var articleTemplate = template.Must(template.New("article").Funcs(template.FuncM
 		lineLen := 0
 		for i, word := range words {
 			if lineLen+len(word)+1 > limit && lineLen > 0 {
-				result.WriteString("\n")
-				lineLen = 0
+				result.WriteString("\n" + strings.Repeat(" ", indent))
+				lineLen = indent
 			} else if i > 0 {
 				result.WriteString(" ")
 				lineLen++
@@ -51,8 +51,16 @@ var articleTemplate = template.Must(template.New("article").Funcs(template.FuncM
 	"join": func(sep string, items []string) string {
 		return strings.Join(items, sep)
 	},
-	"frontmatter": func(a *Article) string {
-		return a.Frontmatter()
+	"frontMatter": func(a *Article) string {
+		if a == nil {
+			return ""
+		}
+		m := a.FrontMatter()
+		data, err := yaml.Marshal(m)
+		if err != nil {
+			return "---\nerror: failed to marshal frontmatter\n---"
+		}
+		return "---\n" + string(data) + "---"
 	},
 }).Parse(articleTemplateRaw))
 
@@ -303,48 +311,6 @@ func (a *Article) SetSimpleLabel() *Article {
 		a.Label = *simpleLabel
 	}
 	return a
-}
-
-// Frontmatter returns the Article's metadata as a YAML frontmatter string.
-func (a *Article) Frontmatter() string {
-	if a == nil {
-		return ""
-	}
-	type Metadata struct {
-		Title      *string                  `yaml:"title,omitempty"`
-		Authors    []string                 `yaml:"authors,omitempty"`
-		Year       *int                     `yaml:"year,omitempty"`
-		Journal    *string                  `yaml:"journal,omitempty"`
-		Volume     *string                  `yaml:"volume,omitempty"`
-		Issue      *string                  `yaml:"issue,omitempty"`
-		Page       *string                  `yaml:"page,omitempty"`
-		DOI        *string                  `yaml:"doi,omitempty"`
-		Permalink  *string                  `yaml:"permalink,omitempty"`
-		TimesCited *int                     `yaml:"times_cited,omitempty"`
-		IDs        *collections.Set[string] `yaml:"ids,omitempty"`
-		Keywords   *collections.Set[string] `yaml:"keywords,omitempty"`
-	}
-
-	m := Metadata{
-		Title:      a.Title,
-		Authors:    a.Authors,
-		Year:       a.Year,
-		Journal:    a.Journal,
-		Volume:     a.Volume,
-		Issue:      a.Issue,
-		Page:       a.Page,
-		DOI:        a.DOI,
-		Permalink:  a.Permalink,
-		TimesCited: a.TimesCited,
-		IDs:        a.IDs,
-		Keywords:   a.Keywords,
-	}
-
-	data, err := yaml.Marshal(m)
-	if err != nil {
-		return "---\nerror: failed to marshal frontmatter\n---\n"
-	}
-	return "---\n" + string(data) + "---\n"
 }
 
 func keep[T any](a, b *T) *T {
