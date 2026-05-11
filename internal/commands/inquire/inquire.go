@@ -50,9 +50,9 @@ func New() *cli.Command {
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			utils.SetDefaultLogger(c.Bool("verbose"))
-			path := path.Join(c.String("root"), ".bibx", "collection.json.gz")
-			if _, err := os.Stat(path); err == nil && !c.Bool("force") {
-				slog.Error("file already exists", "path", path)
+			p := path.Join(c.String("root"), ".bibx", "collection.json.gz")
+			if _, err := os.Stat(p); err == nil && !c.Bool("force") {
+				slog.Error("file already exists", "path", p)
 				os.Exit(1)
 			}
 			query := c.StringArg("query")
@@ -91,8 +91,8 @@ func New() *cli.Command {
 				os.Exit(1)
 			}
 			result := analysis.New(collection)
-			slog.Debug("storing analysis", "path", path)
-			err = result.Store(path)
+			slog.Debug("storing analysis", "path", p)
+			err = result.Store(p)
 			if err != nil {
 				slog.Error("failed to store analysis", "error", err)
 				os.Exit(1)

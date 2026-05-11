@@ -41,7 +41,7 @@ type WorkLocationSource struct {
 
 type WorkLocation struct {
 	IsOpenAccess   bool                `json:"is_oa"`
-	LandingPageUrl *string             `json:"landing_page_url"`
+	LandingPageURL *string             `json:"landing_page_url"`
 	PDFUrl         *string             `json:"pdf_url"`
 	Source         *WorkLocationSource `json:"source"`
 }

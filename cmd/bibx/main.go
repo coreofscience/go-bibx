@@ -10,12 +10,12 @@ import (
 )
 
 func main() {
-	cli := cli.Command{
+	cmd := cli.Command{
 		Name:     "bibx",
 		Usage:    "bibx is a CLI tool for managing bibliographic collections",
 		Commands: commands.New(),
 	}
-	if err := cli.Run(context.Background(), os.Args); err != nil {
+	if err := cmd.Run(context.Background(), os.Args); err != nil {
 		slog.Error("error running main program", "error", err)
 		os.Exit(1)
 	}

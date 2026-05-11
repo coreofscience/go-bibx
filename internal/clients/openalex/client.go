@@ -19,7 +19,7 @@ import (
 
 const (
 	MaxWorksPerPage       = 200
-	MaxIdsPerRequest      = 80
+	MaxIDsPerRequest      = 80
 	MaxConcurrentRequests = 4
 )
 
@@ -159,14 +159,14 @@ func (c *RestyClient) ListArticlesByIDs(ctx context.Context, ids []string) ([]Wo
 	}
 
 	selectFields := getWorkFields()
-	idChunks := chunks(ids, MaxIdsPerRequest)
+	idChunks := chunks(ids, MaxIDsPerRequest)
 
 	return fetchParallel(ctx, idChunks, func(ctx context.Context, idChunk []string) (*WorksResponse, error) {
 		joinedIDs := strings.Join(idChunk, "|")
 		queryParams := map[string]string{
 			"select":   strings.Join(selectFields, ","),
 			"filter":   fmt.Sprintf("ids.openalex:%s,type:types/article", joinedIDs),
-			"per_page": fmt.Sprintf("%d", MaxIdsPerRequest),
+			"per_page": fmt.Sprintf("%d", MaxIDsPerRequest),
 		}
 		return c.fetchWorks(ctx, queryParams)
 	})
@@ -311,8 +311,8 @@ func WorkToArticle(work *Work) *articles.Article {
 		doi = &doiVal
 	}
 	var permalink *string
-	if work.PrimaryLocation != nil && work.PrimaryLocation.LandingPageUrl != nil {
-		permalink = work.PrimaryLocation.LandingPageUrl
+	if work.PrimaryLocation != nil && work.PrimaryLocation.LandingPageURL != nil {
+		permalink = work.PrimaryLocation.LandingPageURL
 	}
 	references := make([]*articles.Article, len(work.ReferencedWorks))
 	for i, reference := range work.ReferencedWorks {

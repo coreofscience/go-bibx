@@ -1,0 +1,24 @@
+version: "2"
+linters:
+  enable:
+    - testpackage
+    - gocyclo
+    - revive
+  settings:
+    gocyclo:
+      min-complexity: 30
+    revive:
+      confidence: 0.8
+      rules:
+        # - name: var-naming
+        #   severity: error
+        #   arguments:
+        #     - ["ID", "IDs"]
+        #     - ["url", "ctx", "http", "path"]
+        # Recommended: catches blank imports, exported docs, etc.
+        # - name: package-comments
+        # - name: exported
+        - name: indent-error-flow
+        - name: import-shadowing
+        - name: dot-imports
+        - name: import-alias-naming

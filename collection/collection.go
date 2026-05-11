@@ -22,12 +22,12 @@ type Collection struct {
 }
 
 // New creates a new Collection instance with deduplicated articles.
-func New(articles articles.Articles) (*Collection, error) {
-	articles, err := articles.Deduplicate()
+func New(a articles.Articles) (*Collection, error) {
+	a, err := a.Deduplicate()
 	if err != nil {
 		return nil, fmt.Errorf("failed to deduplicate articles: %w", err)
 	}
-	return &Collection{articles: articles}, nil
+	return &Collection{articles: a}, nil
 }
 
 // Len returns the number of articles in the collection.

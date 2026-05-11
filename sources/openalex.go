@@ -114,7 +114,7 @@ func (s *openAlexSource) Build(ctx context.Context) (*collection.Collection, err
 	for id, work := range cache {
 		articleCache[id] = openalex.WorkToArticle(work)
 	}
-	articles := make([]*articles.Article, 0, len(articleCache))
+	articleList := make(articles.Articles, 0, len(articleCache))
 	for _, work := range works {
 		article := articleCache[work.ID]
 		for i, reference := range work.ReferencedWorks {
@@ -122,11 +122,11 @@ func (s *openAlexSource) Build(ctx context.Context) (*collection.Collection, err
 				article.References[i] = refArticle
 			}
 		}
-		articles = append(articles, article)
+		articleList = append(articleList, article)
 	}
-	collection, err := collection.New(articles)
+	c, err := collection.New(articleList)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create collection: %w", err)
 	}
-	return collection, nil
+	return c, nil
 }
