@@ -1,0 +1,119 @@
+package render
+
+import (
+	"bytes"
+	_ "embed"
+	"fmt"
+	"strings"
+	"text/template"
+
+	"github.com/coreofscience/go-bibx/articles"
+	"gopkg.in/yaml.v3"
+)
+
+//go:embed templates/article.md
+var articleTemplateRaw string
+
+func wrap(limit int, indent int, v any) string {
+	var s string
+	switch t := v.(type) {
+	case string:
+		s = t
+	case *string:
+		if t == nil {
+			return ""
+		}
+		s = *t
+	default:
+		return ""
+	}
+	words := strings.Fields(s)
+	if len(words) == 0 {
+		return ""
+	}
+	var result strings.Builder
+	lineLen := 0
+	for i, word := range words {
+		if lineLen+len(word)+1 > limit && lineLen > 0 {
+			result.WriteString("\n" + strings.Repeat(" ", indent))
+			lineLen = indent
+		} else if i > 0 {
+			result.WriteString(" ")
+			lineLen++
+		}
+		result.WriteString(word)
+		lineLen += len(word)
+	}
+	return result.String()
+}
+
+func join(sep string, items []string) string {
+	return strings.Join(items, sep)
+}
+
+func frontMatterFunc(a *articles.Article) string {
+	if a == nil {
+		return ""
+	}
+	m := getFrontMatter(a)
+	data, err := yaml.Marshal(m)
+	if err != nil {
+		return "---\nerror: failed to marshal frontmatter\n---"
+	}
+	return "---\n" + string(data) + "---"
+}
+
+type frontMatter struct {
+	Title      *string   `yaml:"title,omitempty"`
+	Journal    *string   `yaml:"journal,omitempty"`
+	Volume     *string   `yaml:"volume,omitempty"`
+	Issue      *string   `yaml:"issue,omitempty"`
+	Page       *string   `yaml:"page,omitempty"`
+	DOI        *string   `yaml:"doi,omitempty"`
+	Permalink  *string   `yaml:"permalink,omitempty"`
+	TimesCited *int      `yaml:"times_cited,omitempty"`
+	Keywords   *[]string `yaml:"keywords,omitempty"`
+	Rich       bool      `yaml:"rich"`
+}
+
+func getFrontMatter(a *articles.Article) *frontMatter {
+	keywords := a.Keywords.Items()
+	return &frontMatter{
+		Title:      a.Title,
+		Journal:    a.Journal,
+		Volume:     a.Volume,
+		Issue:      a.Issue,
+		Page:       a.Page,
+		DOI:        a.DOI,
+		Permalink:  a.Permalink,
+		TimesCited: a.TimesCited,
+		Keywords:   &keywords,
+		Rich:       a.Rich,
+	}
+}
+
+type MarkdownRenderer struct {
+	articleTemplate *template.Template
+}
+
+func NewMarkdownRenderer() (*MarkdownRenderer, error) {
+	articleTemplate, err := template.New("article").Funcs(template.FuncMap{
+		"wrap":        wrap,
+		"join":        join,
+		"frontMatter": frontMatterFunc,
+	}).Parse(articleTemplateRaw)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse article template: %w", err)
+	}
+	return &MarkdownRenderer{
+		articleTemplate: articleTemplate,
+	}, nil
+}
+
+func (e *MarkdownRenderer) Render(a *articles.Article) string {
+	var buf bytes.Buffer
+	if err := e.articleTemplate.Execute(&buf, a); err != nil {
+		return fmt.Sprintf("# %s\n", a.Label)
+	}
+	return buf.String()
+}
