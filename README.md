@@ -1,16 +1,43 @@
 # go-bibx
 
-`go-bibx` is a command-line tool for managing and analyzing bibliographic
-collections using Go. It allows you to fetch data from OpenAlex, perform
-bibliometric analysis, and visualize the resulting citation networks.
+`go-bibx` is a high-performance command-line tool designed for researchers to
+perform deep, graph-based bibliographic analysis. Maintained by the [Core of
+Science](https://coreofscience.org/) organization, it serves as a Go
+implementation of the **Tree of Science (ToS)** methodology.
+
+The project is built to be both a standalone tool for quick academic inquiry and
+a robust component for larger data pipelines, offering high interoperability
+through its binary distribution.
+
+## The Tree of Science & SAP Algorithm
+
+At its core, `go-bibx` implements the **SAP algorithm** (found in
+`algorithms/sap.go`), which analyzes citation graph topology to map the
+evolutionary structure of a research field. Using the "Tree of Science"
+metaphor, it categorizes articles into:
+
+- **Roots**: Foundational, seminal works that established the field.
+- **Trunk**: Core papers that provide the structural backbone and consolidate
+  the topic.
+- **Leaves**: Recent, specialized developments representing the current frontier
+  of research.
 
 ## Features
 
-- **Inquire**: Fetch bibliographic data from OpenAlex based on a search query.
-- **Analyze**: Automatically process collections (remove cycles, find giant
-  components, and enrich data).
-- **Visualize**: Start a local web server to explore the collection graph
-  interactively.
+- **Inquire**: Efficiently fetch bibliographic data from the OpenAlex API.
+- **SAP Analysis**: Automatically derive the Tree of Science structure from any
+  citation network.
+- **Visualize**: Interactive, browser-based graph exploration of your
+  collections.
+- **Interoperable**: Designed as a standalone CLI that fits perfectly into
+  automated workflows.
+
+## Coming Soon: Graph Semantic Search
+
+We are working on a **Graph Semantic Search** feature. Similar in spirit to
+GraphRAG, this will allow users to find articles related to a query by
+leveraging both semantic relevance and their deep relationships within the
+citation graph.
 
 ## Features to be implemented
 
