@@ -145,20 +145,8 @@ func (a *Analysis) Store(path string) error {
 
 func (a *Analysis) Query(category string, top int) ([]*Result, error) {
 	results := make([]*Result, 0, top)
-	nodes := slices.Clone(a.Nodes)
-	slices.SortFunc(nodes, func(a, b *Node) int {
-		switch algorithms.Category(category) {
-		case algorithms.CategoryRoot:
-			return cmp.Compare(b.Rootness, a.Rootness)
-		case algorithms.CategoryTrunk:
-			return cmp.Compare(b.Trunkness, a.Trunkness)
-		case algorithms.CategoryLeaf:
-			return cmp.Compare(b.Leafness, a.Leafness)
-		default:
-			return cmp.Compare(b.Rootness, a.Rootness)
-		}
-	})
-	for _, node := range nodes[:top] {
+	scored := make([]*Result, 0, len(a.Nodes))
+	for _, node := range a.Nodes {
 		var score float64
 		switch algorithms.Category(category) {
 		case algorithms.CategoryRoot:
@@ -173,10 +161,19 @@ func (a *Analysis) Query(category string, top int) ([]*Result, error) {
 		if score == 0 {
 			continue
 		}
-		results = append(results, &Result{
+		scored = append(scored, &Result{
 			Score:   score,
 			Article: node.Article,
 		})
+	}
+	slices.SortFunc(scored, func(a, b *Result) int {
+		return cmp.Compare(b.Score, a.Score)
+	})
+	for _, node := range scored[:top] {
+		if node.Score == 0 {
+			break
+		}
+		results = append(results, node)
 	}
 	return results, nil
 }
