@@ -1,12 +1,14 @@
 package analysis
 
 import (
+	"cmp"
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/coreofscience/go-bibx/algorithms"
 	"github.com/coreofscience/go-bibx/articles"
@@ -20,6 +22,11 @@ type Node struct {
 	Trunkness float64             `json:"trunkness"`
 	Leafness  float64             `json:"leafness"`
 	Article   *articles.Article   `json:"article"`
+}
+
+type Result struct {
+	Score   float64           `json:"score"`
+	Article *articles.Article `json:"article"`
 }
 
 type Link struct {
@@ -134,4 +141,42 @@ func (a *Analysis) Store(path string) error {
 		return fmt.Errorf("error encoding analysis: %w", err)
 	}
 	return nil
+}
+
+func (a *Analysis) Query(category string, top int) ([]*Result, error) {
+	results := make([]*Result, 0, top)
+	nodes := slices.Clone(a.Nodes)
+	slices.SortFunc(nodes, func(a, b *Node) int {
+		switch algorithms.Category(category) {
+		case algorithms.CategoryRoot:
+			return cmp.Compare(b.Rootness, a.Rootness)
+		case algorithms.CategoryTrunk:
+			return cmp.Compare(b.Trunkness, a.Trunkness)
+		case algorithms.CategoryLeaf:
+			return cmp.Compare(b.Leafness, a.Leafness)
+		default:
+			return cmp.Compare(b.Rootness, a.Rootness)
+		}
+	})
+	for _, node := range nodes[:top] {
+		var score float64
+		switch algorithms.Category(category) {
+		case algorithms.CategoryRoot:
+			score = node.Rootness
+		case algorithms.CategoryTrunk:
+			score = node.Trunkness
+		case algorithms.CategoryLeaf:
+			score = node.Leafness
+		default:
+			score = node.Rootness
+		}
+		if score == 0 {
+			continue
+		}
+		results = append(results, &Result{
+			Score:   score,
+			Article: node.Article,
+		})
+	}
+	return results, nil
 }

@@ -36,6 +36,11 @@ func New() *cli.Command {
 					return nil
 				},
 			},
+			&cli.IntFlag{
+				Name:  "top",
+				Usage: "number of top results to return",
+				Value: 5,
+			},
 			&cli.BoolFlag{
 				Name:  "verbose",
 				Usage: "enable verbose output",
@@ -44,10 +49,22 @@ func New() *cli.Command {
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			utils.SetDefaultLogger(c.Bool("verbose"))
-			_, err := analysis.Load(c.String("file"))
+			a, err := analysis.Load(c.String("file"))
 			if err != nil {
 				slog.Error("failed to load analysis", "error", err)
 				os.Exit(1)
+			}
+			results, err := a.Query(c.String("category"), c.Int("top"))
+			if err != nil {
+				slog.Error("failed to query analysis", "error", err)
+				os.Exit(1)
+			}
+			for _, result := range results {
+				identifier := result.Article.Label
+				if result.Article.Title != nil {
+					identifier = *result.Article.Title
+				}
+				slog.Info("result", "identifier", identifier, "score", result.Score)
 			}
 			return nil
 		},
