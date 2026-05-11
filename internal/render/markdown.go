@@ -2,8 +2,9 @@ package render
 
 import (
 	"bytes"
-	_ "embed"
+	"embed"
 	"fmt"
+	"log/slog"
 	"strings"
 	"text/template"
 
@@ -11,8 +12,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-//go:embed templates/article.md
-var articleTemplateRaw string
+//go:embed templates/*.md
+var templatesFS embed.FS
 
 func wrap(limit int, indent int, v any) string {
 	var s string
@@ -51,34 +52,23 @@ func join(sep string, items []string) string {
 	return strings.Join(items, sep)
 }
 
-func frontMatterFunc(a *articles.Article) string {
+func frontMatter(a *articles.Article) string {
 	if a == nil {
 		return ""
 	}
-	m := getFrontMatter(a)
-	data, err := yaml.Marshal(m)
-	if err != nil {
-		return "---\nerror: failed to marshal frontmatter\n---"
-	}
-	return "---\n" + string(data) + "---"
-}
-
-type frontMatter struct {
-	Title      *string   `yaml:"title,omitempty"`
-	Journal    *string   `yaml:"journal,omitempty"`
-	Volume     *string   `yaml:"volume,omitempty"`
-	Issue      *string   `yaml:"issue,omitempty"`
-	Page       *string   `yaml:"page,omitempty"`
-	DOI        *string   `yaml:"doi,omitempty"`
-	Permalink  *string   `yaml:"permalink,omitempty"`
-	TimesCited *int      `yaml:"times_cited,omitempty"`
-	Keywords   *[]string `yaml:"keywords,omitempty"`
-	Rich       bool      `yaml:"rich"`
-}
-
-func getFrontMatter(a *articles.Article) *frontMatter {
 	keywords := a.Keywords.Items()
-	return &frontMatter{
+	m := &struct {
+		Title      *string   `yaml:"title,omitempty"`
+		Journal    *string   `yaml:"journal,omitempty"`
+		Volume     *string   `yaml:"volume,omitempty"`
+		Issue      *string   `yaml:"issue,omitempty"`
+		Page       *string   `yaml:"page,omitempty"`
+		DOI        *string   `yaml:"doi,omitempty"`
+		Permalink  *string   `yaml:"permalink,omitempty"`
+		TimesCited *int      `yaml:"times_cited,omitempty"`
+		Keywords   *[]string `yaml:"keywords,omitempty"`
+		Rich       bool      `yaml:"rich"`
+	}{
 		Title:      a.Title,
 		Journal:    a.Journal,
 		Volume:     a.Volume,
@@ -90,29 +80,48 @@ func getFrontMatter(a *articles.Article) *frontMatter {
 		Keywords:   &keywords,
 		Rich:       a.Rich,
 	}
+	data, err := yaml.Marshal(m)
+	if err != nil {
+		return "---\nerror: failed to marshal frontmatter\n---"
+	}
+	return "---\n" + string(data) + "---"
+}
+
+func render(templ *template.Template) func(name string, data any) (string, error) {
+	return func(name string, data any) (string, error) {
+		var buf bytes.Buffer
+		if err := templ.ExecuteTemplate(&buf, name, data); err != nil {
+			return "", err
+		}
+		return buf.String(), nil
+	}
 }
 
 type MarkdownRenderer struct {
-	articleTemplate *template.Template
+	template *template.Template
 }
 
 func NewMarkdownRenderer() (*MarkdownRenderer, error) {
-	articleTemplate, err := template.New("article").Funcs(template.FuncMap{
+	templ := template.New("")
+	funcs := template.FuncMap{
 		"wrap":        wrap,
 		"join":        join,
-		"frontMatter": frontMatterFunc,
-	}).Parse(articleTemplateRaw)
+		"frontMatter": frontMatter,
+		"render":      render(templ),
+	}
+	templ, err := templ.Funcs(funcs).ParseFS(templatesFS, "templates/*.md")
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse article template: %w", err)
+		return nil, fmt.Errorf("failed to parse templates: %w", err)
 	}
 	return &MarkdownRenderer{
-		articleTemplate: articleTemplate,
+		template: templ,
 	}, nil
 }
 
 func (e *MarkdownRenderer) Render(a *articles.Article) string {
 	var buf bytes.Buffer
-	if err := e.articleTemplate.Execute(&buf, a); err != nil {
+	if err := e.template.ExecuteTemplate(&buf, "article.md", a); err != nil {
+		slog.Error("error rendering template", "error", err)
 		return fmt.Sprintf("# %s\n", a.Label)
 	}
 	return buf.String()

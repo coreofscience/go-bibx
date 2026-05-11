@@ -13,6 +13,9 @@
 ## References
 
 {{ range .References -}}
-- {{ if .Title }}{{ wrap 80 2 .Title }}{{ else }}{{ .Label }}{{ end }}
+{{ if .Rich -}}
+{{ render "reference.md" . | wrap 80 0 }}
+{{ "" }}
+{{ end -}}
 {{ end -}}
 {{ end -}}

@@ -91,11 +91,14 @@ func New() *cli.Command {
 				fmt.Println(string(bytes))
 				return nil
 			case "markdown":
+				renderer, err := render.NewMarkdownRenderer()
 				for _, result := range results {
-					renderer, err := render.NewMarkdownRenderer()
 					if err != nil {
 						slog.Error("failed to create markdown encoder", "error", err)
 						os.Exit(1)
+					}
+					if !result.Article.Rich {
+						continue
 					}
 					fmt.Println(renderer.Render(result.Article))
 				}
