@@ -114,6 +114,11 @@ func (s *Set[T]) MarshalJSON() ([]byte, error) {
 	return json.Marshal(s.Items())
 }
 
+// MarshalYAML implements the yaml.Marshaler interface.
+func (s *Set[T]) MarshalYAML() (interface{}, error) {
+	return s.Items(), nil
+}
+
 // UnmarshalJSON implements the json.Unmarshaler interface.
 func (s *Set[T]) UnmarshalJSON(data []byte) error {
 	var items []T

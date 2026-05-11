@@ -1,12 +1,60 @@
 package articles
 
 import (
+	"bytes"
+	_ "embed"
 	"fmt"
 	"slices"
 	"strings"
+	"text/template"
 
 	"github.com/coreofscience/go-bibx/internal/collections"
+	"gopkg.in/yaml.v3"
 )
+
+//go:embed templates/article.md
+var articleTemplateRaw string
+
+var articleTemplate = template.Must(template.New("article").Funcs(template.FuncMap{
+	"wrap": func(limit int, v any) string {
+		var s string
+		switch t := v.(type) {
+		case string:
+			s = t
+		case *string:
+			if t == nil {
+				return ""
+			}
+			s = *t
+		default:
+			return ""
+		}
+		words := strings.Fields(s)
+		if len(words) == 0 {
+			return ""
+		}
+		var result strings.Builder
+		lineLen := 0
+		for i, word := range words {
+			if lineLen+len(word)+1 > limit && lineLen > 0 {
+				result.WriteString("\n")
+				lineLen = 0
+			} else if i > 0 {
+				result.WriteString(" ")
+				lineLen++
+			}
+			result.WriteString(word)
+			lineLen += len(word)
+		}
+		return result.String()
+	},
+	"join": func(sep string, items []string) string {
+		return strings.Join(items, sep)
+	},
+	"frontmatter": func(a *Article) string {
+		return a.Frontmatter()
+	},
+}).Parse(articleTemplateRaw))
 
 type Article struct {
 	Label      string                   `json:"label"`
@@ -25,6 +73,19 @@ type Article struct {
 	Abstract   *string                  `json:"abstract,omitempty"`
 	References References               `json:"references,omitempty"`
 	Rich       bool                     `json:"rich"`
+}
+
+type FrontMatter struct {
+	Title      *string   `yaml:"title,omitempty"`
+	Journal    *string   `yaml:"journal,omitempty"`
+	Volume     *string   `yaml:"volume,omitempty"`
+	Issue      *string   `yaml:"issue,omitempty"`
+	Page       *string   `yaml:"page,omitempty"`
+	DOI        *string   `yaml:"doi,omitempty"`
+	Permalink  *string   `yaml:"permalink,omitempty"`
+	TimesCited *int      `yaml:"times_cited,omitempty"`
+	Keywords   *[]string `yaml:"keywords,omitempty"`
+	Rich       bool      `yaml:"rich"`
 }
 
 type ArticleOption func(*Article)
@@ -61,6 +122,22 @@ func (a *Article) Clone(options ...ArticleOption) *Article {
 		option(copied)
 	}
 	return copied
+}
+
+func (a *Article) FrontMatter() *FrontMatter {
+	keywords := a.Keywords.Items()
+	return &FrontMatter{
+		Title:      a.Title,
+		Journal:    a.Journal,
+		Volume:     a.Volume,
+		Issue:      a.Issue,
+		Page:       a.Page,
+		DOI:        a.DOI,
+		Permalink:  a.Permalink,
+		TimesCited: a.TimesCited,
+		Keywords:   &keywords,
+		Rich:       a.Rich,
+	}
 }
 
 // Merge creates a new Article by merging the fields of the current Article with another Article.
@@ -207,6 +284,15 @@ func (a *Article) AddSimpleId() *Article {
 	return a
 }
 
+// ToMarkdown returns the Article as a Markdown string.
+func (a *Article) ToMarkdown() string {
+	var buf bytes.Buffer
+	if err := articleTemplate.Execute(&buf, a); err != nil {
+		return fmt.Sprintf("# %s\n", a.Label)
+	}
+	return buf.String()
+}
+
 // SetSimpleLabel sets a simplified label for the Article.
 func (a *Article) SetSimpleLabel() *Article {
 	if a == nil {
@@ -217,6 +303,48 @@ func (a *Article) SetSimpleLabel() *Article {
 		a.Label = *simpleLabel
 	}
 	return a
+}
+
+// Frontmatter returns the Article's metadata as a YAML frontmatter string.
+func (a *Article) Frontmatter() string {
+	if a == nil {
+		return ""
+	}
+	type Metadata struct {
+		Title      *string                  `yaml:"title,omitempty"`
+		Authors    []string                 `yaml:"authors,omitempty"`
+		Year       *int                     `yaml:"year,omitempty"`
+		Journal    *string                  `yaml:"journal,omitempty"`
+		Volume     *string                  `yaml:"volume,omitempty"`
+		Issue      *string                  `yaml:"issue,omitempty"`
+		Page       *string                  `yaml:"page,omitempty"`
+		DOI        *string                  `yaml:"doi,omitempty"`
+		Permalink  *string                  `yaml:"permalink,omitempty"`
+		TimesCited *int                     `yaml:"times_cited,omitempty"`
+		IDs        *collections.Set[string] `yaml:"ids,omitempty"`
+		Keywords   *collections.Set[string] `yaml:"keywords,omitempty"`
+	}
+
+	m := Metadata{
+		Title:      a.Title,
+		Authors:    a.Authors,
+		Year:       a.Year,
+		Journal:    a.Journal,
+		Volume:     a.Volume,
+		Issue:      a.Issue,
+		Page:       a.Page,
+		DOI:        a.DOI,
+		Permalink:  a.Permalink,
+		TimesCited: a.TimesCited,
+		IDs:        a.IDs,
+		Keywords:   a.Keywords,
+	}
+
+	data, err := yaml.Marshal(m)
+	if err != nil {
+		return "---\nerror: failed to marshal frontmatter\n---\n"
+	}
+	return "---\n" + string(data) + "---\n"
 }
 
 func keep[T any](a, b *T) *T {

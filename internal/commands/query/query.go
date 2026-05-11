@@ -2,6 +2,7 @@ package query
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 
@@ -60,11 +61,7 @@ func New() *cli.Command {
 				os.Exit(1)
 			}
 			for _, result := range results {
-				identifier := result.Article.Label
-				if result.Article.Title != nil {
-					identifier = *result.Article.Title
-				}
-				slog.Info("result", "identifier", identifier, "score", result.Score)
+				fmt.Println(result.Article.ToMarkdown())
 			}
 			return nil
 		},
