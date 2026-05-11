@@ -1,13 +1,10 @@
 package inquire
 
 import (
-	"compress/gzip"
 	"context"
-	"encoding/json"
 	"log/slog"
 	"os"
 	"path"
-	"path/filepath"
 
 	"github.com/coreofscience/go-bibx/analysis"
 	"github.com/coreofscience/go-bibx/internal/utils"
@@ -60,6 +57,10 @@ func New() *cli.Command {
 			}
 			query := c.StringArg("query")
 			slog.Debug("inquiring for collection", "query", query)
+			if c.Args().Present() {
+				slog.Error("unexpected arguments", "args", c.Args().Slice())
+				os.Exit(1)
+			}
 			collection, err := sources.NewOpenAlexSource(
 				query,
 				sources.WithLimit(c.Int("limit")),
@@ -90,36 +91,10 @@ func New() *cli.Command {
 				os.Exit(1)
 			}
 			result := analysis.New(collection)
-			dir := filepath.Dir(path)
-			slog.Debug("creating output directory", "dir", dir)
-			err = os.MkdirAll(dir, 0755)
+			slog.Debug("storing analysis", "path", path)
+			err = result.Store(path)
 			if err != nil {
-				slog.Error("failed to create output directory", "error", err)
-				os.Exit(1)
-			}
-			slog.Debug("creating output file", "path", path)
-			file, err := os.Create(path)
-			if err != nil {
-				slog.Error("failed to create output file", "error", err)
-				os.Exit(1)
-			}
-			defer func() {
-				err = file.Close()
-				if err != nil {
-					slog.Error("failed to close output file", "error", err)
-					os.Exit(1)
-				}
-			}()
-			gz := gzip.NewWriter(file)
-			defer func() {
-				err = gz.Close()
-				if err != nil {
-					slog.Error("failed to close gzip writer", "error", err)
-					os.Exit(1)
-				}
-			}()
-			if err := json.NewEncoder(gz).Encode(result); err != nil {
-				slog.Error("failed to encode result", "error", err)
+				slog.Error("failed to store analysis", "error", err)
 				os.Exit(1)
 			}
 			return nil

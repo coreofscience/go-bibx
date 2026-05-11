@@ -65,7 +65,7 @@ func New() *cli.Command {
 				// When the server restarts, this connection breaks.
 				<-r.Context().Done()
 			})
-			slog.Info("server started", "port", port)
+			slog.Info("visualization started", "port", port)
 			if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
 				slog.Error("failed to start server", "error", err)
 				return err

@@ -1,6 +1,13 @@
 package analysis
 
 import (
+	"compress/gzip"
+	"encoding/json"
+	"fmt"
+	"log/slog"
+	"os"
+	"path/filepath"
+
 	"github.com/coreofscience/go-bibx/algorithms"
 	"github.com/coreofscience/go-bibx/articles"
 	"github.com/coreofscience/go-bibx/collection"
@@ -69,4 +76,62 @@ func New(c *collection.Collection) *Analysis {
 		Nodes: nodes,
 		Links: links,
 	}
+}
+
+// Load loads an analysis from a gzip-compressed JSON file at the given path.
+func Load(path string) (*Analysis, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("error opening file: %w", err)
+	}
+	defer func() {
+		err = file.Close()
+		if err != nil {
+			slog.Error("error closing file", "error", err)
+		}
+	}()
+	gz, err := gzip.NewReader(file)
+	if err != nil {
+		return nil, fmt.Errorf("error creating gzip reader: %w", err)
+	}
+	defer func() {
+		err = gz.Close()
+		if err != nil {
+			slog.Error("error closing gzip writer", "error", err)
+		}
+	}()
+	var analysis Analysis
+	if err := json.NewDecoder(gz).Decode(&analysis); err != nil {
+		return nil, fmt.Errorf("error decoding file: %w", err)
+	}
+	return &analysis, nil
+}
+
+// Store stores the analysis to a gzip-compressed JSON file at the given path.
+func (a *Analysis) Store(path string) error {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("error creating directory: %w", err)
+	}
+	file, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("error creating file: %w", err)
+	}
+	defer func() {
+		err = file.Close()
+		if err != nil {
+			slog.Error("error closing file", "error", err)
+		}
+	}()
+	gz := gzip.NewWriter(file)
+	defer func() {
+		err = gz.Close()
+		if err != nil {
+			slog.Error("error closing gzip writer", "error", err)
+		}
+	}()
+	if err := json.NewEncoder(gz).Encode(a); err != nil {
+		return fmt.Errorf("error encoding analysis: %w", err)
+	}
+	return nil
 }
