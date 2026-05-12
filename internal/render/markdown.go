@@ -14,7 +14,7 @@ import (
 //go:embed templates/*.md
 var templatesFS embed.FS
 
-func wrap(limit int, indent int, v any) string {
+func wrap(limit int, v any) string {
 	var s string
 	switch t := v.(type) {
 	case string:
@@ -35,8 +35,8 @@ func wrap(limit int, indent int, v any) string {
 	lineLen := 0
 	for i, word := range words {
 		if lineLen+len(word)+1 > limit && lineLen > 0 {
-			result.WriteString("\n" + strings.Repeat(" ", indent))
-			lineLen = indent
+			result.WriteString("\n")
+			lineLen = 0
 		} else if i > 0 {
 			result.WriteString(" ")
 			lineLen++
@@ -123,4 +123,12 @@ func (e *MarkdownRenderer) Render(a *articles.Article) (string, error) {
 		return "", fmt.Errorf("error rendering template: %w", err)
 	}
 	return buf.String(), nil
+}
+
+func (e *MarkdownRenderer) RenderReference(a *articles.Article) (string, error) {
+	var buf bytes.Buffer
+	if err := e.template.ExecuteTemplate(&buf, "reference.md", a); err != nil {
+		return "", fmt.Errorf("error rendering template: %w", err)
+	}
+	return wrap(80, buf.String()), nil
 }

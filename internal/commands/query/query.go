@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	formats    = collections.NewSet("markdown", "json")
+	formats    = collections.NewSet("reference", "markdown", "json")
 	categories = collections.NewSet("root", "trunk", "leaf")
 )
 
@@ -51,14 +51,14 @@ func New() *cli.Command {
 			},
 			&cli.StringFlag{
 				Name:  "format",
-				Usage: "format to output results in (markdown, json, etc.)",
+				Usage: "format to output results in (reference, markdown, json, etc.)",
 				Value: "json",
 				Validator: func(value string) error {
 					if value == "" {
 						return cli.Exit("format is required", 1)
 					}
 					if !formats.Contains(value) {
-						return cli.Exit("invalid format, must be one of: markdown, json", 1)
+						return cli.Exit("invalid format, must be one of: reference, markdown, json", 1)
 					}
 					return nil
 				},
@@ -105,6 +105,24 @@ func New() *cli.Command {
 						slog.Error("failed rendering article", "error", err)
 					}
 					fmt.Println(str)
+				}
+				return nil
+			case "reference":
+				renderer, err := render.NewMarkdownRenderer()
+				for _, result := range results {
+					if err != nil {
+						slog.Error("failed to create markdown encoder", "error", err)
+						os.Exit(1)
+					}
+					if !result.Article.Rich {
+						continue
+					}
+					str, err := renderer.RenderReference(result.Article)
+					if err != nil {
+						slog.Error("failed rendering reference", "error", err)
+					}
+					fmt.Println(str)
+					fmt.Println()
 				}
 				return nil
 			default:

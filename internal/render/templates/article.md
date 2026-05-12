@@ -5,7 +5,7 @@
 {{ if .Abstract -}}
 ## Abstract
 
-{{ wrap 80 0 .Abstract }}
+{{ wrap 80 .Abstract }}
 {{ end -}}
 
 {{ if .References -}}
@@ -14,7 +14,7 @@
 
 {{ range .References -}}
 {{ if .Rich -}}
-{{ render "reference.md" . | wrap 80 0 }}
+{{ render "reference.md" . | wrap 80 }}
 {{ "" }}
 {{ end -}}
 {{ end -}}
