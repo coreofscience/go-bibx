@@ -59,7 +59,10 @@ func (s *OpenAlexAnalysisService) Store(
 	if err != nil {
 		return fmt.Errorf("failed to enrich collection: %w", err)
 	}
-	analysis := models.NewAnalysis(collection)
+	analysis, err := models.NewAnalysis(collection)
+	if err != nil {
+		return fmt.Errorf("failed to create analysis: %w", err)
+	}
 	return s.analysisRepo.Store(ctx, analysis)
 }
 

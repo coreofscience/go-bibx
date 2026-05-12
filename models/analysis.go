@@ -2,6 +2,7 @@ package models
 
 import (
 	"cmp"
+	"fmt"
 	"log/slog"
 	"slices"
 
@@ -32,11 +33,11 @@ type Analysis struct {
 	Links []*Link `json:"links"`
 }
 
-func NewAnalysis(c *Collection) *Analysis {
+func NewAnalysis(c *Collection) (*Analysis, error) {
 	nodes := make([]*Node, 0, c.Len())
 	graph, err := c.CitationGraph()
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("failed to create citation graph: %w", err)
 	}
 	sap := algorithms.NewSap(graph)
 	result := sap.Run()
@@ -66,7 +67,7 @@ func NewAnalysis(c *Collection) *Analysis {
 	return &Analysis{
 		Nodes: nodes,
 		Links: links,
-	}
+	}, nil
 }
 
 func (a *Analysis) Query(category string, top int) ([]*Result, error) {
@@ -95,7 +96,9 @@ func (a *Analysis) Query(category string, top int) ([]*Result, error) {
 	slices.SortFunc(scored, func(a, b *Result) int {
 		return cmp.Compare(b.Score, a.Score)
 	})
-	for _, node := range scored[:top] {
+
+	limit := min(top, len(scored))
+	for _, node := range scored[:limit] {
 		if node.Score == 0 {
 			break
 		}
