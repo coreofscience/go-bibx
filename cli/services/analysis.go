@@ -95,7 +95,7 @@ func (s *OpenAlexAnalysisService) enrich(
 		idToArticle[work.ID] = openalex.WorkToArticle(work)
 	}
 	newArticles := make(models.Articles, 0)
-	discarted := 0
+	discarded := 0
 	for article := range c.Main() {
 		if !article.Rich {
 			slog.Warn("found a main work still to enrich, which is weird")
@@ -116,13 +116,13 @@ func (s *OpenAlexAnalysisService) enrich(
 			if enriched, ok := idToArticle[id]; ok {
 				newReferences = append(newReferences, enriched)
 			} else {
-				discarted++
+				discarded++
 			}
 		}
 		newArticle.References = newReferences
 		newArticles = append(newArticles, newArticle)
 	}
-	slog.Debug("enriched articles", "enriched", len(newArticles), "discarted", discarted)
+	slog.Debug("enriched articles", "enriched", len(newArticles), "discarded", discarded)
 	return models.NewCollection(newArticles)
 }
 
