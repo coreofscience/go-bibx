@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/coreofscience/go-bibx/algorithms"
 	"github.com/coreofscience/go-bibx/cli/clients/openalex"
 	"github.com/coreofscience/go-bibx/cli/renderers"
 	"github.com/coreofscience/go-bibx/cli/repos"
@@ -59,10 +60,44 @@ func (s *OpenAlexAnalysisService) Store(
 	if err != nil {
 		return fmt.Errorf("failed to enrich collection: %w", err)
 	}
-	analysis, err := models.NewAnalysis(collection)
+
+	graph, err := collection.CitationGraph()
 	if err != nil {
-		return fmt.Errorf("failed to create analysis: %w", err)
+		return fmt.Errorf("failed to create citation graph: %w", err)
 	}
+	sap := algorithms.NewSap(graph)
+	result := sap.Run()
+
+	nodes := make([]*models.Node, 0, collection.Len())
+	for article := range collection.All() {
+		articleKey := article.Key()
+		if articleKey == nil {
+			slog.Warn("article without key, skipping", "label", article.Label)
+			continue
+		}
+		key := *articleKey
+		nodes = append(nodes, &models.Node{
+			ID:        key,
+			Article:   article,
+			Category:  models.Category(result.Categories[key]),
+			Rootness:  result.Rootness[key],
+			Trunkness: result.Trunkness[key],
+			Leafness:  result.Leafness[key],
+		})
+	}
+	links := make([]*models.Link, 0, collection.Len())
+	for _, edge := range graph.AllEdges() {
+		links = append(links, &models.Link{
+			Source: edge.Source().Label(),
+			Target: edge.Destination().Label(),
+		})
+	}
+
+	analysis := &models.Analysis{
+		Nodes: nodes,
+		Links: links,
+	}
+
 	return s.analysisRepo.Store(ctx, analysis)
 }
 

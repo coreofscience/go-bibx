@@ -2,20 +2,24 @@ package models
 
 import (
 	"cmp"
-	"fmt"
-	"log/slog"
 	"slices"
+)
 
-	"github.com/coreofscience/go-bibx/algorithms"
+type Category string
+
+const (
+	CategoryRoot  Category = "root"
+	CategoryTrunk Category = "trunk"
+	CategoryLeaf  Category = "leaf"
 )
 
 type Node struct {
-	ID        string              `json:"id"`
-	Category  algorithms.Category `json:"category"`
-	Rootness  float64             `json:"rootness"`
-	Trunkness float64             `json:"trunkness"`
-	Leafness  float64             `json:"leafness"`
-	Article   *Article            `json:"article"`
+	ID        string   `json:"id"`
+	Category  Category `json:"category"`
+	Rootness  float64  `json:"rootness"`
+	Trunkness float64  `json:"trunkness"`
+	Leafness  float64  `json:"leafness"`
+	Article   *Article `json:"article"`
 }
 
 type Result struct {
@@ -33,54 +37,17 @@ type Analysis struct {
 	Links []*Link `json:"links"`
 }
 
-func NewAnalysis(c *Collection) (*Analysis, error) {
-	nodes := make([]*Node, 0, c.Len())
-	graph, err := c.CitationGraph()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create citation graph: %w", err)
-	}
-	sap := algorithms.NewSap(graph)
-	result := sap.Run()
-	for article := range c.All() {
-		articleKey := article.Key()
-		if articleKey == nil {
-			slog.Warn("article without key, skipping", "label", article.Label)
-			continue
-		}
-		key := *articleKey
-		nodes = append(nodes, &Node{
-			ID:        key,
-			Article:   article,
-			Category:  result.Categories[key],
-			Rootness:  result.Rootness[key],
-			Trunkness: result.Trunkness[key],
-			Leafness:  result.Leafness[key],
-		})
-	}
-	links := make([]*Link, 0, c.Len())
-	for _, edge := range graph.AllEdges() {
-		links = append(links, &Link{
-			Source: edge.Source().Label(),
-			Target: edge.Destination().Label(),
-		})
-	}
-	return &Analysis{
-		Nodes: nodes,
-		Links: links,
-	}, nil
-}
-
 func (a *Analysis) Query(category string, top int) ([]*Result, error) {
 	results := make([]*Result, 0, top)
 	scored := make([]*Result, 0, len(a.Nodes))
 	for _, node := range a.Nodes {
 		var score float64
-		switch algorithms.Category(category) {
-		case algorithms.CategoryRoot:
+		switch Category(category) {
+		case CategoryRoot:
 			score = node.Rootness
-		case algorithms.CategoryTrunk:
+		case CategoryTrunk:
 			score = node.Trunkness
-		case algorithms.CategoryLeaf:
+		case CategoryLeaf:
 			score = node.Leafness
 		default:
 			score = node.Rootness
