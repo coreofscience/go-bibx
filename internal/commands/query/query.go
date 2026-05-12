@@ -100,7 +100,11 @@ func New() *cli.Command {
 					if !result.Article.Rich {
 						continue
 					}
-					fmt.Println(renderer.Render(result.Article))
+					str, err := renderer.Render(result.Article)
+					if err != nil {
+						slog.Error("failed rendering article", "error", err)
+					}
+					fmt.Println(str)
 				}
 				return nil
 			default:

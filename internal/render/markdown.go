@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"embed"
 	"fmt"
-	"log/slog"
 	"strings"
 	"text/template"
 
@@ -118,11 +117,10 @@ func NewMarkdownRenderer() (*MarkdownRenderer, error) {
 	}, nil
 }
 
-func (e *MarkdownRenderer) Render(a *articles.Article) string {
+func (e *MarkdownRenderer) Render(a *articles.Article) (string, error) {
 	var buf bytes.Buffer
 	if err := e.template.ExecuteTemplate(&buf, "article.md", a); err != nil {
-		slog.Error("error rendering template", "error", err)
-		return fmt.Sprintf("# %s\n", a.Label)
+		return "", fmt.Errorf("error rendering template: %w", err)
 	}
-	return buf.String()
+	return buf.String(), nil
 }
