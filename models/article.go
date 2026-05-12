@@ -124,6 +124,26 @@ func (a *Article) PurgeReferences(ids ...string) *Article {
 	return a.Clone(WithReferences(newReferences))
 }
 
+func (a *Article) KeepReferences(ids ...string) *Article {
+	if a == nil {
+		return nil
+	}
+	idSet := collections.NewSet(ids...)
+	shouldDiscard := slices.ContainsFunc(a.References, func(ref *Article) bool {
+		return ref.IDs.Intersect(idSet).Len() == 0
+	})
+	if !shouldDiscard {
+		return a
+	}
+	newReferences := make([]*Article, 0, len(a.References))
+	for _, ref := range a.References {
+		if ref.IDs.Intersect(idSet).Len() > 0 {
+			newReferences = append(newReferences, ref)
+		}
+	}
+	return a.Clone(WithReferences(newReferences))
+}
+
 // Key returns the first ID of the Article if it exists.
 func (a *Article) Key() *string {
 	if a == nil || a.IDs.Len() == 0 {
