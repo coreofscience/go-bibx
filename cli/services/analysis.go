@@ -6,26 +6,31 @@ import (
 	"log/slog"
 
 	"github.com/coreofscience/go-bibx/cli/clients/openalex"
+	"github.com/coreofscience/go-bibx/cli/renderers"
 	"github.com/coreofscience/go-bibx/cli/repos"
 	"github.com/coreofscience/go-bibx/models"
 )
 
 type AnalysisService interface {
 	Store(ctx context.Context, query string, limit int) error
+	Query(ctx context.Context, category string, limit int, format string) error
 }
 
 type OpenAlexAnalysisService struct {
 	openalexClient openalex.Client
 	analysisRepo   repos.AnalysisRepo
+	renderers      map[string]renderers.Renderer
 }
 
 func NewOpenAlexAnalysisService(
 	openalexClient openalex.Client,
 	analysisRepo repos.AnalysisRepo,
+	rendererMap map[string]renderers.Renderer,
 ) *OpenAlexAnalysisService {
 	return &OpenAlexAnalysisService{
 		openalexClient: openalexClient,
 		analysisRepo:   analysisRepo,
+		renderers:      rendererMap,
 	}
 }
 
@@ -46,17 +51,9 @@ func (s *OpenAlexAnalysisService) Store(
 	if err != nil {
 		return fmt.Errorf("failed to create collection: %w", err)
 	}
-	collection, err = collection.RemoveCycles()
+	collection, err = collection.Clean()
 	if err != nil {
-		return fmt.Errorf("failed to remove cycles: %w", err)
-	}
-	collection, err = collection.RemoveDangling()
-	if err != nil {
-		return fmt.Errorf("failed to remove dangling articles: %w", err)
-	}
-	collection, err = collection.Giant()
-	if err != nil {
-		return fmt.Errorf("failed to find giant collection: %w", err)
+		return fmt.Errorf("failed to clean collection: %w", err)
 	}
 	collection, err = s.enrich(ctx, collection)
 	if err != nil {
@@ -116,4 +113,29 @@ func (s *OpenAlexAnalysisService) enrich(
 		newArticles = append(newArticles, newArticle)
 	}
 	return models.NewCollection(newArticles)
+}
+
+func (s *OpenAlexAnalysisService) Query(
+	ctx context.Context,
+	category string,
+	limit int,
+	format string,
+) error {
+	analysis, err := s.analysisRepo.Load(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to load analysis: %w", err)
+	}
+	results, err := analysis.Query(category, limit)
+	if err != nil {
+		return fmt.Errorf("failed to query analysis: %w", err)
+	}
+	renderer, ok := s.renderers[format]
+	if !ok {
+		return fmt.Errorf("unsupported format: %s", format)
+	}
+	err = renderer.Render(results)
+	if err != nil {
+		return fmt.Errorf("failed to render results: %w", err)
+	}
+	return nil
 }

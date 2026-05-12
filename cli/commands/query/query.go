@@ -2,15 +2,15 @@ package query
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"log/slog"
 	"os"
 
+	"github.com/coreofscience/go-bibx/cli/clients/openalex"
+	"github.com/coreofscience/go-bibx/cli/renderers"
+	"github.com/coreofscience/go-bibx/cli/repos"
+	"github.com/coreofscience/go-bibx/cli/services"
 	"github.com/coreofscience/go-bibx/internal/collections"
-	"github.com/coreofscience/go-bibx/internal/render"
 	"github.com/coreofscience/go-bibx/internal/utils"
-	"github.com/coreofscience/go-bibx/models"
 	"github.com/urfave/cli/v3"
 )
 
@@ -71,63 +71,35 @@ func New() *cli.Command {
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			utils.SetDefaultLogger(c.Bool("verbose"))
-			a, err := models.Load(c.String("file"))
+			openalexClient := openalex.NewRestyClient()
+			analysisRepo := repos.NewFileAnalysisRepo(
+				c.String("file"),
+			)
+			markdownRenderer, err := renderers.NewMarkdownRenderer(os.Stdout)
 			if err != nil {
-				slog.Error("failed to load analysis", "error", err)
+				slog.Error("failed to create markdown renderer", "error", err)
 				os.Exit(1)
 			}
-			results, err := a.Query(c.String("category"), c.Int("top"))
+			referenceRenderer, err := renderers.NewMarkdownReferenceRenderer(os.Stdout)
+			if err != nil {
+				slog.Error("failed to create markdown renderer", "error", err)
+				os.Exit(1)
+			}
+			service := services.NewOpenAlexAnalysisService(
+				openalexClient,
+				analysisRepo,
+				map[string]renderers.Renderer{
+					"markdown":  markdownRenderer,
+					"reference": referenceRenderer,
+					"json":      renderers.NewJSONRenderer(os.Stdout),
+				},
+			)
+			err = service.Query(ctx, c.String("category"), c.Int("top"), c.String("format"))
 			if err != nil {
 				slog.Error("failed to query analysis", "error", err)
 				os.Exit(1)
 			}
-			switch c.String("format") {
-			case "json":
-				bytes, err := json.MarshalIndent(results, "", "  ")
-				if err != nil {
-					slog.Error("failed to marshal results", "error", err)
-					os.Exit(1)
-				}
-				fmt.Println(string(bytes))
-				return nil
-			case "markdown":
-				renderer, err := render.NewMarkdownRenderer()
-				for _, result := range results {
-					if err != nil {
-						slog.Error("failed to create markdown encoder", "error", err)
-						os.Exit(1)
-					}
-					if !result.Article.Rich {
-						continue
-					}
-					str, err := renderer.Render(result.Article)
-					if err != nil {
-						slog.Error("failed rendering article", "error", err)
-					}
-					fmt.Println(str)
-				}
-				return nil
-			case "reference":
-				renderer, err := render.NewMarkdownRenderer()
-				for _, result := range results {
-					if err != nil {
-						slog.Error("failed to create markdown encoder", "error", err)
-						os.Exit(1)
-					}
-					if !result.Article.Rich {
-						continue
-					}
-					str, err := renderer.RenderReference(result.Article)
-					if err != nil {
-						slog.Error("failed rendering reference", "error", err)
-					}
-					fmt.Println(str)
-					fmt.Println()
-				}
-				return nil
-			default:
-				return cli.Exit("invalid format, must be one of: markdown, json", 1)
-			}
+			return nil
 		},
 	}
 }

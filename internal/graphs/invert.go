@@ -11,6 +11,9 @@ func Invert[V comparable](graph gograph.Graph[V]) gograph.Graph[V] {
 	for _, edge := range graph.AllEdges() {
 		source := gograph.NewVertex(edge.Source().Label())
 		destination := gograph.NewVertex(edge.Destination().Label())
+		if edge := inverted.GetEdge(destination, source); edge != nil {
+			continue
+		}
 		_, _ = inverted.AddEdge(destination, source)
 	}
 	return inverted

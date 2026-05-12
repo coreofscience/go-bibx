@@ -64,6 +64,7 @@ func New() *cli.Command {
 			service := services.NewOpenAlexAnalysisService(
 				openalexClient,
 				analysisRepo,
+				nil,
 			)
 			if err := service.Store(context.Background(), query, limit); err != nil {
 				slog.Error("failed to store analysis", "error", err)

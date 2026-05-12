@@ -1,18 +1,13 @@
-package render
+package renderers
 
 import (
 	"bytes"
-	"embed"
-	"fmt"
 	"strings"
 	"text/template"
 
 	"github.com/coreofscience/go-bibx/models"
 	"gopkg.in/yaml.v3"
 )
-
-//go:embed templates/*.md
-var templatesFS embed.FS
 
 func wrap(limit int, v any) string {
 	var s string
@@ -94,41 +89,4 @@ func render(templ *template.Template) func(name string, data any) (string, error
 		}
 		return buf.String(), nil
 	}
-}
-
-type MarkdownRenderer struct {
-	template *template.Template
-}
-
-func NewMarkdownRenderer() (*MarkdownRenderer, error) {
-	templ := template.New("")
-	funcs := template.FuncMap{
-		"wrap":        wrap,
-		"join":        join,
-		"frontMatter": frontMatter,
-		"render":      render(templ),
-	}
-	templ, err := templ.Funcs(funcs).ParseFS(templatesFS, "templates/*.md")
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse templates: %w", err)
-	}
-	return &MarkdownRenderer{
-		template: templ,
-	}, nil
-}
-
-func (e *MarkdownRenderer) Render(a *models.Article) (string, error) {
-	var buf bytes.Buffer
-	if err := e.template.ExecuteTemplate(&buf, "article.md", a); err != nil {
-		return "", fmt.Errorf("error rendering template: %w", err)
-	}
-	return buf.String(), nil
-}
-
-func (e *MarkdownRenderer) RenderReference(a *models.Article) (string, error) {
-	var buf bytes.Buffer
-	if err := e.template.ExecuteTemplate(&buf, "reference.md", a); err != nil {
-		return "", fmt.Errorf("error rendering template: %w", err)
-	}
-	return wrap(80, buf.String()), nil
 }

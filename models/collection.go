@@ -4,13 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"iter"
-	"log/slog"
 	"slices"
 
 	"github.com/coreofscience/go-bibx/internal/collections"
 	"github.com/coreofscience/go-bibx/internal/graphs"
 	"github.com/hmdsefi/gograph"
-	"github.com/hmdsefi/gograph/connectivity"
 )
 
 // Collection represents a collection of articles with methods to manage them.
@@ -161,112 +159,33 @@ func (c *Collection) CitationGraph() (gograph.Graph[string], error) {
 	return graph, nil
 }
 
-// CitationGraph returns a directed graph representing the citation relationships between articles in the collection.
-func (c *Collection) UndirectedCitationGraph() (gograph.Graph[string], error) {
-	graph := gograph.New[string]()
-	for _, article := range c.articles {
-		vertexKey := article.Key()
-		if vertexKey == nil {
-			continue
-		}
-		articleVertex := gograph.NewVertex(*vertexKey)
-		for _, ref := range article.References {
-			refKey := ref.Key()
-			if refKey == nil {
-				continue
-			}
-			refVertex := gograph.NewVertex(*refKey)
-			_, err := graph.AddEdge(articleVertex, refVertex)
-			if err != nil {
-				return nil, fmt.Errorf("failed to add edge: %w", err)
-			}
-		}
-	}
-	return graph, nil
-}
-
-// RemoveCycles removes cycles in the references of articles in the collection.
-func (c *Collection) RemoveCycles() (*Collection, error) {
+// Clean returns a clean version of the largest connected component of the collection.
+func (c *Collection) Clean() (*Collection, error) {
 	graph, err := c.CitationGraph()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build citation graph: %w", err)
 	}
-	cycles := slices.DeleteFunc(
-		connectivity.Tarjan(graph),
-		func(cycle []*gograph.Vertex[string]) bool {
-			return len(cycle) == 1
-		},
-	)
-	selfLoops := make([]string, 0, len(cycles))
-	for _, edge := range graph.AllEdges() {
-		if edge.Source().Label() == edge.Destination().Label() {
-			selfLoops = append(selfLoops, edge.Source().Label())
-		}
-	}
-	slog.Debug("found self-loops", "numSelfLoops", len(selfLoops))
-	if len(cycles) == 0 && len(selfLoops) == 0 {
-		slog.Debug("no cycles or self-loops found in graph")
-		return c, nil
-	}
-	slog.Warn("found cycles in the citation graph", "numCycles", len(cycles), "numSelfLoops", len(selfLoops))
-	toRemove := make([]string, 0, len(cycles))
-	for _, cycle := range cycles {
-		for _, vertex := range cycle {
-			toRemove = append(toRemove, vertex.Label())
-		}
-	}
-	toRemove = append(toRemove, selfLoops...)
-	slog.Debug("removing articles", "numArticles", len(toRemove))
-	return c.Purge(toRemove...)
-}
-
-// RemoveDangling removes articles that are not referenced by other articles.
-func (c *Collection) RemoveDangling() (*Collection, error) {
-	graph, err := c.CitationGraph()
+	graph, err = graphs.RemoveCycles(graph)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build citation graph: %w", err)
+		return nil, fmt.Errorf("failed to remove cycles from citation graph: %w", err)
 	}
-	toRemove := make([]string, 0)
-	for _, vertex := range graph.GetAllVertices() {
-		if vertex.InDegree() == 1 && vertex.OutDegree() == 0 {
-			toRemove = append(toRemove, vertex.Label())
-		}
-	}
-	slog.Debug("removing dangling articles", "numArticles", len(toRemove), "outOf", graph.Order())
-	return c.Purge(toRemove...)
-}
-
-// Giant splits the collection into connected components and returns a slice of collections.
-func (c *Collection) Giant() (*Collection, error) {
-	graph, err := c.UndirectedCitationGraph()
+	graph, err = graphs.RemoveDangling(graph)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build citation graph: %w", err)
+		return nil, fmt.Errorf("failed to remove dangling vertices from citation graph: %w", err)
 	}
-	wccs, err := graphs.WeaklyConnectedComponents(graph)
+	undirected, err := graphs.Undirected(graph)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find weakly connected components: %w", err)
+		return nil, fmt.Errorf("failed to convert citation graph to undirected: %w", err)
 	}
-	wccsLabels := make([][]string, 0, len(wccs))
-	for _, wcc := range wccs {
-		labels := make([]string, 0, len(wcc))
-		for _, vertex := range wcc {
-			labels = append(labels, vertex.Label())
-		}
-		wccsLabels = append(wccsLabels, labels)
+	giant, err := graphs.Giant(undirected)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute giant component of citation graph: %w", err)
 	}
-	slices.SortFunc(wccsLabels, func(a []string, b []string) int {
-		return len(b) - len(a)
-	})
-	slog.Debug(
-		"found sub collections",
-		"size", len(wccsLabels),
-		"largest", len(wccsLabels[0]),
-		"smallest", len(wccsLabels[len(wccsLabels)-1]),
-	)
-	if len(wccsLabels) == 0 {
-		return nil, fmt.Errorf("no sub collections found")
+	toKeep := make([]string, 0, giant.Order())
+	for _, vertex := range giant.GetAllVertices() {
+		toKeep = append(toKeep, vertex.Label())
 	}
-	return c.Keep(wccsLabels[0]...)
+	return c.Keep(toKeep...)
 }
 
 // MarshalJSON implements the json.Marshaler interface for Collection.
