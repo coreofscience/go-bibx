@@ -6,9 +6,11 @@ import (
 	"os"
 	"path"
 
-	"github.com/coreofscience/go-bibx/analysis"
+	"github.com/coreofscience/go-bibx/cli/clients/openalex"
+	"github.com/coreofscience/go-bibx/cli/repos"
+	"github.com/coreofscience/go-bibx/cli/services"
 	"github.com/coreofscience/go-bibx/internal/utils"
-	"github.com/coreofscience/go-bibx/sources"
+
 	"github.com/urfave/cli/v3"
 )
 
@@ -56,44 +58,14 @@ func New() *cli.Command {
 				os.Exit(1)
 			}
 			query := c.StringArg("query")
-			slog.Debug("inquiring for collection", "query", query)
-			if c.Args().Present() {
-				slog.Error("unexpected arguments", "args", c.Args().Slice())
-				os.Exit(1)
-			}
-			collection, err := sources.NewOpenAlexSource(
-				query,
-				sources.WithLimit(c.Int("limit")),
-				sources.WithEnrichReferences(sources.EnrichReferencesNone),
-			).Build(context.Background())
-			if err != nil {
-				slog.Error("failed to build collection", "error", err)
-				os.Exit(1)
-			}
-			collection, err = collection.RemoveCycles()
-			if err != nil {
-				slog.Error("failed to remove cycles", "error", err)
-				os.Exit(1)
-			}
-			collection, err = collection.RemoveDangling()
-			if err != nil {
-				slog.Error("failed to remove dangling articles", "error", err)
-				os.Exit(1)
-			}
-			collection, err = collection.Giant()
-			if err != nil {
-				slog.Error("failed to find giant collection", "error", err)
-				os.Exit(1)
-			}
-			collection, err = collection.Enrich(ctx)
-			if err != nil {
-				slog.Error("failed to enrich collection", "error", err)
-				os.Exit(1)
-			}
-			result := analysis.New(collection)
-			slog.Debug("storing analysis", "path", p)
-			err = result.Store(p)
-			if err != nil {
+			limit := c.Int("limit")
+			openalexClient := openalex.NewRestyClient()
+			analysisRepo := repos.NewFileAnalysisRepo(p)
+			service := services.NewOpenAlexAnalysisService(
+				openalexClient,
+				analysisRepo,
+			)
+			if err := service.Store(context.Background(), query, limit); err != nil {
 				slog.Error("failed to store analysis", "error", err)
 				os.Exit(1)
 			}

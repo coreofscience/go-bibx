@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coreofscience/go-bibx/internal/clients/openalex"
+	"github.com/coreofscience/go-bibx/cli/clients/openalex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"resty.dev/v3"

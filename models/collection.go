@@ -1,15 +1,12 @@
-package collection
+package models
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"iter"
 	"log/slog"
 	"slices"
 
-	"github.com/coreofscience/go-bibx/articles"
-	"github.com/coreofscience/go-bibx/internal/clients/openalex"
 	"github.com/coreofscience/go-bibx/internal/collections"
 	"github.com/coreofscience/go-bibx/internal/graphs"
 	"github.com/hmdsefi/gograph"
@@ -18,11 +15,11 @@ import (
 
 // Collection represents a collection of articles with methods to manage them.
 type Collection struct {
-	articles articles.Articles
+	articles Articles
 }
 
-// New creates a new Collection instance with deduplicated articles.
-func New(a articles.Articles) (*Collection, error) {
+// NewCollection creates a new Collection instance with deduplicated articles.
+func NewCollection(a Articles) (*Collection, error) {
 	a, err := a.Deduplicate()
 	if err != nil {
 		return nil, fmt.Errorf("failed to deduplicate articles: %w", err)
@@ -39,9 +36,9 @@ func (c *Collection) Len() int {
 }
 
 // Main returns an iterator over the main articles in the collection, excluding duplicates.
-func (c *Collection) Main() iter.Seq[*articles.Article] {
-	return func(yield func(*articles.Article) bool) {
-		seen := make(map[*articles.Article]struct{}, 0)
+func (c *Collection) Main() iter.Seq[*Article] {
+	return func(yield func(*Article) bool) {
+		seen := make(map[*Article]struct{}, 0)
 		for _, article := range c.articles {
 			if _, ok := seen[article]; ok {
 				continue
@@ -55,9 +52,9 @@ func (c *Collection) Main() iter.Seq[*articles.Article] {
 }
 
 // All returns an iterator over all articles in the collection, including their references.
-func (c *Collection) All() iter.Seq[*articles.Article] {
-	return func(yield func(*articles.Article) bool) {
-		seen := make(map[*articles.Article]struct{}, 0)
+func (c *Collection) All() iter.Seq[*Article] {
+	return func(yield func(*Article) bool) {
+		seen := make(map[*Article]struct{}, 0)
 		for _, article := range c.articles {
 			if _, ok := seen[article]; ok {
 				continue
@@ -97,7 +94,7 @@ func (c *Collection) Merge(other *Collection) (*Collection, error) {
 
 func (c *Collection) Keep(labels ...string) (*Collection, error) {
 	toKeep := collections.NewSet(labels...)
-	newArticles := make([]*articles.Article, 0, len(c.articles))
+	newArticles := make([]*Article, 0, len(c.articles))
 	for _, article := range c.articles {
 		if !toKeep.Contains(*article.Key()) {
 			continue
@@ -105,10 +102,10 @@ func (c *Collection) Keep(labels ...string) (*Collection, error) {
 		newArticle := article.Clone()
 		shouldCleanUpReferences := slices.ContainsFunc(
 			newArticle.References,
-			func(a *articles.Article) bool { return !toKeep.Contains(*a.Key()) },
+			func(a *Article) bool { return !toKeep.Contains(*a.Key()) },
 		)
 		if shouldCleanUpReferences {
-			newReferences := make([]*articles.Article, 0, len(newArticle.References))
+			newReferences := make([]*Article, 0, len(newArticle.References))
 			for _, ref := range newArticle.References {
 				if toKeep.Contains(*ref.Key()) {
 					newReferences = append(newReferences, ref)
@@ -118,26 +115,26 @@ func (c *Collection) Keep(labels ...string) (*Collection, error) {
 		}
 		newArticles = append(newArticles, newArticle)
 	}
-	return New(newArticles)
+	return NewCollection(newArticles)
 }
 
 // Purge removes articles from the collection by their IDs.
 func (c *Collection) Purge(ids ...string) (*Collection, error) {
 	toRemove := collections.NewSet(ids...)
-	newArticles := make([]*articles.Article, 0, len(c.articles))
+	newArticles := make([]*Article, 0, len(c.articles))
 	for _, article := range c.articles {
 		if article.IDs.Intersect(toRemove).Len() > 0 {
 			continue
 		}
 		newArticle := article.PurgeReferences(ids...)
-		newReferences := make([]*articles.Article, 0, len(newArticle.References))
+		newReferences := make([]*Article, 0, len(newArticle.References))
 		for _, ref := range newArticle.References {
 			newReferences = append(newReferences, ref.PurgeReferences(ids...))
 		}
 		newArticle.References = newReferences
 		newArticles = append(newArticles, newArticle)
 	}
-	return New(newArticles)
+	return NewCollection(newArticles)
 }
 
 // CitationGraph returns a directed graph representing the citation relationships between articles in the collection.
@@ -260,62 +257,16 @@ func (c *Collection) Giant() (*Collection, error) {
 	slices.SortFunc(wccsLabels, func(a []string, b []string) int {
 		return len(b) - len(a)
 	})
-	slog.Debug("found sub collections", "size", len(wccsLabels), "largest", len(wccsLabels[0]), "smallest", len(wccsLabels[len(wccsLabels)-1]))
+	slog.Debug(
+		"found sub collections",
+		"size", len(wccsLabels),
+		"largest", len(wccsLabels[0]),
+		"smallest", len(wccsLabels[len(wccsLabels)-1]),
+	)
 	if len(wccsLabels) == 0 {
 		return nil, fmt.Errorf("no sub collections found")
 	}
 	return c.Keep(wccsLabels[0]...)
-}
-
-func (c *Collection) Enrich(ctx context.Context) (*Collection, error) {
-	toEnrich := make(articles.Articles, 0, len(c.articles))
-	for article := range c.All() {
-		if !article.Rich {
-			toEnrich = append(toEnrich, article)
-		}
-	}
-	slog.Debug("enriching articles", "count", len(toEnrich))
-	ids := make([]string, 0, len(toEnrich))
-	for _, article := range toEnrich {
-		id, ok := article.ID("openalex")
-		if ok {
-			ids = append(ids, id)
-		}
-	}
-	// TODO: Use different clients
-	slog.Debug("listing works by ids", "count", len(ids))
-	client := openalex.NewRestyClient()
-	works, err := client.ListArticlesByIDs(ctx, ids)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list articles by ids: %w", err)
-	}
-	idToArticle := make(map[string]*articles.Article, len(works))
-	for _, work := range works {
-		idToArticle[work.ID] = openalex.WorkToArticle(&work)
-	}
-	newArticles := make(articles.Articles, 0, len(c.articles))
-	for _, article := range c.articles {
-		if !article.Rich {
-			slog.Warn("found a main work still to enrich, which is weird")
-		}
-		newArticle := article.Clone()
-		newReferences := make(articles.References, 0, len(article.References))
-		for _, ref := range article.References {
-			id, ok := ref.ID("openalex")
-			if !ok {
-				newReferences = append(newReferences, ref)
-				continue
-			}
-			if enriched, ok := idToArticle[id]; ok {
-				newReferences = append(newReferences, enriched)
-			} else {
-				newReferences = append(newReferences, ref)
-			}
-		}
-		newArticle.References = newReferences
-		newArticles = append(newArticles, newArticle)
-	}
-	return New(newArticles)
 }
 
 // MarshalJSON implements the json.Marshaler interface for Collection.

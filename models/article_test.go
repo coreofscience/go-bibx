@@ -1,10 +1,10 @@
-package articles_test
+package models_test
 
 import (
 	"testing"
 
-	"github.com/coreofscience/go-bibx/articles"
 	"github.com/coreofscience/go-bibx/internal/collections"
+	"github.com/coreofscience/go-bibx/models"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -12,117 +12,117 @@ func TestArticle_Merge(t *testing.T) {
 	tests := []struct {
 		name string // description of this test case
 		// Named input parameters for target function.
-		article *articles.Article // the receiver type
-		other   *articles.Article
-		want    *articles.Article
+		article *models.Article // the receiver type
+		other   *models.Article
+		want    *models.Article
 	}{
 		{
 			name:    "Merge keeps the longest label",
-			article: &articles.Article{Label: "A1"},
-			other:   &articles.Article{Label: "AAAAA2"},
-			want:    &articles.Article{Label: "AAAAA2"},
+			article: &models.Article{Label: "A1"},
+			other:   &models.Article{Label: "AAAAA2"},
+			want:    &models.Article{Label: "AAAAA2"},
 		},
 		{
 			name:    "Merge keeps the lowest label",
-			article: &articles.Article{Label: "A1"},
-			other:   &articles.Article{Label: "A2"},
-			want:    &articles.Article{Label: "A1"},
+			article: &models.Article{Label: "A1"},
+			other:   &models.Article{Label: "A2"},
+			want:    &models.Article{Label: "A1"},
 		},
 		{
 			name:    "Merge keeps the lowest label",
-			article: &articles.Article{Label: "A2"},
-			other:   &articles.Article{Label: "A1"},
-			want:    &articles.Article{Label: "A1"},
+			article: &models.Article{Label: "A2"},
+			other:   &models.Article{Label: "A1"},
+			want:    &models.Article{Label: "A1"},
 		},
 		{
 			name:    "Merge keeps the longest label when longest is in the receiver",
-			article: &articles.Article{Label: "AAAAA2"},
-			other:   &articles.Article{Label: "A1"},
-			want:    &articles.Article{Label: "AAAAA2"},
+			article: &models.Article{Label: "AAAAA2"},
+			other:   &models.Article{Label: "A1"},
+			want:    &models.Article{Label: "AAAAA2"},
 		},
 		{
 			name:    "Merge makes an union of IDs",
-			article: &articles.Article{IDs: collections.NewSet("id1", "id2")},
-			other:   &articles.Article{IDs: collections.NewSet("id2", "id3")},
-			want:    &articles.Article{IDs: collections.NewSet("id1", "id2", "id3")},
+			article: &models.Article{IDs: collections.NewSet("id1", "id2")},
+			other:   &models.Article{IDs: collections.NewSet("id2", "id3")},
+			want:    &models.Article{IDs: collections.NewSet("id1", "id2", "id3")},
 		},
 		{
 			name:    "Merge keeps the longest list of authors",
-			article: &articles.Article{Authors: []string{"Alice", "Bob"}},
-			other:   &articles.Article{Authors: []string{"Alice"}},
-			want:    &articles.Article{Authors: []string{"Alice", "Bob"}},
+			article: &models.Article{Authors: []string{"Alice", "Bob"}},
+			other:   &models.Article{Authors: []string{"Alice"}},
+			want:    &models.Article{Authors: []string{"Alice", "Bob"}},
 		},
 		{
 			name:    "Merge keeps the longest list of authors when longest is in the other",
-			article: &articles.Article{Authors: []string{"Alice"}},
-			other:   &articles.Article{Authors: []string{"Alice", "Bob"}},
-			want:    &articles.Article{Authors: []string{"Alice", "Bob"}},
+			article: &models.Article{Authors: []string{"Alice"}},
+			other:   &models.Article{Authors: []string{"Alice", "Bob"}},
+			want:    &models.Article{Authors: []string{"Alice", "Bob"}},
 		},
 		{
 			name:    "Merge keeps the year if present",
-			article: &articles.Article{},
-			other:   &articles.Article{Year: new(2021)},
-			want:    &articles.Article{Year: new(2021)},
+			article: &models.Article{},
+			other:   &models.Article{Year: new(2021)},
+			want:    &models.Article{Year: new(2021)},
 		},
 		{
 			name:    "Merge keeps the title if present",
-			article: &articles.Article{},
-			other:   &articles.Article{Title: new("Title B")},
-			want:    &articles.Article{Title: new("Title B")},
+			article: &models.Article{},
+			other:   &models.Article{Title: new("Title B")},
+			want:    &models.Article{Title: new("Title B")},
 		},
 		{
 			name:    "Merge keeps the journal if present",
-			article: &articles.Article{},
-			other:   &articles.Article{Journal: new("Journal B")},
-			want:    &articles.Article{Journal: new("Journal B")},
+			article: &models.Article{},
+			other:   &models.Article{Journal: new("Journal B")},
+			want:    &models.Article{Journal: new("Journal B")},
 		},
 		{
 			name:    "Merge keeps the volume if present",
-			article: &articles.Article{},
-			other:   &articles.Article{Volume: new("Volume B")},
-			want:    &articles.Article{Volume: new("Volume B")},
+			article: &models.Article{},
+			other:   &models.Article{Volume: new("Volume B")},
+			want:    &models.Article{Volume: new("Volume B")},
 		},
 		{
 			name:    "Merge keeps the issue if present",
-			article: &articles.Article{},
-			other:   &articles.Article{Issue: new("Issue B")},
-			want:    &articles.Article{Issue: new("Issue B")},
+			article: &models.Article{},
+			other:   &models.Article{Issue: new("Issue B")},
+			want:    &models.Article{Issue: new("Issue B")},
 		},
 		{
 			name:    "Merge keeps the page if present",
-			article: &articles.Article{},
-			other:   &articles.Article{Page: new("Page B")},
-			want:    &articles.Article{Page: new("Page B")},
+			article: &models.Article{},
+			other:   &models.Article{Page: new("Page B")},
+			want:    &models.Article{Page: new("Page B")},
 		},
 		{
 			name:    "Merge keeps the DOI if present",
-			article: &articles.Article{},
-			other:   &articles.Article{DOI: new("DOI B")},
-			want:    &articles.Article{DOI: new("DOI B")},
+			article: &models.Article{},
+			other:   &models.Article{DOI: new("DOI B")},
+			want:    &models.Article{DOI: new("DOI B")},
 		},
 		{
 			name:    "Merge keeps the permalink if present",
-			article: &articles.Article{},
-			other:   &articles.Article{Permalink: new("Permalink B")},
-			want:    &articles.Article{Permalink: new("Permalink B")},
+			article: &models.Article{},
+			other:   &models.Article{Permalink: new("Permalink B")},
+			want:    &models.Article{Permalink: new("Permalink B")},
 		},
 		{
 			name:    "Merge merges keywords",
-			article: &articles.Article{Keywords: collections.NewSet("keyword1", "keyword2")},
-			other:   &articles.Article{Keywords: collections.NewSet("keyword1")},
-			want:    &articles.Article{Keywords: collections.NewSet("keyword1", "keyword2")},
+			article: &models.Article{Keywords: collections.NewSet("keyword1", "keyword2")},
+			other:   &models.Article{Keywords: collections.NewSet("keyword1")},
+			want:    &models.Article{Keywords: collections.NewSet("keyword1", "keyword2")},
 		},
 		{
 			name:    "Merge merges all keywords",
-			article: &articles.Article{Keywords: collections.NewSet("keyword1", "keyword2")},
-			other:   &articles.Article{Keywords: collections.NewSet("keyword3", "keyword4")},
-			want:    &articles.Article{Keywords: collections.NewSet("keyword1", "keyword2", "keyword3", "keyword4")},
+			article: &models.Article{Keywords: collections.NewSet("keyword1", "keyword2")},
+			other:   &models.Article{Keywords: collections.NewSet("keyword3", "keyword4")},
+			want:    &models.Article{Keywords: collections.NewSet("keyword1", "keyword2", "keyword3", "keyword4")},
 		},
 		{
 			name:    "Keeps the longest list of references",
-			article: &articles.Article{References: []*articles.Article{{Label: "Ref1"}, {Label: "Ref2"}}},
-			other:   &articles.Article{References: []*articles.Article{{Label: "Ref1"}}},
-			want:    &articles.Article{References: []*articles.Article{{Label: "Ref1"}, {Label: "Ref2"}}},
+			article: &models.Article{References: []*models.Article{{Label: "Ref1"}, {Label: "Ref2"}}},
+			other:   &models.Article{References: []*models.Article{{Label: "Ref1"}}},
+			want:    &models.Article{References: []*models.Article{{Label: "Ref1"}, {Label: "Ref2"}}},
 		},
 	}
 	for _, tt := range tests {
@@ -135,23 +135,23 @@ func TestArticle_Merge(t *testing.T) {
 
 func TestArticle_Key(t *testing.T) {
 	tests := []struct {
-		name    string            // description of this test case
-		article *articles.Article // the receiver type
+		name    string          // description of this test case
+		article *models.Article // the receiver type
 		want    *string
 	}{
 		{
 			name:    "Key returns nil when IDs is nil",
-			article: &articles.Article{},
+			article: &models.Article{},
 			want:    nil,
 		},
 		{
 			name:    "Key returns nil when no IDs are present",
-			article: &articles.Article{IDs: collections.NewSet[string]()},
+			article: &models.Article{IDs: collections.NewSet[string]()},
 			want:    nil,
 		},
 		{
 			name:    "Key returns the first ID when IDs are present",
-			article: &articles.Article{IDs: collections.NewSet("id1", "id2")},
+			article: &models.Article{IDs: collections.NewSet("id1", "id2")},
 			want:    new("id1"),
 		},
 	}
@@ -165,8 +165,8 @@ func TestArticle_Key(t *testing.T) {
 
 func TestArticle_SimpleLabel(t *testing.T) {
 	tests := []struct {
-		name    string            // description of this test case
-		article *articles.Article // the receiver type
+		name    string          // description of this test case
+		article *models.Article // the receiver type
 		want    *string
 	}{
 		{
@@ -176,27 +176,27 @@ func TestArticle_SimpleLabel(t *testing.T) {
 		},
 		{
 			name:    "SimpleLabel returns nil when no parts are available",
-			article: &articles.Article{Label: ""},
+			article: &models.Article{Label: ""},
 			want:    nil,
 		},
 		{
 			name:    "SimpleLabel returns the first author when available",
-			article: &articles.Article{Authors: []string{"Alice"}},
+			article: &models.Article{Authors: []string{"Alice"}},
 			want:    new("Alice"),
 		},
 		{
 			name:    "SimpleLabel returns the first author and year when available",
-			article: &articles.Article{Authors: []string{"Alice"}, Year: new(2021)},
+			article: &models.Article{Authors: []string{"Alice"}, Year: new(2021)},
 			want:    new("Alice, 2021"),
 		},
 		{
 			name:    "SimpleLabel returns the first author and year with multiple authors",
-			article: &articles.Article{Authors: []string{"Alice", "Bob"}, Year: new(2021)},
+			article: &models.Article{Authors: []string{"Alice", "Bob"}, Year: new(2021)},
 			want:    new("Alice, 2021"),
 		},
 		{
 			name: "SimpleLabel returns the first author, year and journal when available",
-			article: &articles.Article{
+			article: &models.Article{
 				Authors: []string{"Alice"},
 				Year:    new(2021),
 				Journal: new("Journal A"),
@@ -205,7 +205,7 @@ func TestArticle_SimpleLabel(t *testing.T) {
 		},
 		{
 			name: "SimpleLabel returns the first author, year, journal and volume when available",
-			article: &articles.Article{
+			article: &models.Article{
 				Authors: []string{"Alice"},
 				Year:    new(2021),
 				Journal: new("Journal A"),
@@ -215,7 +215,7 @@ func TestArticle_SimpleLabel(t *testing.T) {
 		},
 		{
 			name: "SimpleLabel returns the first author, year, journal, volume and page when available",
-			article: &articles.Article{
+			article: &models.Article{
 				Authors: []string{"Alice"},
 				Year:    new(2021),
 				Journal: new("Journal A"),
@@ -226,7 +226,7 @@ func TestArticle_SimpleLabel(t *testing.T) {
 		},
 		{
 			name: "SimpleLabel returns the first author, year, journal, volume, page and DOI when available",
-			article: &articles.Article{
+			article: &models.Article{
 				Authors: []string{"Alice"},
 				Year:    new(2021),
 				Journal: new("Journal A"),
@@ -247,8 +247,8 @@ func TestArticle_SimpleLabel(t *testing.T) {
 
 func TestArticle_SimpleId(t *testing.T) {
 	tests := []struct {
-		name    string            // description of this test case
-		article *articles.Article // the receiver type
+		name    string          // description of this test case
+		article *models.Article // the receiver type
 		want    *string
 	}{
 		{
@@ -258,27 +258,27 @@ func TestArticle_SimpleId(t *testing.T) {
 		},
 		{
 			name:    "SimpleId returns nil when no authors are present",
-			article: &articles.Article{Authors: []string{}, Year: new(2021)},
+			article: &models.Article{Authors: []string{}, Year: new(2021)},
 			want:    nil,
 		},
 		{
 			name:    "SimpleId returns nil when year is nil",
-			article: &articles.Article{Authors: []string{"Alice"}, Year: nil},
+			article: &models.Article{Authors: []string{"Alice"}, Year: nil},
 			want:    nil,
 		},
 		{
 			name:    "SimpleId returns first author's name and year",
-			article: &articles.Article{Authors: []string{"Alice Smith"}, Year: new(2021)},
+			article: &models.Article{Authors: []string{"Alice Smith"}, Year: new(2021)},
 			want:    new("alice2021"),
 		},
 		{
 			name:    "SimpleId returns first author's name and year with multiple authors",
-			article: &articles.Article{Authors: []string{"Alice Smith", "Bob Johnson"}, Year: new(2021)},
+			article: &models.Article{Authors: []string{"Alice Smith", "Bob Johnson"}, Year: new(2021)},
 			want:    new("alice2021"),
 		},
 		{
 			name:    "SimpleId returns first author's name and year with comma in name",
-			article: &articles.Article{Authors: []string{"Smith, Alice"}, Year: new(2021)},
+			article: &models.Article{Authors: []string{"Smith, Alice"}, Year: new(2021)},
 			want:    new("smith2021"),
 		},
 	}
@@ -292,8 +292,8 @@ func TestArticle_SimpleId(t *testing.T) {
 
 func TestArticle_GetPermalink(t *testing.T) {
 	tests := []struct {
-		name    string            // description of this test case
-		article *articles.Article // the receiver type
+		name    string          // description of this test case
+		article *models.Article // the receiver type
 		want    *string
 	}{
 		{
@@ -303,7 +303,7 @@ func TestArticle_GetPermalink(t *testing.T) {
 		},
 		{
 			name: "GetPermalink returns the permalink when permalink is set regardless of DOI",
-			article: &articles.Article{
+			article: &models.Article{
 				Permalink: new("https://example.com/article"),
 				DOI:       new("10.1000/xyz123"),
 			},
@@ -311,12 +311,12 @@ func TestArticle_GetPermalink(t *testing.T) {
 		},
 		{
 			name:    "GetPermalink returns the DOI as permalink when permalink is not set",
-			article: &articles.Article{DOI: new("10.1000/xyz123")},
+			article: &models.Article{DOI: new("10.1000/xyz123")},
 			want:    new("https://doi.org/10.1000/xyz123"),
 		},
 		{
 			name:    "GetPermalink returns nil when neither permalink nor DOI is set",
-			article: &articles.Article{Label: "article"},
+			article: &models.Article{Label: "article"},
 			want:    nil,
 		},
 	}
@@ -330,18 +330,18 @@ func TestArticle_GetPermalink(t *testing.T) {
 
 func TestArticle_AddSimpleId(t *testing.T) {
 	tests := []struct {
-		name    string            // description of this test case
-		article *articles.Article // the receiver type
-		want    *articles.Article
+		name    string          // description of this test case
+		article *models.Article // the receiver type
+		want    *models.Article
 	}{
 		{
 			name: "AddSimpleId adds simple ID when SimpleId is available",
-			article: &articles.Article{
+			article: &models.Article{
 				Authors: []string{"Alice Smith"},
 				Year:    new(2021),
 				IDs:     collections.NewSet[string](),
 			},
-			want: &articles.Article{
+			want: &models.Article{
 				Authors: []string{"Alice Smith"},
 				Year:    new(2021),
 				IDs:     collections.NewSet("simple:alice2021"),
@@ -349,12 +349,12 @@ func TestArticle_AddSimpleId(t *testing.T) {
 		},
 		{
 			name: "AddSimpleId does not add simple ID when SimpleId is nil",
-			article: &articles.Article{
+			article: &models.Article{
 				Authors: []string{"Alice Smith"},
 				Year:    nil,
 				IDs:     collections.NewSet[string](),
 			},
-			want: &articles.Article{
+			want: &models.Article{
 				Authors: []string{"Alice Smith"},
 				Year:    nil,
 				IDs:     collections.NewSet[string](),
@@ -372,17 +372,17 @@ func TestArticle_AddSimpleId(t *testing.T) {
 
 func TestArticle_SetSimpleLabel(t *testing.T) {
 	tests := []struct {
-		name    string            // description of this test case
-		article *articles.Article // the receiver type
-		want    *articles.Article
+		name    string          // description of this test case
+		article *models.Article // the receiver type
+		want    *models.Article
 	}{
 		{
 			name: "SetSimpleLabel sets simple label when SimpleLabel is available",
-			article: &articles.Article{
+			article: &models.Article{
 				Authors: []string{"Alice Smith"},
 				Year:    new(2021),
 			},
-			want: &articles.Article{
+			want: &models.Article{
 				Authors: []string{"Alice Smith"},
 				Year:    new(2021),
 				Label:   "Alice Smith, 2021",
@@ -390,11 +390,11 @@ func TestArticle_SetSimpleLabel(t *testing.T) {
 		},
 		{
 			name: "SetSimpleLabel does not change label when SimpleLabel is nil",
-			article: &articles.Article{
+			article: &models.Article{
 				Authors: []string{},
 				Label:   "Existing Label",
 			},
-			want: &articles.Article{
+			want: &models.Article{
 				Authors: []string{},
 				Label:   "Existing Label",
 			},

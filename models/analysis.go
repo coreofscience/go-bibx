@@ -1,4 +1,4 @@
-package analysis
+package models
 
 import (
 	"cmp"
@@ -11,8 +11,6 @@ import (
 	"slices"
 
 	"github.com/coreofscience/go-bibx/algorithms"
-	"github.com/coreofscience/go-bibx/articles"
-	"github.com/coreofscience/go-bibx/collection"
 )
 
 type Node struct {
@@ -21,12 +19,12 @@ type Node struct {
 	Rootness  float64             `json:"rootness"`
 	Trunkness float64             `json:"trunkness"`
 	Leafness  float64             `json:"leafness"`
-	Article   *articles.Article   `json:"article"`
+	Article   *Article            `json:"article"`
 }
 
 type Result struct {
-	Score   float64           `json:"score"`
-	Article *articles.Article `json:"article"`
+	Score   float64  `json:"score"`
+	Article *Article `json:"article"`
 }
 
 type Link struct {
@@ -39,7 +37,7 @@ type Analysis struct {
 	Links []*Link `json:"links"`
 }
 
-func New(c *collection.Collection) *Analysis {
+func NewAnalysis(c *Collection) *Analysis {
 	nodes := make([]*Node, 0, c.Len())
 	graph, err := c.CitationGraph()
 	if err != nil {

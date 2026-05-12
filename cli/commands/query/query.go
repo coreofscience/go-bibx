@@ -7,10 +7,10 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/coreofscience/go-bibx/analysis"
 	"github.com/coreofscience/go-bibx/internal/collections"
 	"github.com/coreofscience/go-bibx/internal/render"
 	"github.com/coreofscience/go-bibx/internal/utils"
+	"github.com/coreofscience/go-bibx/models"
 	"github.com/urfave/cli/v3"
 )
 
@@ -71,7 +71,7 @@ func New() *cli.Command {
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			utils.SetDefaultLogger(c.Bool("verbose"))
-			a, err := analysis.Load(c.String("file"))
+			a, err := models.Load(c.String("file"))
 			if err != nil {
 				slog.Error("failed to load analysis", "error", err)
 				os.Exit(1)

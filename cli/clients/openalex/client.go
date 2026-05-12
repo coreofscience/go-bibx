@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreofscience/go-bibx/articles"
 	"github.com/coreofscience/go-bibx/internal/collections"
+	"github.com/coreofscience/go-bibx/models"
 	"golang.org/x/sync/errgroup"
 	"resty.dev/v3"
 )
@@ -267,7 +267,6 @@ func jsonFields(t any) []string {
 	}
 	tType := v.Type()
 	for field := range tType.Fields() {
-		field := field
 		jsonTag := field.Tag.Get("json")
 		if jsonTag != "" && jsonTag != "-" {
 			fields = append(fields, jsonTag)
@@ -288,7 +287,7 @@ func chunks[T any](slice []T, chunkSize int) [][]T {
 }
 
 // WorkToArticle transforms a Work to an Article.
-func WorkToArticle(work *Work) *articles.Article {
+func WorkToArticle(work *Work) *models.Article {
 	ids := collections.NewSet[string]()
 	for source, id := range work.IDs {
 		realID := id
@@ -314,7 +313,7 @@ func WorkToArticle(work *Work) *articles.Article {
 	if work.PrimaryLocation != nil && work.PrimaryLocation.LandingPageURL != nil {
 		permalink = work.PrimaryLocation.LandingPageURL
 	}
-	references := make([]*articles.Article, len(work.ReferencedWorks))
+	references := make([]*models.Article, len(work.ReferencedWorks))
 	for i, reference := range work.ReferencedWorks {
 		references[i] = ReferenceToArticle(reference)
 	}
@@ -323,7 +322,7 @@ func WorkToArticle(work *Work) *articles.Article {
 		keywords.Add(keyword.DisplayName)
 	}
 	abstract := invertAbstract(work.AbstractInvertedIndex)
-	return &articles.Article{
+	return &models.Article{
 		Label:      work.ID,
 		IDs:        ids,
 		Authors:    authors,
@@ -344,8 +343,8 @@ func WorkToArticle(work *Work) *articles.Article {
 }
 
 // ReferenceToArticle transforms an OpenAlex ID to an Article.
-func ReferenceToArticle(reference string) *articles.Article {
-	return &articles.Article{
+func ReferenceToArticle(reference string) *models.Article {
+	return &models.Article{
 		Label:     reference,
 		IDs:       collections.NewSet(fmt.Sprintf("openalex:%s", reference)),
 		Permalink: &reference,

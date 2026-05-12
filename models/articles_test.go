@@ -1,25 +1,25 @@
-package articles_test
+package models_test
 
 import (
 	"slices"
 	"testing"
 
-	"github.com/coreofscience/go-bibx/articles"
 	"github.com/coreofscience/go-bibx/internal/collections"
+	"github.com/coreofscience/go-bibx/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestArticles_All(t *testing.T) {
-	referenced := &articles.Article{
+	referenced := &models.Article{
 		Label:      "referenced",
 		IDs:        collections.NewSet("ref1", "ref2"),
 		References: nil,
 	}
 	tests := []struct {
 		name     string
-		articles articles.Articles
-		want     []*articles.Article
+		articles models.Articles
+		want     []*models.Article
 	}{
 		{
 			name:     "nil articles",
@@ -28,19 +28,19 @@ func TestArticles_All(t *testing.T) {
 		},
 		{
 			name:     "empty articles",
-			articles: articles.Articles{},
+			articles: models.Articles{},
 			want:     nil,
 		},
 		{
 			name: "single article",
-			articles: articles.Articles{
+			articles: models.Articles{
 				{
 					Label:      "single",
 					IDs:        collections.NewSet("single1"),
 					References: nil,
 				},
 			},
-			want: articles.Articles{
+			want: models.Articles{
 				{
 					Label:      "single",
 					IDs:        collections.NewSet("single1"),
@@ -50,30 +50,30 @@ func TestArticles_All(t *testing.T) {
 		},
 		{
 			name: "article with references",
-			articles: articles.Articles{
+			articles: models.Articles{
 				{
 					Label:      "main",
 					IDs:        collections.NewSet("main1"),
-					References: articles.References{referenced},
+					References: models.References{referenced},
 				},
 				referenced,
 			},
-			want: articles.Articles{
+			want: models.Articles{
 				{
 					Label:      "main",
 					IDs:        collections.NewSet("main1"),
-					References: articles.References{referenced},
+					References: models.References{referenced},
 				},
 				referenced,
 			},
 		},
 		{
 			name: "duplicate articles",
-			articles: articles.Articles{
+			articles: models.Articles{
 				referenced,
 				referenced, // duplicate
 			},
-			want: []*articles.Article{
+			want: []*models.Article{
 				referenced,
 			},
 		},
@@ -90,8 +90,8 @@ func TestArticles_UniqueById(t *testing.T) {
 	tests := []struct {
 		name string // description of this test case
 		// Named input parameters for target function.
-		articles articles.Articles
-		want     map[string]*articles.Article
+		articles models.Articles
+		want     map[string]*models.Article
 		wantErr  bool
 	}{
 		{
@@ -102,20 +102,20 @@ func TestArticles_UniqueById(t *testing.T) {
 		},
 		{
 			name:     "empty articles",
-			articles: articles.Articles{},
-			want:     map[string]*articles.Article{},
+			articles: models.Articles{},
+			want:     map[string]*models.Article{},
 			wantErr:  false,
 		},
 		{
 			name: "single article with IDs",
-			articles: articles.Articles{
+			articles: models.Articles{
 				{
 					Label:      "single",
 					IDs:        collections.NewSet("single1"),
 					References: nil,
 				},
 			},
-			want: map[string]*articles.Article{
+			want: map[string]*models.Article{
 				"single1": {
 					Label:      "single",
 					IDs:        collections.NewSet("single1"),
@@ -126,7 +126,7 @@ func TestArticles_UniqueById(t *testing.T) {
 		},
 		{
 			name: "multiple articles with unique IDs",
-			articles: articles.Articles{
+			articles: models.Articles{
 				{
 					Label:      "article1",
 					IDs:        collections.NewSet("id1"),
@@ -138,7 +138,7 @@ func TestArticles_UniqueById(t *testing.T) {
 					References: nil,
 				},
 			},
-			want: map[string]*articles.Article{
+			want: map[string]*models.Article{
 				"id1": {
 					Label:      "article1",
 					IDs:        collections.NewSet("id1"),
@@ -154,7 +154,7 @@ func TestArticles_UniqueById(t *testing.T) {
 		},
 		{
 			name: "articles with overlapping IDs",
-			articles: articles.Articles{
+			articles: models.Articles{
 				{
 					Label:      "article1",
 					IDs:        collections.NewSet("id1", "shared"),
@@ -166,7 +166,7 @@ func TestArticles_UniqueById(t *testing.T) {
 					References: nil,
 				},
 			},
-			want: map[string]*articles.Article{
+			want: map[string]*models.Article{
 				"id1": {
 					Label:      "article1",
 					IDs:        collections.NewSet("id1", "id2", "shared"),
@@ -187,11 +187,11 @@ func TestArticles_UniqueById(t *testing.T) {
 		},
 		{
 			name: "articles that are also references",
-			articles: articles.Articles{
+			articles: models.Articles{
 				{
 					Label: "main",
 					IDs:   collections.NewSet("main1"),
-					References: []*articles.Article{
+					References: []*models.Article{
 						{
 							Label:      "ref1",
 							IDs:        collections.NewSet("ref1"),
@@ -210,11 +210,11 @@ func TestArticles_UniqueById(t *testing.T) {
 					References: nil,
 				},
 			},
-			want: map[string]*articles.Article{
+			want: map[string]*models.Article{
 				"main1": {
 					Label: "main",
 					IDs:   collections.NewSet("main1"),
-					References: []*articles.Article{
+					References: []*models.Article{
 						{
 							Label:      "ref1",
 							IDs:        collections.NewSet("ref1"),
@@ -255,7 +255,7 @@ func TestArticles_UniqueById(t *testing.T) {
 }
 
 func TestArticles_UniqueById_ArticlesWithSharedIdsShareExactlyTheSameMemoryAddress(t *testing.T) {
-	arts := articles.Articles{
+	arts := models.Articles{
 		{
 			Label:      "article1",
 			IDs:        collections.NewSet("id1", "shared"),
@@ -277,8 +277,8 @@ func TestArticles_UniqueById_ArticlesWithSharedIdsShareExactlyTheSameMemoryAddre
 func TestArticles_Deduplicate(t *testing.T) {
 	tests := []struct {
 		name     string // description of this test case
-		articles articles.Articles
-		want     articles.Articles
+		articles models.Articles
+		want     models.Articles
 		wantErr  bool
 	}{
 		{
@@ -289,20 +289,20 @@ func TestArticles_Deduplicate(t *testing.T) {
 		},
 		{
 			name:     "empty articles",
-			articles: articles.Articles{},
-			want:     articles.Articles{},
+			articles: models.Articles{},
+			want:     models.Articles{},
 			wantErr:  false,
 		},
 		{
 			name: "single article",
-			articles: articles.Articles{
+			articles: models.Articles{
 				{
 					Label:      "single",
 					IDs:        collections.NewSet("single1"),
 					References: nil,
 				},
 			},
-			want: articles.Articles{
+			want: models.Articles{
 				{
 					Label:      "single",
 					IDs:        collections.NewSet("single1"),
@@ -313,7 +313,7 @@ func TestArticles_Deduplicate(t *testing.T) {
 		},
 		{
 			name: "duplicate articles",
-			articles: articles.Articles{
+			articles: models.Articles{
 				{
 					Label:      "dup",
 					IDs:        collections.NewSet("id1", "id2"),
@@ -325,7 +325,7 @@ func TestArticles_Deduplicate(t *testing.T) {
 					References: nil,
 				},
 			},
-			want: articles.Articles{
+			want: models.Articles{
 				{
 					Label:      "dup",
 					IDs:        collections.NewSet("id1", "id2"),
@@ -336,7 +336,7 @@ func TestArticles_Deduplicate(t *testing.T) {
 		},
 		{
 			name: "articles with overlapping IDs",
-			articles: articles.Articles{
+			articles: models.Articles{
 				{
 					Label:      "article1",
 					IDs:        collections.NewSet("id1", "shared"),
@@ -348,7 +348,7 @@ func TestArticles_Deduplicate(t *testing.T) {
 					References: nil,
 				},
 			},
-			want: articles.Articles{
+			want: models.Articles{
 				{
 					Label:      "article1",
 					IDs:        collections.NewSet("id1", "id2", "shared"),
@@ -359,11 +359,11 @@ func TestArticles_Deduplicate(t *testing.T) {
 		},
 		{
 			name: "articles that are also references",
-			articles: articles.Articles{
+			articles: models.Articles{
 				{
 					Label: "main",
 					IDs:   collections.NewSet("main1"),
-					References: articles.References{
+					References: models.References{
 						{
 							Label:      "ref1",
 							IDs:        collections.NewSet("ref1"),
@@ -374,7 +374,7 @@ func TestArticles_Deduplicate(t *testing.T) {
 				{
 					Label: "ref1",
 					IDs:   collections.NewSet("ref1"),
-					References: []*articles.Article{
+					References: []*models.Article{
 						{
 							Label:      "ref2",
 							IDs:        collections.NewSet("ref2"),
@@ -383,15 +383,15 @@ func TestArticles_Deduplicate(t *testing.T) {
 					},
 				},
 			},
-			want: articles.Articles{
+			want: models.Articles{
 				{
 					Label: "main",
 					IDs:   collections.NewSet("main1"),
-					References: articles.References{
+					References: models.References{
 						{
 							Label: "ref1",
 							IDs:   collections.NewSet("ref1"),
-							References: []*articles.Article{
+							References: []*models.Article{
 								{
 									Label:      "ref2",
 									IDs:        collections.NewSet("ref2"),
@@ -404,7 +404,7 @@ func TestArticles_Deduplicate(t *testing.T) {
 				{
 					Label: "ref1",
 					IDs:   collections.NewSet("ref1"),
-					References: []*articles.Article{
+					References: []*models.Article{
 						{
 							Label:      "ref2",
 							IDs:        collections.NewSet("ref2"),
@@ -430,11 +430,11 @@ func TestArticles_Deduplicate(t *testing.T) {
 }
 
 func TestArticles_Deduplicate_ReferencesShareExactlyTheSameMemoryAddress(t *testing.T) {
-	arts := articles.Articles{
+	arts := models.Articles{
 		{
 			Label: "main",
 			IDs:   collections.NewSet("main1"),
-			References: articles.References{
+			References: models.References{
 				{
 					Label:      "ref1",
 					IDs:        collections.NewSet("ref1"),
@@ -445,7 +445,7 @@ func TestArticles_Deduplicate_ReferencesShareExactlyTheSameMemoryAddress(t *test
 		{
 			Label: "ref1",
 			IDs:   collections.NewSet("ref1"),
-			References: []*articles.Article{
+			References: []*models.Article{
 				{
 					Label:      "ref2",
 					IDs:        collections.NewSet("ref2"),

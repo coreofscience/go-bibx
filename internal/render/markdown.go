@@ -7,7 +7,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/coreofscience/go-bibx/articles"
+	"github.com/coreofscience/go-bibx/models"
 	"gopkg.in/yaml.v3"
 )
 
@@ -51,7 +51,7 @@ func join(sep string, items []string) string {
 	return strings.Join(items, sep)
 }
 
-func frontMatter(a *articles.Article) string {
+func frontMatter(a *models.Article) string {
 	if a == nil {
 		return ""
 	}
@@ -117,7 +117,7 @@ func NewMarkdownRenderer() (*MarkdownRenderer, error) {
 	}, nil
 }
 
-func (e *MarkdownRenderer) Render(a *articles.Article) (string, error) {
+func (e *MarkdownRenderer) Render(a *models.Article) (string, error) {
 	var buf bytes.Buffer
 	if err := e.template.ExecuteTemplate(&buf, "article.md", a); err != nil {
 		return "", fmt.Errorf("error rendering template: %w", err)
@@ -125,7 +125,7 @@ func (e *MarkdownRenderer) Render(a *articles.Article) (string, error) {
 	return buf.String(), nil
 }
 
-func (e *MarkdownRenderer) RenderReference(a *articles.Article) (string, error) {
+func (e *MarkdownRenderer) RenderReference(a *models.Article) (string, error) {
 	var buf bytes.Buffer
 	if err := e.template.ExecuteTemplate(&buf, "reference.md", a); err != nil {
 		return "", fmt.Errorf("error rendering template: %w", err)
