@@ -102,20 +102,12 @@ func (c *Collection) Keep(labels ...string) (*Collection, error) {
 		if !toKeep.Contains(*article.Key()) {
 			continue
 		}
-		newArticle := article.Clone()
-		shouldCleanUpReferences := slices.ContainsFunc(
-			newArticle.References,
-			func(a *articles.Article) bool { return !toKeep.Contains(*a.Key()) },
-		)
-		if shouldCleanUpReferences {
-			newReferences := make([]*articles.Article, 0, len(newArticle.References))
-			for _, ref := range newArticle.References {
-				if toKeep.Contains(*ref.Key()) {
-					newReferences = append(newReferences, ref)
-				}
-			}
-			newArticle.References = newReferences
+		newArticle := article.KeepReferences(labels...)
+		newReferences := make([]*articles.Article, 0, len(newArticle.References))
+		for _, ref := range newArticle.References {
+			newReferences = append(newReferences, ref.KeepReferences(labels...))
 		}
+		newArticle.References = newReferences
 		newArticles = append(newArticles, newArticle)
 	}
 	return New(newArticles)
