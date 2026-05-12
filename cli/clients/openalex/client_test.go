@@ -29,7 +29,7 @@ func TestListArticlesByIDs(t *testing.T) {
 			assert.Contains(t, filter, "ids.openalex:W1|W2")
 
 			resp := openalex.WorksResponse{
-				Works: []openalex.Work{
+				Works: []*openalex.Work{
 					{ID: "W1", Title: new("Title 1")},
 					{ID: "W2", Title: new("Title 2")},
 				},
@@ -78,11 +78,11 @@ func TestListArticlesByIDs(t *testing.T) {
 			// Each chunk should be handled
 			w.Header().Set("Content-Type", "application/json")
 			if strings.Contains(filter, "W0") {
-				resp := openalex.WorksResponse{Works: make([]openalex.Work, 80)}
+				resp := openalex.WorksResponse{Works: make([]*openalex.Work, 80)}
 				err := json.NewEncoder(w).Encode(resp)
 				require.NoError(t, err)
 			} else {
-				resp := openalex.WorksResponse{Works: make([]openalex.Work, 5)}
+				resp := openalex.WorksResponse{Works: make([]*openalex.Work, 5)}
 				err := json.NewEncoder(w).Encode(resp)
 				require.NoError(t, err)
 			}
@@ -102,7 +102,7 @@ func TestListRecentArticles(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			page := r.URL.Query().Get("page")
 			resp := openalex.WorksResponse{
-				Works: []openalex.Work{
+				Works: []*openalex.Work{
 					{ID: fmt.Sprintf("W-%s", page), Title: new(fmt.Sprintf("Title %s", page))},
 				},
 			}

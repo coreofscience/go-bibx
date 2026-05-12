@@ -45,7 +45,7 @@ func (s *OpenAlexAnalysisService) Store(
 	}
 	articles := make(models.Articles, len(works))
 	for i, w := range works {
-		articles[i] = openalex.WorkToArticle(&w)
+		articles[i] = openalex.WorkToArticle(w)
 	}
 	collection, err := models.NewCollection(articles)
 	if err != nil {
@@ -81,16 +81,18 @@ func (s *OpenAlexAnalysisService) enrich(
 			ids = append(ids, id)
 		}
 	}
-	slog.Debug("listing works by ids", "count", len(ids))
+	slog.Debug("listing works by ids", "count", len(ids), "articles", len(toEnrich))
 	works, err := s.openalexClient.ListArticlesByIDs(ctx, ids)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list articles by ids: %w", err)
 	}
 	idToArticle := make(map[string]*models.Article, len(works))
+	slog.Debug("mapping works to articles", "count", len(works))
 	for _, work := range works {
-		idToArticle[work.ID] = openalex.WorkToArticle(&work)
+		idToArticle[work.ID] = openalex.WorkToArticle(work)
 	}
 	newArticles := make(models.Articles, 0)
+	discarted := 0
 	for article := range c.Main() {
 		if !article.Rich {
 			slog.Warn("found a main work still to enrich, which is weird")
@@ -98,20 +100,26 @@ func (s *OpenAlexAnalysisService) enrich(
 		newArticle := article.Clone()
 		newReferences := make(models.References, 0, len(article.References))
 		for _, ref := range article.References {
+			if ref.Rich {
+				newReferences = append(newReferences, ref)
+				continue
+			}
 			id, ok := ref.ID("openalex")
 			if !ok {
+				slog.Warn("found a reference without an openalex id, skipping enrichment", "label", ref.Label)
 				newReferences = append(newReferences, ref)
 				continue
 			}
 			if enriched, ok := idToArticle[id]; ok {
 				newReferences = append(newReferences, enriched)
 			} else {
-				newReferences = append(newReferences, ref)
+				discarted++
 			}
 		}
 		newArticle.References = newReferences
 		newArticles = append(newArticles, newArticle)
 	}
+	slog.Debug("enriched articles", "enriched", len(newArticles), "discarted", discarted)
 	return models.NewCollection(newArticles)
 }
 

@@ -19,17 +19,17 @@ import (
 
 const (
 	MaxWorksPerPage       = 200
-	MaxIDsPerRequest      = 80
+	MaxIDsPerRequest      = 50
 	MaxConcurrentRequests = 4
 )
 
 // Client is the interface for the OpenAlex client.
 type Client interface {
 	// ListRecentArticles lists recent articles based on the given query and limit.
-	ListRecentArticles(ctx context.Context, query string, limit int) ([]Work, error)
+	ListRecentArticles(ctx context.Context, query string, limit int) ([]*Work, error)
 
 	// ListArticlesByIDs lists articles by their IDs.
-	ListArticlesByIDs(ctx context.Context, ids []string) ([]Work, error)
+	ListArticlesByIDs(ctx context.Context, ids []string) ([]*Work, error)
 }
 
 // RestyClient is the concrete implementation of the OpenAlex client using resty.
@@ -113,7 +113,7 @@ func getWorkFields() []string {
 }
 
 // ListRecentArticles implements [Client]
-func (c *RestyClient) ListRecentArticles(ctx context.Context, query string, limit int) ([]Work, error) {
+func (c *RestyClient) ListRecentArticles(ctx context.Context, query string, limit int) ([]*Work, error) {
 	selectFields := getWorkFields()
 	queryFilter := fmt.Sprintf(
 		"title_and_abstract.search:%s",
@@ -146,6 +146,10 @@ func (c *RestyClient) ListRecentArticles(ctx context.Context, query string, limi
 		return nil, fmt.Errorf("error fetching works in parallel: %w", err)
 	}
 
+	if len(works) < limit {
+		slog.Debug("fetched fewer works than limit", "fetched", len(works), "limit", limit)
+	}
+
 	if len(works) > limit {
 		works = works[:limit]
 	}
@@ -153,9 +157,9 @@ func (c *RestyClient) ListRecentArticles(ctx context.Context, query string, limi
 }
 
 // ListArticlesByIDs implements [Client]
-func (c *RestyClient) ListArticlesByIDs(ctx context.Context, ids []string) ([]Work, error) {
+func (c *RestyClient) ListArticlesByIDs(ctx context.Context, ids []string) ([]*Work, error) {
 	if len(ids) == 0 {
-		return []Work{}, nil
+		return []*Work{}, nil
 	}
 
 	selectFields := getWorkFields()
@@ -172,7 +176,7 @@ func (c *RestyClient) ListArticlesByIDs(ctx context.Context, ids []string) ([]Wo
 	})
 }
 
-func fetchParallel[I any](ctx context.Context, inputs []I, fetch func(context.Context, I) (*WorksResponse, error)) ([]Work, error) {
+func fetchParallel[I any](ctx context.Context, inputs []I, fetch func(context.Context, I) (*WorksResponse, error)) ([]*Work, error) {
 	if len(inputs) == 0 {
 		return nil, nil
 	}
@@ -215,7 +219,7 @@ func fetchParallel[I any](ctx context.Context, inputs []I, fetch func(context.Co
 		}
 	})
 
-	var works []Work
+	var works []*Work
 	waitGroup.Go(func() {
 		for res := range responses {
 			if res != nil {

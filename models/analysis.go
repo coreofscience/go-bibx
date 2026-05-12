@@ -2,6 +2,7 @@ package models
 
 import (
 	"cmp"
+	"log/slog"
 	"slices"
 
 	"github.com/coreofscience/go-bibx/algorithms"
@@ -42,6 +43,7 @@ func NewAnalysis(c *Collection) *Analysis {
 	for article := range c.All() {
 		articleKey := article.Key()
 		if articleKey == nil {
+			slog.Warn("article without key, skipping", "label", article.Label)
 			continue
 		}
 		key := *articleKey
@@ -55,21 +57,11 @@ func NewAnalysis(c *Collection) *Analysis {
 		})
 	}
 	links := make([]*Link, 0, c.Len())
-	for article := range c.Main() {
-		articleKey := article.Key()
-		if articleKey == nil {
-			continue
-		}
-		for _, ref := range article.References {
-			refKey := ref.Key()
-			if refKey == nil {
-				continue
-			}
-			links = append(links, &Link{
-				Source: *articleKey,
-				Target: *refKey,
-			})
-		}
+	for _, edge := range graph.AllEdges() {
+		links = append(links, &Link{
+			Source: edge.Source().Label(),
+			Target: edge.Destination().Label(),
+		})
 	}
 	return &Analysis{
 		Nodes: nodes,

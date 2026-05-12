@@ -69,5 +69,5 @@ type ResponseMeta struct {
 
 type WorksResponse struct {
 	Meta  ResponseMeta `json:"meta"`
-	Works []Work       `json:"results"`
+	Works []*Work      `json:"results"`
 }
