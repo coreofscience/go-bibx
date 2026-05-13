@@ -30,8 +30,8 @@ func NewMarkdownReferenceRenderer(writer io.Writer) (*MarkdownRenderer, error) {
 	}, nil
 }
 
-// Render implements the [Renderer] interface
-func (e *MarkdownReferenceRenderer) Render(results []*models.Result) error {
+// RenderResults implements the [Renderer] interface
+func (e *MarkdownReferenceRenderer) RenderResults(results []*models.Result) error {
 	for _, result := range results {
 		if err := e.template.ExecuteTemplate(
 			e.writer,

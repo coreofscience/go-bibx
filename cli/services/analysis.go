@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/coreofscience/go-bibx/algorithms"
+	"github.com/coreofscience/go-bibx/cli/clients/embeddings"
 	"github.com/coreofscience/go-bibx/cli/clients/openalex"
 	"github.com/coreofscience/go-bibx/cli/renderers"
 	"github.com/coreofscience/go-bibx/cli/repos"
@@ -20,17 +21,21 @@ type AnalysisService interface {
 type OpenAlexAnalysisService struct {
 	openalexClient openalex.Client
 	analysisRepo   repos.AnalysisRepo
+	searchRepo     repos.SearchRepo
 	renderers      map[string]renderers.Renderer
 }
 
 func NewOpenAlexAnalysisService(
 	openalexClient openalex.Client,
+	embeddingsClient embeddings.Client,
 	analysisRepo repos.AnalysisRepo,
+	searchRepo repos.SearchRepo,
 	rendererMap map[string]renderers.Renderer,
 ) *OpenAlexAnalysisService {
 	return &OpenAlexAnalysisService{
 		openalexClient: openalexClient,
 		analysisRepo:   analysisRepo,
+		searchRepo:     searchRepo,
 		renderers:      rendererMap,
 	}
 }
@@ -92,13 +97,15 @@ func (s *OpenAlexAnalysisService) Store(
 			Target: edge.Destination().Label(),
 		})
 	}
-
 	analysis := &models.Analysis{
 		Nodes: nodes,
 		Links: links,
 	}
-
-	return s.analysisRepo.Store(ctx, analysis)
+	err = s.analysisRepo.Store(ctx, analysis)
+	if err != nil {
+		return fmt.Errorf("failed to store analysis: %w", err)
+	}
+	return nil
 }
 
 func (s *OpenAlexAnalysisService) enrich(
@@ -179,7 +186,7 @@ func (s *OpenAlexAnalysisService) Query(
 	if !ok {
 		return fmt.Errorf("unsupported format: %s", format)
 	}
-	err = renderer.Render(results)
+	err = renderer.RenderResults(results)
 	if err != nil {
 		return fmt.Errorf("failed to render results: %w", err)
 	}

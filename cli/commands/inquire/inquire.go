@@ -6,7 +6,9 @@ import (
 	"os"
 	"path"
 
+	"github.com/coreofscience/go-bibx/cli/clients/embeddings"
 	"github.com/coreofscience/go-bibx/cli/clients/openalex"
+	"github.com/coreofscience/go-bibx/cli/renderers"
 	"github.com/coreofscience/go-bibx/cli/repos"
 	"github.com/coreofscience/go-bibx/cli/services"
 	"github.com/coreofscience/go-bibx/internal/utils"
@@ -52,19 +54,40 @@ func New() *cli.Command {
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			utils.SetDefaultLogger(c.Bool("verbose"))
-			p := path.Join(c.String("root"), ".bibx", "collection.json.gz")
-			if _, err := os.Stat(p); err == nil && !c.Bool("force") {
-				slog.Error("file already exists", "path", p)
+			analysisPath := path.Join(c.String("root"), ".bibx", "collection.json.gz")
+			searchPath := path.Join(c.String("root"), ".bibx", "search.graph")
+			force := c.Bool("force")
+			if _, err := os.Stat(analysisPath); err == nil && !force {
+				slog.Error("file already exists", "path", analysisPath)
+				os.Exit(1)
+			}
+			if _, err := os.Stat(searchPath); err == nil && !force {
+				slog.Error("file already exists", "path", searchPath)
 				os.Exit(1)
 			}
 			query := c.StringArg("query")
 			limit := c.Int("limit")
 			openalexClient := openalex.NewRestyClient()
-			analysisRepo := repos.NewFileAnalysisRepo(p)
+			embeddingsClient, err := embeddings.NewOllamaClient()
+			if err != nil {
+				slog.Error("failed to create embeddings client", "error", err)
+				os.Exit(1)
+			}
+			analysisRepo := repos.NewFileAnalysisRepo(analysisPath)
+			searchRepo := repos.NewFileSearchRepo(searchPath)
+			markdownRenderer, err := renderers.NewMarkdownRenderer(os.Stdout)
+			if err != nil {
+				slog.Error("failed to create markdown renderer", "error", err)
+				os.Exit(1)
+			}
 			service := services.NewOpenAlexAnalysisService(
 				openalexClient,
+				embeddingsClient,
 				analysisRepo,
-				nil,
+				searchRepo,
+				map[string]renderers.Renderer{
+					"markdown": markdownRenderer,
+				},
 			)
 			if err := service.Store(context.Background(), query, limit); err != nil {
 				slog.Error("failed to store analysis", "error", err)

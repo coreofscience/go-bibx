@@ -18,8 +18,8 @@ func NewJSONRenderer(writer io.Writer) *JSONRenderer {
 	return &JSONRenderer{writer: writer}
 }
 
-// Render implements the [Renderer] interface
-func (e *JSONRenderer) Render(results []*models.Result) error {
+// RenderResults implements the [Renderer] interface
+func (e *JSONRenderer) RenderResults(results []*models.Result) error {
 	encoder := json.NewEncoder(e.writer)
 	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(results); err != nil {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"path"
 
 	"github.com/coreofscience/go-bibx/cli/clients/openalex"
 	"github.com/coreofscience/go-bibx/cli/renderers"
@@ -26,9 +27,9 @@ func New() *cli.Command {
 		Usage: "query the bibx collection for relevant articles",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:  "file",
-				Usage: "path to the bibx collection file",
-				Value: ".bibx/collection.json.gz",
+				Name:  "root",
+				Usage: "root directory where the collection is stored",
+				Value: ".",
 			},
 			&cli.StringFlag{
 				Name:     "category",
@@ -72,9 +73,10 @@ func New() *cli.Command {
 		Action: func(ctx context.Context, c *cli.Command) error {
 			utils.SetDefaultLogger(c.Bool("verbose"))
 			openalexClient := openalex.NewRestyClient()
-			analysisRepo := repos.NewFileAnalysisRepo(
-				c.String("file"),
-			)
+			analysisPath := path.Join(c.String("root"), ".bibx", "collection.json.gz")
+			searchPath := path.Join(c.String("root"), ".bibx", "search.graph")
+			analysisRepo := repos.NewFileAnalysisRepo(analysisPath)
+			searchRepo := repos.NewFileSearchRepo(searchPath)
 			markdownRenderer, err := renderers.NewMarkdownRenderer(os.Stdout)
 			if err != nil {
 				slog.Error("failed to create markdown renderer", "error", err)
@@ -87,7 +89,9 @@ func New() *cli.Command {
 			}
 			service := services.NewOpenAlexAnalysisService(
 				openalexClient,
+				nil,
 				analysisRepo,
+				searchRepo,
 				map[string]renderers.Renderer{
 					"markdown":  markdownRenderer,
 					"reference": referenceRenderer,
