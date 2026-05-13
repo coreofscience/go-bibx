@@ -5,10 +5,14 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/coreofscience/go-bibx/internal/utils"
 	"github.com/ollama/ollama/api"
 )
 
-const modelID = "hf.co/ggml-org/embeddinggemma-300M-GGUF"
+const (
+	modelID            = "hf.co/ggml-org/embeddinggemma-300M-GGUF"
+	maxTextsPerRequest = 100
+)
 
 type Client interface {
 	Sync(ctx context.Context) error
@@ -66,15 +70,21 @@ func (c *OllamaClient) Embed(ctx context.Context, text string) ([]float32, error
 
 // EmbedMany implements the [Client] interface.
 func (c *OllamaClient) EmbedMany(ctx context.Context, texts []string) ([][]float32, error) {
-	resp, err := c.client.Embed(ctx, &api.EmbedRequest{
-		Model: modelID,
-		Input: texts,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get embeddings: %w", err)
+	results := make([][]float32, 0, len(texts))
+	chunks := utils.Chunks(texts, maxTextsPerRequest)
+	for i, chunk := range chunks {
+		resp, err := c.client.Embed(ctx, &api.EmbedRequest{
+			Model: modelID,
+			Input: chunk,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get embeddings: %w", err)
+		}
+		if len(resp.Embeddings) != len(chunk) {
+			return nil, fmt.Errorf("number of embeddings returned does not match number of input texts")
+		}
+		results = append(results, resp.Embeddings...)
+		slog.Debug("done embedding chunk", "chunk", i, "total", len(chunks))
 	}
-	if len(resp.Embeddings) != len(texts) {
-		return nil, fmt.Errorf("number of embeddings returned does not match number of input texts")
-	}
-	return resp.Embeddings, nil
+	return results, nil
 }

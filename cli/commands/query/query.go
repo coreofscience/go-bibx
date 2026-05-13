@@ -74,14 +74,11 @@ func New() *cli.Command {
 			utils.SetDefaultLogger(c.Bool("verbose"))
 			openalexClient := openalex.NewRestyClient()
 			analysisPath := path.Join(c.String("root"), ".bibx", "collection.json.gz")
-			searchPath := path.Join(c.String("root"), ".bibx", "search.graph")
 			analysisRepo := repos.NewFileAnalysisRepo(analysisPath)
-			searchRepo := repos.NewFileSearchRepo(searchPath)
 			service := services.NewOpenAlexAnalysisService(
 				openalexClient,
 				nil,
 				analysisRepo,
-				searchRepo,
 			)
 			results, err := service.Query(ctx, c.String("category"), c.Int("top"))
 			if err != nil {

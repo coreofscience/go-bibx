@@ -20,19 +20,16 @@ type AnalysisService interface {
 type OpenAlexAnalysisService struct {
 	openalexClient openalex.Client
 	analysisRepo   repos.AnalysisRepo
-	searchRepo     repos.SearchRepo
 }
 
 func NewOpenAlexAnalysisService(
 	openalexClient openalex.Client,
 	embeddingsClient embeddings.Client,
 	analysisRepo repos.AnalysisRepo,
-	searchRepo repos.SearchRepo,
 ) *OpenAlexAnalysisService {
 	return &OpenAlexAnalysisService{
 		openalexClient: openalexClient,
 		analysisRepo:   analysisRepo,
-		searchRepo:     searchRepo,
 	}
 }
 
