@@ -10,17 +10,16 @@ import (
 
 // JSONRenderer renders results as JSON
 type JSONRenderer struct {
-	writer io.Writer
 }
 
-// NewJSONRenderer creates a new JSONRenderer with the given writer
-func NewJSONRenderer(writer io.Writer) *JSONRenderer {
-	return &JSONRenderer{writer: writer}
+// NewJSONRenderer creates a new JSONRenderer
+func NewJSONRenderer() *JSONRenderer {
+	return &JSONRenderer{}
 }
 
 // RenderResults implements the [Renderer] interface
-func (e *JSONRenderer) RenderResults(results []*models.Result) error {
-	encoder := json.NewEncoder(e.writer)
+func (e *JSONRenderer) RenderResults(w io.Writer, results []*models.Result) error {
+	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(results); err != nil {
 		return fmt.Errorf("error encoding results: %w", err)

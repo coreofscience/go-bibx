@@ -77,30 +77,39 @@ func New() *cli.Command {
 			searchPath := path.Join(c.String("root"), ".bibx", "search.graph")
 			analysisRepo := repos.NewFileAnalysisRepo(analysisPath)
 			searchRepo := repos.NewFileSearchRepo(searchPath)
-			markdownRenderer, err := renderers.NewMarkdownRenderer(os.Stdout)
-			if err != nil {
-				slog.Error("failed to create markdown renderer", "error", err)
-				os.Exit(1)
-			}
-			referenceRenderer, err := renderers.NewMarkdownReferenceRenderer(os.Stdout)
-			if err != nil {
-				slog.Error("failed to create markdown renderer", "error", err)
-				os.Exit(1)
-			}
 			service := services.NewOpenAlexAnalysisService(
 				openalexClient,
 				nil,
 				analysisRepo,
 				searchRepo,
-				map[string]renderers.Renderer{
-					"markdown":  markdownRenderer,
-					"reference": referenceRenderer,
-					"json":      renderers.NewJSONRenderer(os.Stdout),
-				},
 			)
-			err = service.Query(ctx, c.String("category"), c.Int("top"), c.String("format"))
+			results, err := service.Query(ctx, c.String("category"), c.Int("top"))
 			if err != nil {
 				slog.Error("failed to query analysis", "error", err)
+				os.Exit(1)
+			}
+
+			format := c.String("format")
+			var renderer renderers.Renderer
+			switch format {
+			case "json":
+				renderer = renderers.NewJSONRenderer()
+			case "markdown":
+				renderer, err = renderers.NewMarkdownRenderer()
+			case "reference":
+				renderer, err = renderers.NewMarkdownReferenceRenderer()
+			default:
+				slog.Error("unsupported format", "format", format)
+				os.Exit(1)
+			}
+
+			if err != nil {
+				slog.Error("failed to create renderer", "error", err)
+				os.Exit(1)
+			}
+
+			if err := renderer.RenderResults(os.Stdout, results); err != nil {
+				slog.Error("failed to render results", "error", err)
 				os.Exit(1)
 			}
 			return nil

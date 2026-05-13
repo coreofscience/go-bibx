@@ -10,10 +10,9 @@ import (
 
 type MarkdownRenderer struct {
 	template *template.Template
-	writer   io.Writer
 }
 
-func NewMarkdownRenderer(writer io.Writer) (*MarkdownRenderer, error) {
+func NewMarkdownRenderer() (*MarkdownRenderer, error) {
 	templ := template.New("")
 	templ, err := templ.Funcs(template.FuncMap{
 		"wrap":        wrap,
@@ -26,21 +25,20 @@ func NewMarkdownRenderer(writer io.Writer) (*MarkdownRenderer, error) {
 	}
 	return &MarkdownRenderer{
 		template: templ,
-		writer:   writer,
 	}, nil
 }
 
 // RenderResults implements the [Renderer] interface
-func (e *MarkdownRenderer) RenderResults(results []*models.Result) error {
+func (e *MarkdownRenderer) RenderResults(w io.Writer, results []*models.Result) error {
 	for _, result := range results {
 		if err := e.template.ExecuteTemplate(
-			e.writer,
+			w,
 			"article.md",
 			result.Article,
 		); err != nil {
 			return fmt.Errorf("error rendering template: %w", err)
 		}
-		if _, err := e.writer.Write([]byte("\n\n---\n\n")); err != nil {
+		if _, err := w.Write([]byte("\n\n---\n\n")); err != nil {
 			return fmt.Errorf("error writing separator: %w", err)
 		}
 	}

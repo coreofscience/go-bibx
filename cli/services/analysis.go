@@ -8,21 +8,19 @@ import (
 	"github.com/coreofscience/go-bibx/algorithms"
 	"github.com/coreofscience/go-bibx/cli/clients/embeddings"
 	"github.com/coreofscience/go-bibx/cli/clients/openalex"
-	"github.com/coreofscience/go-bibx/cli/renderers"
 	"github.com/coreofscience/go-bibx/cli/repos"
 	"github.com/coreofscience/go-bibx/models"
 )
 
 type AnalysisService interface {
 	Store(ctx context.Context, query string, limit int) error
-	Query(ctx context.Context, category string, limit int, format string) error
+	Query(ctx context.Context, category string, limit int) ([]*models.Result, error)
 }
 
 type OpenAlexAnalysisService struct {
 	openalexClient openalex.Client
 	analysisRepo   repos.AnalysisRepo
 	searchRepo     repos.SearchRepo
-	renderers      map[string]renderers.Renderer
 }
 
 func NewOpenAlexAnalysisService(
@@ -30,13 +28,11 @@ func NewOpenAlexAnalysisService(
 	embeddingsClient embeddings.Client,
 	analysisRepo repos.AnalysisRepo,
 	searchRepo repos.SearchRepo,
-	rendererMap map[string]renderers.Renderer,
 ) *OpenAlexAnalysisService {
 	return &OpenAlexAnalysisService{
 		openalexClient: openalexClient,
 		analysisRepo:   analysisRepo,
 		searchRepo:     searchRepo,
-		renderers:      rendererMap,
 	}
 }
 
@@ -172,23 +168,14 @@ func (s *OpenAlexAnalysisService) Query(
 	ctx context.Context,
 	category string,
 	limit int,
-	format string,
-) error {
+) ([]*models.Result, error) {
 	analysis, err := s.analysisRepo.Load(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to load analysis: %w", err)
+		return nil, fmt.Errorf("failed to load analysis: %w", err)
 	}
 	results, err := analysis.Query(category, limit)
 	if err != nil {
-		return fmt.Errorf("failed to query analysis: %w", err)
+		return nil, fmt.Errorf("failed to query analysis: %w", err)
 	}
-	renderer, ok := s.renderers[format]
-	if !ok {
-		return fmt.Errorf("unsupported format: %s", format)
-	}
-	err = renderer.RenderResults(results)
-	if err != nil {
-		return fmt.Errorf("failed to render results: %w", err)
-	}
-	return nil
+	return results, nil
 }

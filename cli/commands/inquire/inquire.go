@@ -8,7 +8,6 @@ import (
 
 	"github.com/coreofscience/go-bibx/cli/clients/embeddings"
 	"github.com/coreofscience/go-bibx/cli/clients/openalex"
-	"github.com/coreofscience/go-bibx/cli/renderers"
 	"github.com/coreofscience/go-bibx/cli/repos"
 	"github.com/coreofscience/go-bibx/cli/services"
 	"github.com/coreofscience/go-bibx/internal/utils"
@@ -75,19 +74,11 @@ func New() *cli.Command {
 			}
 			analysisRepo := repos.NewFileAnalysisRepo(analysisPath)
 			searchRepo := repos.NewFileSearchRepo(searchPath)
-			markdownRenderer, err := renderers.NewMarkdownRenderer(os.Stdout)
-			if err != nil {
-				slog.Error("failed to create markdown renderer", "error", err)
-				os.Exit(1)
-			}
 			service := services.NewOpenAlexAnalysisService(
 				openalexClient,
 				embeddingsClient,
 				analysisRepo,
 				searchRepo,
-				map[string]renderers.Renderer{
-					"markdown": markdownRenderer,
-				},
 			)
 			if err := service.Store(context.Background(), query, limit); err != nil {
 				slog.Error("failed to store analysis", "error", err)
