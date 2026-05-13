@@ -44,3 +44,15 @@ func (e *MarkdownReferenceRenderer) RenderResults(w io.Writer, results []*models
 	}
 	return nil
 }
+
+// RenderArticle implements the [Renderer] interface
+func (e *MarkdownReferenceRenderer) RenderArticle(w io.Writer, article *models.Article) error {
+	if err := e.template.ExecuteTemplate(
+		w,
+		"reference.md",
+		article,
+	); err != nil {
+		return fmt.Errorf("error rendering template: %w", err)
+	}
+	return nil
+}

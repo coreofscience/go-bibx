@@ -26,3 +26,13 @@ func (e *JSONRenderer) RenderResults(w io.Writer, results []*models.Result) erro
 	}
 	return nil
 }
+
+// RenderArticle implements the [Renderer] interface
+func (e *JSONRenderer) RenderArticle(w io.Writer, article *models.Article) error {
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(article); err != nil {
+		return fmt.Errorf("error encoding article: %w", err)
+	}
+	return nil
+}
