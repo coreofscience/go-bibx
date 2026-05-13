@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/coreofscience/go-bibx/internal/commands"
+	"github.com/coreofscience/go-bibx/cli/commands"
 	"github.com/urfave/cli/v3"
 )
 
