@@ -19,7 +19,7 @@ type SearchService interface {
 	Store(ctx context.Context) error
 
 	// Search performs a search for the given query and returns a list of results.
-	Search(ctx context.Context, query string) ([]*models.Result, error)
+	Search(ctx context.Context, query string, limit int) ([]*models.Result, error)
 }
 
 type SemanticSearchService struct {
@@ -75,7 +75,7 @@ func (s *SemanticSearchService) Store(ctx context.Context) error {
 }
 
 // Search implements the [SearchService] interface
-func (s *SemanticSearchService) Search(ctx context.Context, query string) ([]*models.Result, error) {
+func (s *SemanticSearchService) Search(ctx context.Context, query string, limit int) ([]*models.Result, error) {
 	vector, err := s.embeddingsClient.Embed(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to embed query: %w", err)
@@ -92,7 +92,7 @@ func (s *SemanticSearchService) Search(ctx context.Context, query string) ([]*mo
 	for _, node := range analysis.Nodes {
 		articlesByID[node.ID] = node.Article
 	}
-	neighbors := graph.Search(vector, 10)
+	neighbors := graph.Search(vector, limit)
 	results := make([]*models.Result, len(neighbors))
 	for i, neighbor := range neighbors {
 		if article, ok := articlesByID[neighbor.Key]; ok {
