@@ -67,11 +67,7 @@ func New() *cli.Command {
 		Action: func(ctx context.Context, c *cli.Command) error {
 			utils.SetDefaultLogger(c.Bool("verbose"))
 
-			if c.Args().Len() == 0 {
-				slog.Error("query argument is required")
-				os.Exit(1)
-			}
-			query := c.Args().First()
+			query := c.StringArg("query")
 
 			analysisPath := path.Join(c.String("root"), ".bibx", "collection.json.gz")
 			searchPath := path.Join(c.String("root"), ".bibx", "search.graph")
