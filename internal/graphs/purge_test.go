@@ -16,9 +16,9 @@ func TestPurge(t *testing.T) {
 	vC := gograph.NewVertex("C")
 	vD := gograph.NewVertex("D")
 
-	g.AddEdge(vA, vB)
-	g.AddEdge(vB, vC)
-	g.AddEdge(vC, vD)
+	_, _ = g.AddEdge(vA, vB)
+	_, _ = g.AddEdge(vB, vC)
+	_, _ = g.AddEdge(vC, vD)
 
 	toRemove := []string{"B", "D"}
 	newGraph, err := graphs.Purge(g, toRemove)
@@ -42,9 +42,9 @@ func TestPurge_KeepsIntactConnections(t *testing.T) {
 	vC := gograph.NewVertex("C")
 	vD := gograph.NewVertex("D")
 
-	g.AddEdge(vA, vB)
-	g.AddEdge(vA, vC) // We want to keep A->C
-	g.AddEdge(vB, vD)
+	_, _ = g.AddEdge(vA, vB)
+	_, _ = g.AddEdge(vA, vC) // We want to keep A->C
+	_, _ = g.AddEdge(vB, vD)
 
 	toRemove := []string{"B", "D"}
 	newGraph, err := graphs.Purge(g, toRemove)

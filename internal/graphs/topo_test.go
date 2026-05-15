@@ -21,9 +21,9 @@ func TestReverseTopologicalOrder(t *testing.T) {
 	// B depends on A
 	// C depends on B
 	// D depends on C
-	g.AddEdge(vA, vB)
-	g.AddEdge(vB, vC)
-	g.AddEdge(vC, vD)
+	_, _ = g.AddEdge(vA, vB)
+	_, _ = g.AddEdge(vB, vC)
+	_, _ = g.AddEdge(vC, vD)
 
 	order, err := graphs.ReverseTopologicalOrder(g)
 	assert.NoError(t, err)

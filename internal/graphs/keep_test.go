@@ -16,9 +16,9 @@ func TestKeep(t *testing.T) {
 	vC := gograph.NewVertex("C")
 	vD := gograph.NewVertex("D")
 
-	g.AddEdge(vA, vB)
-	g.AddEdge(vB, vC)
-	g.AddEdge(vC, vD)
+	_, _ = g.AddEdge(vA, vB)
+	_, _ = g.AddEdge(vB, vC)
+	_, _ = g.AddEdge(vC, vD)
 
 	toKeep := []string{"B", "C"}
 	newGraph, err := graphs.Keep(g, toKeep)
@@ -41,7 +41,7 @@ func TestKeep_Isolated(t *testing.T) {
 
 	vA := gograph.NewVertex("A")
 	vB := gograph.NewVertex("B")
-	g.AddEdge(vA, vB)
+	_, _ = g.AddEdge(vA, vB)
 
 	// Keep "A". Since A->B can't be added (B is not in toKeep), A won't have edges.
 	// But `Keep` only adds edges, not isolated vertices. So order might be 0.

@@ -12,7 +12,7 @@ func TestRemoveCycles_Undirected(t *testing.T) {
 	g := gograph.New[string]()
 	v1 := gograph.NewVertex("A")
 	v2 := gograph.NewVertex("B")
-	g.AddEdge(v1, v2)
+	_, _ = g.AddEdge(v1, v2)
 
 	_, err := graphs.RemoveCycles(g)
 	assert.ErrorContains(t, err, "input graph must be directed")
@@ -24,8 +24,8 @@ func TestRemoveCycles_NoCycles(t *testing.T) {
 	vB := gograph.NewVertex("B")
 	vC := gograph.NewVertex("C")
 
-	g.AddEdge(vA, vB)
-	g.AddEdge(vB, vC)
+	_, _ = g.AddEdge(vA, vB)
+	_, _ = g.AddEdge(vB, vC)
 
 	newGraph, err := graphs.RemoveCycles(g)
 	assert.NoError(t, err)
@@ -38,8 +38,8 @@ func TestRemoveCycles_SelfLoop(t *testing.T) {
 	vA := gograph.NewVertex("A")
 	vB := gograph.NewVertex("B")
 
-	g.AddEdge(vA, vA) // Self-loop
-	g.AddEdge(vA, vB)
+	_, _ = g.AddEdge(vA, vA) // Self-loop
+	_, _ = g.AddEdge(vA, vB)
 
 	newGraph, err := graphs.RemoveCycles(g)
 	assert.NoError(t, err)
@@ -57,11 +57,11 @@ func TestRemoveCycles_Cycle(t *testing.T) {
 	vD := gograph.NewVertex("D") // Not in cycle
 	vE := gograph.NewVertex("E") // To keep D, we can add edge D -> E
 
-	g.AddEdge(vA, vB)
-	g.AddEdge(vB, vC)
-	g.AddEdge(vC, vA) // Cycle A -> B -> C -> A
-	g.AddEdge(vC, vD)
-	g.AddEdge(vD, vE) // D -> E is not in cycle
+	_, _ = g.AddEdge(vA, vB)
+	_, _ = g.AddEdge(vB, vC)
+	_, _ = g.AddEdge(vC, vA) // Cycle A -> B -> C -> A
+	_, _ = g.AddEdge(vC, vD)
+	_, _ = g.AddEdge(vD, vE) // D -> E is not in cycle
 
 	newGraph, err := graphs.RemoveCycles(g)
 	assert.NoError(t, err)

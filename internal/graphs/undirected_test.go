@@ -15,8 +15,8 @@ func TestUndirected_Directed(t *testing.T) {
 	vB := gograph.NewVertex("B")
 	vC := gograph.NewVertex("C")
 
-	g.AddEdge(vA, vB)
-	g.AddEdge(vB, vC)
+	_, _ = g.AddEdge(vA, vB)
+	_, _ = g.AddEdge(vB, vC)
 
 	undirectedGraph, err := graphs.Undirected(g)
 	assert.NoError(t, err)
@@ -48,7 +48,7 @@ func TestUndirected_AlreadyUndirected(t *testing.T) {
 	vA := gograph.NewVertex("A")
 	vB := gograph.NewVertex("B")
 
-	g.AddEdge(vA, vB)
+	_, _ = g.AddEdge(vA, vB)
 
 	undirectedGraph, err := graphs.Undirected(g)
 	assert.NoError(t, err)

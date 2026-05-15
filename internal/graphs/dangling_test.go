@@ -19,9 +19,9 @@ func TestRemoveDangling(t *testing.T) {
 	// A -> B -> C -> D
 	// C is dangling if we only look at A->B->C, but D has out-degree 0 and in-degree 1.
 	// Actually dangling: out-degree == 0, in-degree == 1.
-	g.AddEdge(vA, vB)
-	g.AddEdge(vB, vC)
-	g.AddEdge(vC, vD)
+	_, _ = g.AddEdge(vA, vB)
+	_, _ = g.AddEdge(vB, vC)
+	_, _ = g.AddEdge(vC, vD)
 
 	newGraph, err := graphs.RemoveDangling(g)
 	assert.NoError(t, err)
@@ -44,9 +44,9 @@ func TestRemoveDangling_NoDangling(t *testing.T) {
 	vC := gograph.NewVertex("C")
 
 	// A -> B -> C -> A
-	g.AddEdge(vA, vB)
-	g.AddEdge(vB, vC)
-	g.AddEdge(vC, vA)
+	_, _ = g.AddEdge(vA, vB)
+	_, _ = g.AddEdge(vB, vC)
+	_, _ = g.AddEdge(vC, vA)
 
 	newGraph, err := graphs.RemoveDangling(g)
 	assert.NoError(t, err)

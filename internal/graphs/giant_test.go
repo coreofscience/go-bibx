@@ -19,11 +19,11 @@ func TestGiant_Undirected(t *testing.T) {
 	vE := gograph.NewVertex("E")
 
 	// Component 1: A-B-C
-	g.AddEdge(vA, vB)
-	g.AddEdge(vB, vC)
+	_, _ = g.AddEdge(vA, vB)
+	_, _ = g.AddEdge(vB, vC)
 
 	// Component 2: D-E
-	g.AddEdge(vD, vE)
+	_, _ = g.AddEdge(vD, vE)
 
 	newGraph, err := graphs.Giant(g)
 	assert.NoError(t, err)
@@ -52,13 +52,13 @@ func TestGiant_Directed(t *testing.T) {
 	vE := gograph.NewVertex("E")
 
 	// SCC 1: A -> B -> C -> A
-	g.AddEdge(vA, vB)
-	g.AddEdge(vB, vC)
-	g.AddEdge(vC, vA)
+	_, _ = g.AddEdge(vA, vB)
+	_, _ = g.AddEdge(vB, vC)
+	_, _ = g.AddEdge(vC, vA)
 
 	// SCC 2: D -> E -> D
-	g.AddEdge(vD, vE)
-	g.AddEdge(vE, vD)
+	_, _ = g.AddEdge(vD, vE)
+	_, _ = g.AddEdge(vE, vD)
 
 	newGraph, err := graphs.Giant(g)
 	assert.NoError(t, err)

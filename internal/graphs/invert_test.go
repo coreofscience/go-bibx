@@ -17,8 +17,8 @@ func TestInvert_Directed(t *testing.T) {
 
 	// A -> B
 	// B -> C
-	g.AddEdge(vA, vB)
-	g.AddEdge(vB, vC)
+	_, _ = g.AddEdge(vA, vB)
+	_, _ = g.AddEdge(vB, vC)
 
 	inverted := graphs.Invert(g)
 
@@ -44,7 +44,7 @@ func TestInvert_Undirected(t *testing.T) {
 	vA := gograph.NewVertex("A")
 	vB := gograph.NewVertex("B")
 
-	g.AddEdge(vA, vB)
+	_, _ = g.AddEdge(vA, vB)
 
 	inverted := graphs.Invert(g)
 
