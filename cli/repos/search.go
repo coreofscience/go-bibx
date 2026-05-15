@@ -3,17 +3,18 @@ package repos
 import (
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
 
-	"github.com/coder/hnsw"
+	"github.com/coreofscience/go-bibx/internal/vector"
 )
 
 type SearchRepo interface {
-	Load(ctx context.Context) (*hnsw.Graph[string], error)
-	Store(ctx context.Context, graph *hnsw.Graph[string]) error
+	Load(ctx context.Context) (*vector.DumbVectors[string], error)
+	Store(ctx context.Context, v *vector.DumbVectors[string]) error
 }
 
 type FileSearchRepo struct {
@@ -24,8 +25,7 @@ func NewFileSearchRepo(path string) *FileSearchRepo {
 	return &FileSearchRepo{Path: path}
 }
 
-func (r *FileSearchRepo) Load(ctx context.Context) (*hnsw.Graph[string], error) {
-	graph := hnsw.NewGraph[string]()
+func (r *FileSearchRepo) Load(ctx context.Context) (*vector.DumbVectors[string], error) {
 	file, err := os.Open(r.Path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
@@ -46,14 +46,14 @@ func (r *FileSearchRepo) Load(ctx context.Context) (*hnsw.Graph[string], error) 
 			slog.Error("failed to close gzip reader", "error", err)
 		}
 	}()
-	err = graph.Import(gz)
-	if err != nil {
-		return nil, fmt.Errorf("failed to import graph: %w", err)
+	var vectors *vector.DumbVectors[string]
+	if err := json.NewDecoder(gz).Decode(&vectors); err != nil {
+		return nil, fmt.Errorf("failed to decode vectors: %w", err)
 	}
-	return graph, nil
+	return vectors, nil
 }
 
-func (r *FileSearchRepo) Store(ctx context.Context, graph *hnsw.Graph[string]) error {
+func (r *FileSearchRepo) Store(ctx context.Context, v *vector.DumbVectors[string]) error {
 	dir := filepath.Dir(r.Path)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
@@ -75,9 +75,8 @@ func (r *FileSearchRepo) Store(ctx context.Context, graph *hnsw.Graph[string]) e
 			slog.Error("failed to close gzip writer", "error", err)
 		}
 	}()
-	err = graph.Export(gz)
-	if err != nil {
-		return fmt.Errorf("failed to export graph: %w", err)
+	if err := json.NewEncoder(gz).Encode(v); err != nil {
+		return fmt.Errorf("failed to encode vectors: %w", err)
 	}
 	return nil
 }

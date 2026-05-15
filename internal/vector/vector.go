@@ -2,12 +2,13 @@ package vector
 
 import (
 	"cmp"
+	"fmt"
 	"math"
 	"sort"
 )
 
 type Node[K cmp.Ordered] struct {
-	ID     K         `json:"id"`
+	Key    K         `json:"id"`
 	Vector []float32 `json:"vector"`
 }
 
@@ -16,9 +17,9 @@ type Vectors[K cmp.Ordered] interface {
 	Search(vector []float32, limit int) ([]*Node[K], error)
 }
 
-func NewNode[K cmp.Ordered](id K, vector []float32) *Node[K] {
+func NewNode[K cmp.Ordered](key K, vector []float32) *Node[K] {
 	return &Node[K]{
-		ID:     id,
+		Key:    key,
 		Vector: vector,
 	}
 }
@@ -37,11 +38,20 @@ func NewDumbVectors[K cmp.Ordered]() *DumbVectors[K] {
 }
 
 func (v *DumbVectors[K]) Add(node *Node[K]) error {
+	if len(v.Nodes) > 0 && len(node.Vector) != len(v.Nodes[0].Vector) {
+		return fmt.Errorf("vector length mismatch: expected %d, got %d", len(v.Nodes[0].Vector), len(node.Vector))
+	}
 	v.Nodes = append(v.Nodes, node)
 	return nil
 }
 
 func (v *DumbVectors[K]) Search(vector []float32, limit int) ([]*Node[K], error) {
+	if len(v.Nodes) == 0 {
+		return nil, nil
+	}
+	if len(vector) != len(v.Nodes[0].Vector) {
+		return nil, fmt.Errorf("vector length mismatch: expected %d, got %d", len(v.Nodes[0].Vector), len(vector))
+	}
 	type result struct {
 		node     *Node[K]
 		distance float32

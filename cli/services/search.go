@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/coder/hnsw"
 	"github.com/coreofscience/go-bibx/cli/clients/embeddings"
 	"github.com/coreofscience/go-bibx/cli/renderers"
 	"github.com/coreofscience/go-bibx/cli/repos"
 	"github.com/coreofscience/go-bibx/internal/utils"
+	"github.com/coreofscience/go-bibx/internal/vector"
 	"github.com/coreofscience/go-bibx/models"
 )
 
@@ -49,7 +49,7 @@ func (s *SemanticSearchService) Store(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to load analysis: %w", err)
 	}
-	graph := hnsw.NewGraph[string]()
+	v := vector.NewDumbVectors[string]()
 	totalNodes := len(analysis.Nodes)
 	slog.InfoContext(ctx, "embedding all the nodes in the graph", "count", totalNodes)
 	texts := make([]string, 0, totalNodes)
@@ -61,14 +61,17 @@ func (s *SemanticSearchService) Store(ctx context.Context) error {
 		}
 		texts = append(texts, buffer.String())
 	}
-	vectors, err := s.embeddingsClient.EmbedMany(ctx, texts)
+	es, err := s.embeddingsClient.EmbedMany(ctx, texts)
 	if err != nil {
 		return fmt.Errorf("failed to embed articles: %w", err)
 	}
-	for vector, node := range utils.Zip(vectors, analysis.Nodes) {
-		graph.Add(hnsw.MakeNode(node.ID, vector))
+	for e, node := range utils.Zip(es, analysis.Nodes) {
+		err := v.Add(vector.NewNode(node.ID, e))
+		if err != nil {
+			return fmt.Errorf("failed to add node: %w", err)
+		}
 	}
-	if err := s.searchRepo.Store(ctx, graph); err != nil {
+	if err := s.searchRepo.Store(ctx, v); err != nil {
 		return fmt.Errorf("failed to store search graph: %w", err)
 	}
 	return nil
@@ -76,7 +79,7 @@ func (s *SemanticSearchService) Store(ctx context.Context) error {
 
 // Search implements the [SearchService] interface
 func (s *SemanticSearchService) Search(ctx context.Context, query string, limit int) ([]*models.Result, error) {
-	vector, err := s.embeddingsClient.Embed(ctx, query)
+	v, err := s.embeddingsClient.Embed(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to embed query: %w", err)
 	}
@@ -92,7 +95,10 @@ func (s *SemanticSearchService) Search(ctx context.Context, query string, limit 
 	for _, node := range analysis.Nodes {
 		articlesByID[node.ID] = node.Article
 	}
-	neighbors := graph.Search(vector, limit)
+	neighbors, err := graph.Search(v, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search graph: %w", err)
+	}
 	results := make([]*models.Result, len(neighbors))
 	for i, neighbor := range neighbors {
 		if article, ok := articlesByID[neighbor.Key]; ok {
