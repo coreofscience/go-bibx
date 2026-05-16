@@ -24,6 +24,13 @@ func Keep[V comparable](g gograph.Graph[V], toKeep []V) (gograph.Graph[V], error
 	for _, v := range toKeep {
 		toKeepSet[v] = struct{}{}
 	}
+
+	for _, v := range g.GetAllVertices() {
+		if _, found := toKeepSet[v.Label()]; found {
+			newGraph.AddVertex(gograph.NewVertex(v.Label()))
+		}
+	}
+
 	for _, edge := range g.AllEdges() {
 		sourceLabel := edge.Source().Label()
 		destLabel := edge.Destination().Label()

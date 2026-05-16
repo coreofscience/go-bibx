@@ -8,12 +8,12 @@ import (
 	"github.com/coreofscience/go-bibx/models"
 )
 
-type MarkdownRenderer struct {
+type MarkdownReferenceRenderer struct {
 	template *template.Template
 	writer   io.Writer
 }
 
-func NewMarkdownRenderer(writer io.Writer) (*MarkdownRenderer, error) {
+func NewMarkdownReferenceRenderer(writer io.Writer) (*MarkdownRenderer, error) {
 	templ := template.New("")
 	templ, err := templ.Funcs(template.FuncMap{
 		"wrap":        wrap,
@@ -31,11 +31,11 @@ func NewMarkdownRenderer(writer io.Writer) (*MarkdownRenderer, error) {
 }
 
 // Render implements the [Renderer] interface
-func (e *MarkdownRenderer) Render(results []*models.Result) error {
+func (e *MarkdownReferenceRenderer) Render(results []*models.Result) error {
 	for _, result := range results {
 		if err := e.template.ExecuteTemplate(
 			e.writer,
-			"article.md",
+			"reference.md",
 			result.Article,
 		); err != nil {
 			return fmt.Errorf("error rendering template: %w", err)

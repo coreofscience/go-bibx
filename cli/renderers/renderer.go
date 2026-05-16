@@ -1,15 +1,8 @@
 package renderers
 
-import (
-	"io"
-
-	"github.com/coreofscience/go-bibx/models"
-)
+import "github.com/coreofscience/go-bibx/models"
 
 type Renderer interface {
-	// RenderResults renders the graph in a specific format.
-	RenderResults(w io.Writer, result []*models.Result) error
-
-	// RenderArticle renders a single article in a specific format.
-	RenderArticle(w io.Writer, article *models.Article) error
+	// Render renders the graph in a specific format and returns the result as a string.
+	Render(result []*models.Result) error
 }

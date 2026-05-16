@@ -28,7 +28,6 @@ func TestKeep(t *testing.T) {
 
 	// Edges should only be B -> C
 	assert.Equal(t, 1, len(newGraph.AllEdges()))
-	// Nodes are only B and C because they're part of the B->C edge (Keep implementation explicitly re-adds valid edges).
 	assert.Equal(t, uint32(2), newGraph.Order())
 
 	edge := newGraph.AllEdges()[0]
@@ -44,10 +43,10 @@ func TestKeep_Isolated(t *testing.T) {
 	_, _ = g.AddEdge(vA, vB)
 
 	// Keep "A". Since A->B can't be added (B is not in toKeep), A won't have edges.
-	// But `Keep` only adds edges, not isolated vertices. So order might be 0.
 	newGraph, err := graphs.Keep(g, []string{"A"})
 	assert.NoError(t, err)
 
-	assert.Equal(t, uint32(0), newGraph.Order())
+	assert.Equal(t, uint32(1), newGraph.Order())
 	assert.Equal(t, 0, len(newGraph.AllEdges()))
+	assert.Equal(t, "A", newGraph.GetAllVertices()[0].Label())
 }

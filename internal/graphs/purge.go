@@ -24,6 +24,13 @@ func Purge[V comparable](g gograph.Graph[V], toRemove []V) (gograph.Graph[V], er
 	for _, v := range toRemove {
 		toRemoveSet[v] = struct{}{}
 	}
+
+	for _, v := range g.GetAllVertices() {
+		if _, found := toRemoveSet[v.Label()]; !found {
+			newGraph.AddVertex(gograph.NewVertex(v.Label()))
+		}
+	}
+
 	for _, edge := range g.AllEdges() {
 		sourceLabel := edge.Source().Label()
 		destLabel := edge.Destination().Label()

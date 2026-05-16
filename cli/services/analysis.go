@@ -6,30 +6,32 @@ import (
 	"log/slog"
 
 	"github.com/coreofscience/go-bibx/algorithms"
-	"github.com/coreofscience/go-bibx/cli/clients/embeddings"
 	"github.com/coreofscience/go-bibx/cli/clients/openalex"
+	"github.com/coreofscience/go-bibx/cli/renderers"
 	"github.com/coreofscience/go-bibx/cli/repos"
 	"github.com/coreofscience/go-bibx/models"
 )
 
 type AnalysisService interface {
 	Store(ctx context.Context, query string, limit int) error
-	Query(ctx context.Context, category string, limit int) ([]*models.Result, error)
+	Query(ctx context.Context, category string, limit int, format string) error
 }
 
 type OpenAlexAnalysisService struct {
 	openalexClient openalex.Client
 	analysisRepo   repos.AnalysisRepo
+	renderers      map[string]renderers.Renderer
 }
 
 func NewOpenAlexAnalysisService(
 	openalexClient openalex.Client,
-	embeddingsClient embeddings.Client,
 	analysisRepo repos.AnalysisRepo,
+	rendererMap map[string]renderers.Renderer,
 ) *OpenAlexAnalysisService {
 	return &OpenAlexAnalysisService{
 		openalexClient: openalexClient,
 		analysisRepo:   analysisRepo,
+		renderers:      rendererMap,
 	}
 }
 
@@ -90,15 +92,13 @@ func (s *OpenAlexAnalysisService) Store(
 			Target: edge.Destination().Label(),
 		})
 	}
+
 	analysis := &models.Analysis{
 		Nodes: nodes,
 		Links: links,
 	}
-	err = s.analysisRepo.Store(ctx, analysis)
-	if err != nil {
-		return fmt.Errorf("failed to store analysis: %w", err)
-	}
-	return nil
+
+	return s.analysisRepo.Store(ctx, analysis)
 }
 
 func (s *OpenAlexAnalysisService) enrich(
@@ -165,14 +165,23 @@ func (s *OpenAlexAnalysisService) Query(
 	ctx context.Context,
 	category string,
 	limit int,
-) ([]*models.Result, error) {
+	format string,
+) error {
 	analysis, err := s.analysisRepo.Load(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load analysis: %w", err)
+		return fmt.Errorf("failed to load analysis: %w", err)
 	}
 	results, err := analysis.Query(category, limit)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query analysis: %w", err)
+		return fmt.Errorf("failed to query analysis: %w", err)
 	}
-	return results, nil
+	renderer, ok := s.renderers[format]
+	if !ok {
+		return fmt.Errorf("unsupported format: %s", format)
+	}
+	err = renderer.Render(results)
+	if err != nil {
+		return fmt.Errorf("failed to render results: %w", err)
+	}
+	return nil
 }

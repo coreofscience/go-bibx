@@ -6,9 +6,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/coreofscience/go-bibx/cli/clients/embeddings"
 	"github.com/coreofscience/go-bibx/cli/clients/openalex"
-	"github.com/coreofscience/go-bibx/cli/renderers"
 	"github.com/coreofscience/go-bibx/cli/repos"
 	"github.com/coreofscience/go-bibx/cli/services"
 	"github.com/coreofscience/go-bibx/internal/utils"
@@ -54,49 +52,22 @@ func New() *cli.Command {
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			utils.SetDefaultLogger(c.Bool("verbose"))
-			analysisPath := path.Join(c.String("root"), ".bibx", "collection.json.gz")
-			searchPath := path.Join(c.String("root"), ".bibx", "search.graph")
-			force := c.Bool("force")
-			if _, err := os.Stat(analysisPath); err == nil && !force {
-				slog.Error("file already exists", "path", analysisPath)
-				os.Exit(1)
-			}
-			if _, err := os.Stat(searchPath); err == nil && !force {
-				slog.Error("file already exists", "path", searchPath)
+			p := path.Join(c.String("root"), ".bibx", "collection.json.gz")
+			if _, err := os.Stat(p); err == nil && !c.Bool("force") {
+				slog.Error("file already exists", "path", p)
 				os.Exit(1)
 			}
 			query := c.StringArg("query")
 			limit := c.Int("limit")
 			openalexClient := openalex.NewRestyClient()
-			embeddingsClient, err := embeddings.NewOllamaClient()
-			if err != nil {
-				slog.Error("failed to create embeddings client", "error", err)
-				os.Exit(1)
-			}
-			analysisRepo := repos.NewFileAnalysisRepo(analysisPath)
-			analysisService := services.NewOpenAlexAnalysisService(
+			analysisRepo := repos.NewFileAnalysisRepo(p)
+			service := services.NewOpenAlexAnalysisService(
 				openalexClient,
-				embeddingsClient,
 				analysisRepo,
+				nil,
 			)
-			if err := analysisService.Store(context.Background(), query, limit); err != nil {
+			if err := service.Store(context.Background(), query, limit); err != nil {
 				slog.Error("failed to store analysis", "error", err)
-				os.Exit(1)
-			}
-			searchRepo := repos.NewFileSearchRepo(searchPath)
-			markdownRenderer, err := renderers.NewMarkdownRenderer("simple")
-			if err != nil {
-				slog.Error("failed to create markdown renderer", "error", err)
-				os.Exit(1)
-			}
-			searchService := services.NewSemanticSearchService(
-				analysisRepo,
-				searchRepo,
-				embeddingsClient,
-				markdownRenderer,
-			)
-			if err := searchService.Store(ctx); err != nil {
-				slog.Error("failed to store search graph", "error", err)
 				os.Exit(1)
 			}
 			return nil

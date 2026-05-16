@@ -42,6 +42,19 @@ func TestUndirected_Directed(t *testing.T) {
 	assert.NotNil(t, undirectedGraph.GetEdge(vCUn, vBUn))
 }
 
+func TestUndirected_Isolated(t *testing.T) {
+	g := gograph.New[string](gograph.Directed())
+
+	vA := gograph.NewVertex("A")
+	g.AddVertex(vA)
+
+	undirectedGraph, err := graphs.Undirected(g)
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint32(1), undirectedGraph.Order())
+	assert.Equal(t, "A", undirectedGraph.GetAllVertices()[0].Label())
+}
+
 func TestUndirected_AlreadyUndirected(t *testing.T) {
 	g := gograph.New[string]()
 

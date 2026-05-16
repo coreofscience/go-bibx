@@ -29,9 +29,16 @@ func TestPurge(t *testing.T) {
 	// B is removed -> A->B and B->C are removed.
 	// D is removed -> C->D is removed.
 	// So newGraph should have 0 edges.
-	// Since Purge relies on iterating edges to add vertices, and no edges are added, the order will be 0.
-	assert.Equal(t, uint32(0), newGraph.Order())
+	// However, we still have A and C left as isolated vertices.
+	assert.Equal(t, uint32(2), newGraph.Order())
 	assert.Equal(t, 0, len(newGraph.AllEdges()))
+
+	labels := make(map[string]bool)
+	for _, v := range newGraph.GetAllVertices() {
+		labels[v.Label()] = true
+	}
+	assert.True(t, labels["A"])
+	assert.True(t, labels["C"])
 }
 
 func TestPurge_KeepsIntactConnections(t *testing.T) {

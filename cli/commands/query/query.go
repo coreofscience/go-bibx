@@ -4,7 +4,6 @@ import (
 	"context"
 	"log/slog"
 	"os"
-	"path"
 
 	"github.com/coreofscience/go-bibx/cli/clients/openalex"
 	"github.com/coreofscience/go-bibx/cli/renderers"
@@ -16,7 +15,7 @@ import (
 )
 
 var (
-	formats    = collections.NewSet("reference", "markdown", "json", "simple")
+	formats    = collections.NewSet("reference", "markdown", "json")
 	categories = collections.NewSet("root", "trunk", "leaf")
 )
 
@@ -27,9 +26,9 @@ func New() *cli.Command {
 		Usage: "query the bibx collection for relevant articles",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:  "root",
-				Usage: "root directory where the collection is stored",
-				Value: ".",
+				Name:  "file",
+				Usage: "path to the bibx collection file",
+				Value: ".bibx/collection.json.gz",
 			},
 			&cli.StringFlag{
 				Name:     "category",
@@ -52,14 +51,14 @@ func New() *cli.Command {
 			},
 			&cli.StringFlag{
 				Name:  "format",
-				Usage: "format to output results in (simple, reference, markdown, json, etc.)",
+				Usage: "format to output results in (reference, markdown, json, etc.)",
 				Value: "json",
 				Validator: func(value string) error {
 					if value == "" {
 						return cli.Exit("format is required", 1)
 					}
 					if !formats.Contains(value) {
-						return cli.Exit("invalid format, must be one of: simple, reference, markdown, json", 1)
+						return cli.Exit("invalid format, must be one of: reference, markdown, json", 1)
 					}
 					return nil
 				},
@@ -73,38 +72,31 @@ func New() *cli.Command {
 		Action: func(ctx context.Context, c *cli.Command) error {
 			utils.SetDefaultLogger(c.Bool("verbose"))
 			openalexClient := openalex.NewRestyClient()
-			analysisPath := path.Join(c.String("root"), ".bibx", "collection.json.gz")
-			analysisRepo := repos.NewFileAnalysisRepo(analysisPath)
+			analysisRepo := repos.NewFileAnalysisRepo(
+				c.String("file"),
+			)
+			markdownRenderer, err := renderers.NewMarkdownRenderer(os.Stdout)
+			if err != nil {
+				slog.Error("failed to create markdown renderer", "error", err)
+				os.Exit(1)
+			}
+			referenceRenderer, err := renderers.NewMarkdownReferenceRenderer(os.Stdout)
+			if err != nil {
+				slog.Error("failed to create markdown renderer", "error", err)
+				os.Exit(1)
+			}
 			service := services.NewOpenAlexAnalysisService(
 				openalexClient,
-				nil,
 				analysisRepo,
+				map[string]renderers.Renderer{
+					"markdown":  markdownRenderer,
+					"reference": referenceRenderer,
+					"json":      renderers.NewJSONRenderer(os.Stdout),
+				},
 			)
-			results, err := service.Query(ctx, c.String("category"), c.Int("top"))
+			err = service.Query(ctx, c.String("category"), c.Int("top"), c.String("format"))
 			if err != nil {
 				slog.Error("failed to query analysis", "error", err)
-				os.Exit(1)
-			}
-
-			format := c.String("format")
-			var renderer renderers.Renderer
-			switch format {
-			case "json":
-				renderer = renderers.NewJSONRenderer()
-			case "markdown", "simple", "reference":
-				renderer, err = renderers.NewMarkdownRenderer(format)
-			default:
-				slog.Error("unsupported format", "format", format)
-				os.Exit(1)
-			}
-
-			if err != nil {
-				slog.Error("failed to create renderer", "error", err)
-				os.Exit(1)
-			}
-
-			if err := renderer.RenderResults(os.Stdout, results); err != nil {
-				slog.Error("failed to render results", "error", err)
 				os.Exit(1)
 			}
 			return nil

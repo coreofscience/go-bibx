@@ -43,10 +43,11 @@ func TestRemoveCycles_SelfLoop(t *testing.T) {
 
 	newGraph, err := graphs.RemoveCycles(g)
 	assert.NoError(t, err)
-	// B is left without edges, and Purge drops isolated vertices
-	assert.Equal(t, uint32(0), newGraph.Order())
+	// B is left without edges, but Purge now keeps isolated vertices
+	assert.Equal(t, uint32(1), newGraph.Order())
 	assert.Equal(t, 0, len(newGraph.AllEdges()))
-	assert.Empty(t, newGraph.GetAllVertices())
+	assert.NotEmpty(t, newGraph.GetAllVertices())
+	assert.Equal(t, "B", newGraph.GetAllVertices()[0].Label())
 }
 
 func TestRemoveCycles_Cycle(t *testing.T) {
