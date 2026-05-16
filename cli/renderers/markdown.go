@@ -10,10 +10,10 @@ import (
 
 type MarkdownRenderer struct {
 	template *template.Template
-	writer   io.Writer
+	format   string
 }
 
-func NewMarkdownRenderer(writer io.Writer) (*MarkdownRenderer, error) {
+func NewMarkdownRenderer(format string) (*MarkdownRenderer, error) {
 	templ := template.New("")
 	templ, err := templ.Funcs(template.FuncMap{
 		"wrap":        wrap,
@@ -26,23 +26,35 @@ func NewMarkdownRenderer(writer io.Writer) (*MarkdownRenderer, error) {
 	}
 	return &MarkdownRenderer{
 		template: templ,
-		writer:   writer,
+		format:   format,
 	}, nil
 }
 
-// Render implements the [Renderer] interface
-func (e *MarkdownRenderer) Render(results []*models.Result) error {
+// RenderResults implements the [Renderer] interface
+func (e *MarkdownRenderer) RenderResults(w io.Writer, results []*models.Result) error {
 	for _, result := range results {
 		if err := e.template.ExecuteTemplate(
-			e.writer,
-			"article.md",
+			w,
+			fmt.Sprintf("%s.md", e.format),
 			result.Article,
 		); err != nil {
 			return fmt.Errorf("error rendering template: %w", err)
 		}
-		if _, err := e.writer.Write([]byte("\n\n---\n\n")); err != nil {
+		if _, err := w.Write([]byte("\n\n---\n\n")); err != nil {
 			return fmt.Errorf("error writing separator: %w", err)
 		}
+	}
+	return nil
+}
+
+// RenderArticle implements the [Renderer] interface
+func (e *MarkdownRenderer) RenderArticle(w io.Writer, article *models.Article) error {
+	if err := e.template.ExecuteTemplate(
+		w,
+		fmt.Sprintf("%s.md", e.format),
+		article,
+	); err != nil {
+		return fmt.Errorf("error rendering template: %w", err)
 	}
 	return nil
 }

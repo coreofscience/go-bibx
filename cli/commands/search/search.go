@@ -1,4 +1,4 @@
-package query
+package search
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/coreofscience/go-bibx/cli/clients/openalex"
+	"github.com/coreofscience/go-bibx/cli/clients/embeddings"
 	"github.com/coreofscience/go-bibx/cli/renderers"
 	"github.com/coreofscience/go-bibx/cli/repos"
 	"github.com/coreofscience/go-bibx/cli/services"
@@ -16,44 +16,29 @@ import (
 )
 
 var (
-	formats    = collections.NewSet("reference", "markdown", "json", "simple")
-	categories = collections.NewSet("root", "trunk", "leaf")
+	formats = collections.NewSet("reference", "markdown", "json", "simple")
 )
 
 func New() *cli.Command {
-
 	return &cli.Command{
-		Name:  "query",
-		Usage: "query the bibx collection for relevant articles",
+		Name:      "search",
+		Usage:     "semantic search for a research topic",
+		ArgsUsage: "<query>",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "root",
-				Usage: "root directory where the collection is stored",
+				Usage: "root directory store the results",
 				Value: ".",
 			},
-			&cli.StringFlag{
-				Name:     "category",
-				Usage:    "category to filter by",
-				Required: true,
-				Validator: func(value string) error {
-					if value == "" {
-						return cli.Exit("category is required", 1)
-					}
-					if !categories.Contains(value) {
-						return cli.Exit("invalid category, must be one of: root, trunk, leaf", 1)
-					}
-					return nil
-				},
-			},
 			&cli.IntFlag{
-				Name:  "top",
+				Name:  "limit",
 				Usage: "number of top results to return",
 				Value: 5,
 			},
 			&cli.StringFlag{
 				Name:  "format",
 				Usage: "format to output results in (simple, reference, markdown, json, etc.)",
-				Value: "json",
+				Value: "simple",
 				Validator: func(value string) error {
 					if value == "" {
 						return cli.Exit("format is required", 1)
@@ -70,21 +55,31 @@ func New() *cli.Command {
 				Value: false,
 			},
 		},
+		Arguments: []cli.Argument{
+			&cli.StringArg{
+				Name:      "query",
+				UsageText: "search query for the collection",
+				Config: cli.StringConfig{
+					TrimSpace: true,
+				},
+			},
+		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			utils.SetDefaultLogger(c.Bool("verbose"))
-			openalexClient := openalex.NewRestyClient()
+
+			query := c.StringArg("query")
+
 			analysisPath := path.Join(c.String("root"), ".bibx", "collection.json.gz")
-			analysisRepo := repos.NewFileAnalysisRepo(analysisPath)
-			service := services.NewOpenAlexAnalysisService(
-				openalexClient,
-				nil,
-				analysisRepo,
-			)
-			results, err := service.Query(ctx, c.String("category"), c.Int("top"))
+			searchPath := path.Join(c.String("root"), ".bibx", "search.graph")
+
+			embeddingsClient, err := embeddings.NewOllamaClient()
 			if err != nil {
-				slog.Error("failed to query analysis", "error", err)
+				slog.Error("failed to create embeddings client", "error", err)
 				os.Exit(1)
 			}
+
+			analysisRepo := repos.NewFileAnalysisRepo(analysisPath)
+			searchRepo := repos.NewFileSearchRepo(searchPath)
 
 			format := c.String("format")
 			var renderer renderers.Renderer
@@ -103,10 +98,25 @@ func New() *cli.Command {
 				os.Exit(1)
 			}
 
+			searchService := services.NewSemanticSearchService(
+				analysisRepo,
+				searchRepo,
+				embeddingsClient,
+				renderer,
+			)
+
+			limit := int(c.Int("limit"))
+			results, err := searchService.Search(ctx, query, limit)
+			if err != nil {
+				slog.Error("failed to perform search", "error", err)
+				os.Exit(1)
+			}
+
 			if err := renderer.RenderResults(os.Stdout, results); err != nil {
 				slog.Error("failed to render results", "error", err)
 				os.Exit(1)
 			}
+
 			return nil
 		},
 	}
