@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/coreofscience/go-bibx/internal/collections"
+	"github.com/coreofscience/go-bibx/internal/utils"
 	"github.com/coreofscience/go-bibx/models"
 	"golang.org/x/sync/errgroup"
 	"resty.dev/v3"
@@ -163,7 +164,7 @@ func (c *RestyClient) ListArticlesByIDs(ctx context.Context, ids []string) ([]*W
 	}
 
 	selectFields := getWorkFields()
-	idChunks := chunks(ids, MaxIDsPerRequest)
+	idChunks := utils.Chunks(ids, MaxIDsPerRequest)
 
 	return fetchParallel(ctx, idChunks, func(ctx context.Context, idChunk []string) (*WorksResponse, error) {
 		joinedIDs := strings.Join(idChunk, "|")
@@ -277,17 +278,6 @@ func jsonFields(t any) []string {
 		}
 	}
 	return fields
-}
-
-// chunks splits a slice into chunks of the specified size
-func chunks[T any](slice []T, chunkSize int) [][]T {
-	numChunks := (len(slice) + chunkSize - 1) / chunkSize
-	chunked := make([][]T, 0, numChunks)
-	for i := 0; i < len(slice); i += chunkSize {
-		end := min(i+chunkSize, len(slice))
-		chunked = append(chunked, slice[i:end])
-	}
-	return chunked
 }
 
 // WorkToArticle transforms a Work to an Article.
@@ -409,5 +399,5 @@ func invertAbstract(abstractInvertedIndex *map[string][]int) string {
 			words[index] = word
 		}
 	}
-	return strings.Join(words, " ")
+	return strings.TrimSpace(strings.Join(words, " "))
 }
