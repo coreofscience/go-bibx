@@ -21,6 +21,11 @@ func Undirected[V comparable](g gograph.Graph[V]) (gograph.Graph[V], error) {
 		options = append(options, gograph.Acyclic())
 	}
 	newGraph := gograph.New[V](options...)
+
+	for _, v := range g.GetAllVertices() {
+		newGraph.AddVertex(gograph.NewVertex(v.Label()))
+	}
+
 	for _, edge := range g.AllEdges() {
 		sourceLabel := edge.Source().Label()
 		destLabel := edge.Destination().Label()
