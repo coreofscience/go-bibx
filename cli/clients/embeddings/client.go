@@ -84,7 +84,7 @@ func (c *OllamaClient) EmbedMany(ctx context.Context, texts []string) ([][]float
 			return nil, fmt.Errorf("number of embeddings returned does not match number of input texts")
 		}
 		results = append(results, resp.Embeddings...)
-		slog.Debug("done embedding chunk", "chunk", i, "total", len(chunks))
+		slog.Debug("done embedding chunk", "chunk", i+1, "total", len(chunks))
 	}
 	return results, nil
 }
