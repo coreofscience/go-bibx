@@ -10,9 +10,10 @@ import (
 
 type MarkdownRenderer struct {
 	template *template.Template
+	format   string
 }
 
-func NewMarkdownRenderer() (*MarkdownRenderer, error) {
+func NewMarkdownRenderer(format string) (*MarkdownRenderer, error) {
 	templ := template.New("")
 	templ, err := templ.Funcs(template.FuncMap{
 		"wrap":        wrap,
@@ -25,6 +26,7 @@ func NewMarkdownRenderer() (*MarkdownRenderer, error) {
 	}
 	return &MarkdownRenderer{
 		template: templ,
+		format:   format,
 	}, nil
 }
 
@@ -33,7 +35,7 @@ func (e *MarkdownRenderer) RenderResults(w io.Writer, results []*models.Result) 
 	for _, result := range results {
 		if err := e.template.ExecuteTemplate(
 			w,
-			"article.md",
+			fmt.Sprintf("%s.md", e.format),
 			result.Article,
 		); err != nil {
 			return fmt.Errorf("error rendering template: %w", err)
@@ -49,7 +51,7 @@ func (e *MarkdownRenderer) RenderResults(w io.Writer, results []*models.Result) 
 func (e *MarkdownRenderer) RenderArticle(w io.Writer, article *models.Article) error {
 	if err := e.template.ExecuteTemplate(
 		w,
-		"article.md",
+		fmt.Sprintf("%s.md", e.format),
 		article,
 	); err != nil {
 		return fmt.Errorf("error rendering template: %w", err)

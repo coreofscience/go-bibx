@@ -84,7 +84,7 @@ func New() *cli.Command {
 				os.Exit(1)
 			}
 			searchRepo := repos.NewFileSearchRepo(searchPath)
-			markdownRenderer, err := renderers.NewMarkdownRenderer()
+			markdownRenderer, err := renderers.NewMarkdownRenderer("simple")
 			if err != nil {
 				slog.Error("failed to create markdown renderer", "error", err)
 				os.Exit(1)

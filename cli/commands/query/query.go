@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	formats    = collections.NewSet("reference", "markdown", "json")
+	formats    = collections.NewSet("reference", "markdown", "json", "simple")
 	categories = collections.NewSet("root", "trunk", "leaf")
 )
 
@@ -52,14 +52,14 @@ func New() *cli.Command {
 			},
 			&cli.StringFlag{
 				Name:  "format",
-				Usage: "format to output results in (reference, markdown, json, etc.)",
+				Usage: "format to output results in (simple, reference, markdown, json, etc.)",
 				Value: "json",
 				Validator: func(value string) error {
 					if value == "" {
 						return cli.Exit("format is required", 1)
 					}
 					if !formats.Contains(value) {
-						return cli.Exit("invalid format, must be one of: reference, markdown, json", 1)
+						return cli.Exit("invalid format, must be one of: simple, reference, markdown, json", 1)
 					}
 					return nil
 				},
@@ -91,10 +91,8 @@ func New() *cli.Command {
 			switch format {
 			case "json":
 				renderer = renderers.NewJSONRenderer()
-			case "markdown":
-				renderer, err = renderers.NewMarkdownRenderer()
-			case "reference":
-				renderer, err = renderers.NewMarkdownReferenceRenderer()
+			case "markdown", "simple", "reference":
+				renderer, err = renderers.NewMarkdownRenderer(format)
 			default:
 				slog.Error("unsupported format", "format", format)
 				os.Exit(1)

@@ -399,5 +399,5 @@ func invertAbstract(abstractInvertedIndex *map[string][]int) string {
 			words[index] = word
 		}
 	}
-	return strings.Join(words, " ")
+	return strings.TrimSpace(strings.Join(words, " "))
 }
