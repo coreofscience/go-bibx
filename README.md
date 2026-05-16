@@ -30,6 +30,11 @@ metaphor, it categorizes articles into:
 - **Visualize**: Interactive, browser-based graph exploration of your
   collections.
 - **Semantic Search**: Find information in your collection using semantic relevance.
+- **Queries**: Query your collection by relevance in three main categories:
+  - *Rootness*: how seminal the article is.
+  - *Trunkness*: how important is this article within the structure of the
+    topic.
+  - *Leafness*: how complete and recent the article is.
 - **Interoperable**: Designed as a standalone CLI that fits perfectly into
   automated workflows.
 
@@ -39,16 +44,6 @@ We are actively working on expanding the semantic search to a **Graph Semantic S
 GraphRAG, this will allow users to find articles related to a query by
 leveraging both semantic relevance and their deep relationships within the
 citation graph.
-
-## Features to be implemented
-
-- **Graph semantic search** Find information in your collection via a combined
-  semantic search and graph approach.
-- **Queries** query your collection by relevance in tree main categories:
-  - *Rootness*: how seminal the article is.
-  - *Trunkness*: how important is this article within the structure of the
-    topic.
-  - *Leafness*: how complete and recent the article is.
 
 ## Installation
 
@@ -100,7 +95,11 @@ Perform a semantic search to find relevant articles:
 
 ### 4. Query
 
-TBD...
+Query your collection by relevance in three main categories (e.g., root, trunk, leaf):
+
+```bash
+./bibx query --category root
+```
 
 ## Development
 
