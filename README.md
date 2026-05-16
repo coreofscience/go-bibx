@@ -5,9 +5,9 @@ perform deep, graph-based bibliographic analysis. Maintained by the [Core of
 Science](https://coreofscience.org/) organization, it serves as a Go
 implementation of the **Tree of Science (ToS)** methodology.
 
-The project is built to be both a standalone tool for quick academic inquiry and
-a robust component for larger data pipelines, offering high interoperability
-through its binary distribution.
+The project is built to be both a standalone tool for quick academic inquiry
+and a robust component for larger data pipelines, offering high
+interoperability through its binary distribution.
 
 ## The Tree of Science & SAP Algorithm
 
@@ -19,8 +19,8 @@ metaphor, it categorizes articles into:
 - **Roots**: Foundational, seminal works that established the field.
 - **Trunk**: Core papers that provide the structural backbone and consolidate
   the topic.
-- **Leaves**: Recent, specialized developments representing the current frontier
-  of research.
+- **Leaves**: Recent, specialized developments representing the current
+  frontier of research.
 
 ## Features
 
@@ -29,7 +29,8 @@ metaphor, it categorizes articles into:
   citation network.
 - **Visualize**: Interactive, browser-based graph exploration of your
   collections.
-- **Semantic Search**: Find information in your collection using semantic relevance.
+- **Semantic Search**: Find information in your collection using semantic
+  relevance.
 - **Queries**: Query your collection by relevance in three main categories:
   - *Rootness*: how seminal the article is.
   - *Trunkness*: how important is this article within the structure of the
@@ -40,10 +41,10 @@ metaphor, it categorizes articles into:
 
 ## Coming Soon: Graph part of Semantic Search
 
-We are actively working on expanding the semantic search to a **Graph Semantic Search**. Similar in spirit to
-GraphRAG, this will allow users to find articles related to a query by
-leveraging both semantic relevance and their deep relationships within the
-citation graph.
+We are actively working on expanding the semantic search to a **Graph Semantic
+Search**. Similar in spirit to GraphRAG, this will allow users to find articles
+related to a query by leveraging both semantic relevance and their deep
+relationships within the citation graph.
 
 ## Installation
 
@@ -55,8 +56,9 @@ cd go-bibx
 go build -o bibx ./cmd/bibx
 ```
 
-Note: `go-bibx` depends on `ollama` running locally to generate embeddings for semantic search.
-Users will need to run the setup command once to download the model:
+Note: `go-bibx` depends on `ollama` running locally to generate embeddings for
+semantic search. Users will need to run the setup command once to download the
+model:
 
 ```bash
 ./bibx setup
@@ -103,10 +105,12 @@ Query your collection by relevance in three main categories (e.g., root, trunk, 
 
 ## Development
 
-- **Run with Air**: For live-reloading during development, use [Air](https://github.com/air-verse/air).
+- **Run with Air**: For live-reloading during development, use [Air][air].
 - **Testing**: Run tests with `go test ./...`.
 - **Linting**: Use `golangci-lint run`.
 
 ## License
 
 This project is licensed under the MIT License.
+
+[air]: https://github.com/air-verse/air
