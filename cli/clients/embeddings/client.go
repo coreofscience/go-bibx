@@ -39,12 +39,12 @@ func (c *OllamaClient) Sync(ctx context.Context) error {
 	err := c.client.Pull(ctx, &api.PullRequest{
 		Model: modelID,
 	}, func(progress api.ProgressResponse) error {
-		if progress.Total == 0 {
+		if progress.Total == 0 || progress.Completed == progress.Total {
 			slog.Info("pulling model", "model", modelID, "status", progress.Status)
 			return nil
 		}
 		percent := float64(progress.Completed) / float64(progress.Total)
-		slog.Info("pulling model", "model", modelID, "status", progress.Status, "progress", fmt.Sprintf("%.2f%%", percent*100))
+		slog.Debug("pulling model", "model", modelID, "status", progress.Status, "progress", fmt.Sprintf("%.2f%%", percent*100))
 		return nil
 	})
 	if err != nil {
