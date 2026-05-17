@@ -1,0 +1,315 @@
+package algorithms
+
+import (
+	"cmp"
+	"fmt"
+	"iter"
+	"log/slog"
+	"math"
+	"slices"
+
+	"github.com/coreofscience/go-bibx/internal/graphs"
+	"github.com/hmdsefi/gograph"
+	"github.com/hmdsefi/gograph/traverse"
+)
+
+// QuasiStainer is a struct that represents a quasi-stainer algorithm.
+type QuasiStainer[K comparable] struct {
+	graph             gograph.Graph[K]
+	topologicalOrder  []*gograph.Vertex[K]
+	topologicalIndex  map[K]int
+	shortestPathCache map[K]map[K][]K
+}
+
+// NewQuasiStainer creates a new QuasiStainer instance.
+//
+// It takes linear or amortized O(V + E) time to prepare the quasi-stainer
+// structure.
+func NewQuasiStainer[K comparable](graph gograph.Graph[K]) (*QuasiStainer[K], error) {
+	topologicalIterator, err := traverse.NewTopologicalIterator(graph)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create topological iterator: %w", err)
+	}
+	topologicalOrder := make([]*gograph.Vertex[K], 0, graph.Order())
+	err = topologicalIterator.Iterate(func(v *gograph.Vertex[K]) error {
+		topologicalOrder = append(topologicalOrder, v)
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to iterate topological order: %w", err)
+	}
+	topologicalIndex := make(map[K]int, graph.Order())
+	for i, v := range topologicalOrder {
+		topologicalIndex[v.Label()] = i
+	}
+	return &QuasiStainer[K]{
+		graph:             graph,
+		topologicalOrder:  topologicalOrder,
+		topologicalIndex:  topologicalIndex,
+		shortestPathCache: make(map[K]map[K][]K),
+	}, nil
+}
+
+// Run runs the quasi-stainer algorithm on the given terminals and returns the
+// resulting graph.
+//
+// Go figure what the complexity is. But don't call this with a large number of
+// terminals.
+func (q *QuasiStainer[K]) Run(terminals []K) (gograph.Graph[K], error) {
+	// Make sure all the terminals exists in the graph.
+	for _, terminal := range terminals {
+		if _, ok := q.topologicalIndex[terminal]; !ok {
+			return nil, fmt.Errorf("terminal %v not found in graph", terminal)
+		}
+	}
+
+	// Sort the terminals by their topological index.
+	q.sortTopological(terminals)
+
+	// Create a new weighted graph with all the terminals as vertices and their
+	// distances as weights.
+	metaGraph := gograph.New[K](
+		gograph.Directed(),
+		gograph.Acyclic(),
+		gograph.Weighted(),
+	)
+	for _, terminal := range terminals {
+		metaGraph.AddVertex(gograph.NewVertex(terminal))
+	}
+	for a, b := range sortedPairs(terminals) {
+		path := q.shortestPath(a, b)
+		if path == nil {
+			continue
+		}
+		weight := float64(len(path) - 1)
+		_, err := metaGraph.AddEdge(
+			gograph.NewVertex(a),
+			gograph.NewVertex(b),
+			gograph.WithEdgeWeight(weight),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to construct meta graph: %w", err)
+		}
+	}
+
+	// Now find the minimum spanning tree of the meta-graph.
+	mst, unionFind := graphs.MST(metaGraph)
+	components := unionFind.Components()
+	if len(components) == 1 {
+		return q.materialize(mst), nil
+	}
+
+	// First, try to find a best descendant.
+	bestDescendant := q.findBestDescendant(components)
+	if bestDescendant != nil {
+		newTerminals := append(terminals, *bestDescendant)
+		return q.Run(newTerminals)
+	}
+
+	// If no best descendant, try to find a best ancestor.
+	bestAncestor := q.findBestAncestor(components)
+	if bestAncestor != nil {
+		newTerminals := append(terminals, *bestAncestor)
+		return q.Run(newTerminals)
+	}
+
+	// If no best ancestor is found, the mst cannot be bridged, return disjoint.
+	return q.materialize(mst), nil
+}
+
+func (q *QuasiStainer[K]) sortTopological(items []K) {
+	slices.SortFunc(items, func(a, b K) int {
+		return cmp.Compare(q.topologicalIndex[a], q.topologicalIndex[b])
+	})
+}
+
+func (q *QuasiStainer[K]) shortestPath(a, b K) []K {
+	indexA := q.topologicalIndex[a]
+	indexB := q.topologicalIndex[b]
+
+	// If a is after b in the topological order, there is no path.
+	if indexA >= indexB {
+		return nil
+	}
+
+	// Find in cache
+	if cachedPath, ok := q.shortestPathCache[a][b]; ok {
+		return cachedPath
+	}
+
+	maxLength := indexB - indexA + 1
+
+	// Initialize the distance map and parent map.
+	dist := make(map[K]int, maxLength)
+	dist[a] = 0
+
+	// Initialize the parent map.
+	parent := make(map[K]K, maxLength)
+
+	for _, u := range q.topologicalOrder[indexA : indexB+1] {
+		for _, edge := range q.graph.EdgesOf(u) {
+			v := edge.Destination()
+			if du, ok := dist[u.Label()]; ok {
+				dv, ok := dist[v.Label()]
+				if !ok || dv > du+1 {
+					dist[v.Label()] = du + 1
+					parent[v.Label()] = u.Label()
+				}
+			}
+		}
+	}
+
+	// Find out if we found a path from a to b.
+	if _, ok := dist[b]; !ok {
+		// Cache the result as nil.
+		q.cacheShortestPath(a, b, nil)
+		return nil
+	}
+
+	// Reconstruct the path from b to a using the parent map.
+	path := make([]K, 0, maxLength)
+	curr := b
+	for curr != a {
+		path = append(path, curr)
+		curr = parent[curr]
+	}
+	path = append(path, a)
+	slices.Reverse(path)
+
+	// Cache the path.
+	q.cacheShortestPath(a, b, path)
+	return path
+}
+
+func (q *QuasiStainer[K]) cacheShortestPath(a, b K, path []K) {
+	if q.shortestPathCache[a] == nil {
+		q.shortestPathCache[a] = make(map[K][]K)
+	}
+	q.shortestPathCache[a][b] = path
+}
+
+func (q *QuasiStainer[K]) materialize(mst gograph.Graph[K]) gograph.Graph[K] {
+	toKeep := make([]K, 0, len(mst.AllEdges()))
+	for _, vertex := range mst.GetAllVertices() {
+		toKeep = append(toKeep, vertex.Label())
+	}
+	for _, edge := range mst.AllEdges() {
+		a := edge.Source().Label()
+		b := edge.Destination().Label()
+		toKeep = append(toKeep, q.shortestPath(a, b)...)
+	}
+	graph, err := graphs.Keep(q.graph, toKeep)
+	if err != nil {
+		slog.Error("error materializing mst, this should never happen", "error", err)
+		return nil
+	}
+	return graph
+}
+
+func (q *QuasiStainer[K]) findBestDescendant(toBridge [][]K) *K {
+	bestCost := math.MaxInt64
+
+	// Iterate over all pairs of components to bridge.
+	var candidate *K
+	for sources, targets := range allPairs(toBridge) {
+		for a, b := range cartesianProduct(sources, targets) {
+			indexA := q.topologicalIndex[a]
+			indexB := q.topologicalIndex[b]
+			earliestDescendant := max(indexA, indexB)
+			for _, w := range q.topologicalOrder[earliestDescendant+1:] {
+				labelW := w.Label()
+				distA := q.shortestPath(a, labelW)
+				distB := q.shortestPath(b, labelW)
+				if distA == nil || distB == nil {
+					continue
+				}
+				cost := len(distA) + len(distB)
+				if cost < bestCost {
+					bestCost = cost
+					candidate = &labelW
+				}
+			}
+		}
+	}
+
+	// If no candidate was found, return nil.
+	if bestCost == math.MaxInt64 || candidate == nil {
+		return nil
+	}
+
+	return candidate
+}
+
+func (q *QuasiStainer[K]) findBestAncestor(toBridge [][]K) *K {
+	bestCost := math.MaxInt64
+
+	// Iterate over all pairs of components to bridge.
+	var candidate *K
+	for sources, targets := range allPairs(toBridge) {
+		for a, b := range cartesianProduct(sources, targets) {
+			indexA := q.topologicalIndex[a]
+			indexB := q.topologicalIndex[b]
+			earliestAncestor := min(indexA, indexB)
+			for _, w := range q.topologicalOrder[:earliestAncestor] {
+				labelW := w.Label()
+				distA := q.shortestPath(labelW, a)
+				distB := q.shortestPath(labelW, b)
+				if distA == nil || distB == nil {
+					continue
+				}
+				cost := len(distA) + len(distB)
+				if cost < bestCost {
+					bestCost = cost
+					label := w.Label()
+					candidate = &label
+				}
+			}
+		}
+	}
+
+	// If no candidate was found, return nil.
+	if bestCost == math.MaxInt64 || candidate == nil {
+		return nil
+	}
+
+	return candidate
+}
+
+func sortedPairs[K any](items []K) iter.Seq2[K, K] {
+	return func(yield func(K, K) bool) {
+		for i := 0; i < len(items)-1; i++ {
+			for j := i + 1; j < len(items); j++ {
+				if !yield(items[i], items[j]) {
+					return
+				}
+			}
+		}
+	}
+}
+
+func allPairs[K any](items []K) iter.Seq2[K, K] {
+	return func(yield func(K, K) bool) {
+		for i := range items {
+			for j := range items {
+				if i == j {
+					continue
+				}
+				if !yield(items[i], items[j]) {
+					return
+				}
+			}
+		}
+	}
+}
+
+func cartesianProduct[T any](a, b []T) iter.Seq2[T, T] {
+	return func(yield func(T, T) bool) {
+		for _, x := range a {
+			for _, y := range b {
+				if !yield(x, y) {
+					return
+				}
+			}
+		}
+	}
+}
