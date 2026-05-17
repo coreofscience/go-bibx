@@ -63,8 +63,14 @@ func (s *OpenAlexAnalysisService) Store(
 	if err != nil {
 		return fmt.Errorf("failed to create citation graph: %w", err)
 	}
-	sap := algorithms.NewSap(graph)
-	result := sap.Run()
+	sap, err := algorithms.NewSapAlgorithm(graph)
+	if err != nil {
+		return fmt.Errorf("failed to create sap algorithm: %w", err)
+	}
+	result, err := sap.Run()
+	if err != nil {
+		return fmt.Errorf("failed to run sap algorithm: %w", err)
+	}
 
 	nodes := make([]*models.Node, 0, collection.Len())
 	for article := range collection.All() {

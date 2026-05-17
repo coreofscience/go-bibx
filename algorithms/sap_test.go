@@ -19,9 +19,11 @@ func TestSAP(t *testing.T) {
 		_, _ = g.AddEdge(vA, vB)
 		_, _ = g.AddEdge(vB, vC)
 
-		sap := algorithms.NewSap(g)
-		result := sap.Run()
+		sap, err := algorithms.NewSapAlgorithm(g)
+		assert.NoError(t, err)
+		result, err := sap.Run()
 
+		assert.NoError(t, err)
 		assert.Equal(t, &algorithms.SapResult{
 			Categories: map[string]algorithms.Category{
 				"A": algorithms.CategoryLeaf,
@@ -52,9 +54,11 @@ func TestSAP(t *testing.T) {
 		_, _ = g.AddEdge(vB, vD)
 		_, _ = g.AddEdge(vC, vD)
 
-		sap := algorithms.NewSap(g)
-		result := sap.Run()
+		sap, err := algorithms.NewSapAlgorithm(g)
+		assert.NoError(t, err)
+		result, err := sap.Run()
 
+		assert.NoError(t, err)
 		assert.Equal(t, &algorithms.SapResult{
 			Categories: map[string]algorithms.Category{
 				"A": algorithms.CategoryLeaf,
@@ -74,4 +78,30 @@ func TestSAP(t *testing.T) {
 			},
 		}, result)
 	})
+	t.Run("undirected graph error", func(t *testing.T) {
+		g := gograph.New[string]() // Undirected by default
+
+		vA := gograph.NewVertex("A")
+		vB := gograph.NewVertex("B")
+		_, _ = g.AddEdge(vA, vB)
+
+		sap, err := algorithms.NewSapAlgorithm(g)
+		assert.Error(t, err)
+		assert.Nil(t, sap)
+		assert.Equal(t, "graph must be directed", err.Error())
+	})
+	t.Run("cycle error", func(t *testing.T) {
+		g := gograph.New[string](gograph.Directed())
+
+		vA := gograph.NewVertex("A")
+		vB := gograph.NewVertex("B")
+		_, _ = g.AddEdge(vA, vB)
+		_, _ = g.AddEdge(vB, vA)
+
+		sap, err := algorithms.NewSapAlgorithm(g)
+		assert.Error(t, err)
+		assert.Nil(t, sap)
+		assert.Contains(t, err.Error(), "failed to compute root connections")
+	})
 }
+

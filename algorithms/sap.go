@@ -2,6 +2,8 @@ package algorithms
 
 import (
 	"cmp"
+	"errors"
+	"fmt"
 	"log/slog"
 	"slices"
 
@@ -10,10 +12,12 @@ import (
 )
 
 type Sap struct {
-	graph  gograph.Graph[string]
-	roots  int
-	trunks int
-	leaves int
+	graph         gograph.Graph[string]
+	roots         int
+	trunks        int
+	leaves        int
+	order         []*gograph.Vertex[string]
+	invertedOrder []*gograph.Vertex[string]
 }
 
 type Category string
@@ -52,15 +56,37 @@ func WithLeaves(leaves int) SapOption {
 	}
 }
 
-func NewSap(graph gograph.Graph[string], opts ...SapOption) *Sap {
-	s := &Sap{graph: graph, roots: 20, trunks: 20, leaves: 50}
+func NewSapAlgorithm(graph gograph.Graph[string], opts ...SapOption) (*Sap, error) {
+	if !graph.IsDirected() {
+		return nil, errors.New("graph must be directed")
+	}
+
+	order, err := graphs.ReverseTopologicalOrder(graph)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute root connections: %w", err)
+	}
+
+	invertedGraph := graphs.Invert(graph)
+	invertedOrder, err := graphs.ReverseTopologicalOrder(invertedGraph)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute leaf connections: %w", err)
+	}
+
+	s := &Sap{
+		graph:         graph,
+		roots:         20,
+		trunks:        20,
+		leaves:        50,
+		order:         order,
+		invertedOrder: invertedOrder,
+	}
 	for _, opt := range opts {
 		opt(s)
 	}
-	return s
+	return s, nil
 }
 
-func (s *Sap) Run() *SapResult {
+func (s *Sap) Run() (*SapResult, error) {
 	rootness := s.computeRootness()
 	leafness := s.computeLeafness(rootness)
 	trunkness := s.computeTrunkness(rootness, leafness)
@@ -70,7 +96,7 @@ func (s *Sap) Run() *SapResult {
 		Rootness:   rootness,
 		Trunkness:  trunkness,
 		Leafness:   leafness,
-	}
+	}, nil
 }
 
 func (s *Sap) computeRootness() map[string]float64 {
@@ -92,7 +118,9 @@ func (s *Sap) computeRootness() map[string]float64 {
 	return rootness
 }
 
-func (s *Sap) computeLeafness(rootness map[string]float64) map[string]float64 {
+func (s *Sap) computeLeafness(
+	rootness map[string]float64,
+) map[string]float64 {
 	rootConnections := s.computeRootConnections(rootness)
 	slog.Debug("found root connections", "count", len(rootConnections))
 	potentialLeaves := make([]property, 0, s.leaves)
@@ -116,7 +144,9 @@ func (s *Sap) computeLeafness(rootness map[string]float64) map[string]float64 {
 	return leafness
 }
 
-func (s *Sap) computeRootConnections(rootness map[string]float64) map[string]int64 {
+func (s *Sap) computeRootConnections(
+	rootness map[string]float64,
+) map[string]int64 {
 	if len(rootness) == 0 {
 		return nil
 	}
@@ -126,12 +156,7 @@ func (s *Sap) computeRootConnections(rootness map[string]float64) map[string]int
 			rootConnections[label] = 1
 		}
 	}
-	order, err := graphs.ReverseTopologicalOrder(s.graph)
-	if err != nil {
-		slog.Error("failed to compute root connections", "error", err)
-		return nil
-	}
-	for _, vertex := range order {
+	for _, vertex := range s.order {
 		connections := int64(0)
 		neighbors := vertex.Neighbors()
 		if len(neighbors) == 0 {
@@ -147,25 +172,20 @@ func (s *Sap) computeRootConnections(rootness map[string]float64) map[string]int
 	return rootConnections
 }
 
-func (s *Sap) computeLeafConnections(leafness map[string]float64) map[string]int64 {
+func (s *Sap) computeLeafConnections(
+	leafness map[string]float64,
+) map[string]int64 {
 	if len(leafness) == 0 {
 		slog.Debug("no leafness to compute leaf connections")
 		return nil
 	}
-	invertedGraph := graphs.Invert(s.graph)
-	slog.Debug("inverted graph", "order", invertedGraph.Order(), "size", invertedGraph.Size())
 	leafConnections := make(map[string]int64)
 	for label := range leafness {
 		if value, ok := leafness[label]; ok && value > 0 {
 			leafConnections[label] = 1
 		}
 	}
-	order, err := graphs.ReverseTopologicalOrder(invertedGraph)
-	if err != nil {
-		slog.Error("failed to compute reverse topological order", "error", err)
-		return nil
-	}
-	for _, vertex := range order {
+	for _, vertex := range s.invertedOrder {
 		connections := int64(0)
 		neighbors := vertex.Neighbors()
 		if len(neighbors) == 0 {
@@ -182,7 +202,9 @@ func (s *Sap) computeLeafConnections(leafness map[string]float64) map[string]int
 }
 
 // Raw sap flows from roots to leaves
-func (s *Sap) computeRawSap(rootness map[string]float64) map[string]float64 {
+func (s *Sap) computeRawSap(
+	rootness map[string]float64,
+) map[string]float64 {
 	if len(rootness) == 0 {
 		return nil
 	}
@@ -192,11 +214,7 @@ func (s *Sap) computeRawSap(rootness map[string]float64) map[string]float64 {
 			rawSap[label] = value
 		}
 	}
-	order, err := graphs.ReverseTopologicalOrder(s.graph)
-	if err != nil {
-		return nil
-	}
-	for _, vertex := range order {
+	for _, vertex := range s.order {
 		vertexRawSap := float64(0)
 		neighbors := vertex.Neighbors()
 		if len(neighbors) == 0 {
@@ -213,23 +231,20 @@ func (s *Sap) computeRawSap(rootness map[string]float64) map[string]float64 {
 }
 
 // Elaborate sap flows from leaves to roots
-func (s *Sap) computeElaborateSap(leafness map[string]float64) map[string]float64 {
+func (s *Sap) computeElaborateSap(
+	leafness map[string]float64,
+) map[string]float64 {
 	if len(leafness) == 0 {
 		slog.Debug("no leafness to compute elaborate sap")
 		return nil
 	}
-	invertedGraph := graphs.Invert(s.graph)
 	elaborateSap := make(map[string]float64)
 	for label := range leafness {
 		if value, ok := leafness[label]; ok && value > 0 {
 			elaborateSap[label] = value
 		}
 	}
-	order, err := graphs.ReverseTopologicalOrder(invertedGraph)
-	if err != nil {
-		return nil
-	}
-	for _, vertex := range order {
+	for _, vertex := range s.invertedOrder {
 		vertexElaborateSap := float64(0)
 		neighbors := vertex.Neighbors()
 		if len(neighbors) == 0 {

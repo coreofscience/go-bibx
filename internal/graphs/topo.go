@@ -11,6 +11,17 @@ import (
 func ReverseTopologicalOrder[V comparable](
 	graph gograph.Graph[V],
 ) ([]*gograph.Vertex[V], error) {
+	result, err := TopologicalOrder(graph)
+	if err != nil {
+		return nil, err
+	}
+	slices.Reverse(result)
+	return result, nil
+}
+
+func TopologicalOrder[V comparable](
+	graph gograph.Graph[V],
+) ([]*gograph.Vertex[V], error) {
 	result := make([]*gograph.Vertex[V], 0, graph.Order())
 	iterator, err := traverse.NewTopologicalIterator(graph)
 	if err != nil {
@@ -23,6 +34,6 @@ func ReverseTopologicalOrder[V comparable](
 	if err != nil {
 		return nil, fmt.Errorf("failed to iterate topological order: %w", err)
 	}
-	slices.Reverse(result)
 	return result, nil
 }
+
