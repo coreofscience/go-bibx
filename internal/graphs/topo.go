@@ -36,4 +36,3 @@ func TopologicalOrder[V comparable](
 	}
 	return result, nil
 }
-

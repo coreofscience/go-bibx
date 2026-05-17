@@ -104,4 +104,3 @@ func TestSAP(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to compute root connections")
 	})
 }
-
