@@ -537,65 +537,92 @@
                 .attr("viewBox", `0 0 ${width} ${height}`)
                 .attr("preserveAspectRatio", "xMidYMid meet");
 
-            const simulation = d3
-                .forceSimulation(data.nodes)
-                .force(
-                    "link",
-                    d3
-                        .forceLink(data.links)
-                        .id((d) => d.id)
-                        .distance(100)
-                        .strength(0.01),
-                )
-                .force(
-                    "charge",
-                    d3
-                        .forceManyBody()
-                        .strength((d) => {
-                            if (d.category === "leaf") return -100; // Stronger repulsion for leaves
-                            if (d.category === "trunk") return -20; // Medium repulsion
-                            return -20; // Roots stay close together
-                        })
-                        .distanceMax(width / 4),
-                )
-                .force(
-                    "y",
-                    d3
-                        .forceY()
-                        .y((d) => {
-                            // We use the same categories you defined for your metrics
-                            if (d.category === "root") return height * 0.85;
-                            if (d.category === "trunk") return height * 0.5;
-                            if (d.category === "leaf") return height * 0.25;
-                            return height / 2;
-                        })
-                        .strength((d) => {
-                            if (d.category === "none") return 0.1;
-                            if (d.category === "leaf") return 0.3;
-                            return 0.15;
-                        }), // Strength of the "lane" gravity
-                )
-                .force("x", d3.forceX(width / 2).strength(0.25))
-                .force(
-                    "collide",
-                    d3.forceCollide().radius((d) => d.radius + 1),
-                )
-                .force("boundary", () => {
-                    const padding = 30;
-                    for (let node of data.nodes) {
-                        const r = 5 + padding;
-                        // If node goes past the left edge, give it a positive velocity boost
-                        if (node.x < r) node.vx += (r - node.x) * 0.1;
-                        // If node goes past the right edge, give it a negative boost
-                        if (node.x > width - r)
-                            node.vx -= (node.x - (width - r)) * 0.1;
+            const isTree = data.links.length > 250;
 
-                        // Repeat for Y...
-                        if (node.y < r) node.vy += (r - node.y) * 0.1;
-                        if (node.y > height - r)
-                            node.vy -= (node.y - (height - r)) * 0.1;
-                    }
-                });
+            const simulation = !isTree
+                ? d3
+                      .forceSimulation(data.nodes)
+                      .force(
+                          "link",
+                          d3.forceLink(data.links).id((d) => d.id),
+                      )
+                      .force("charge", d3.forceManyBody())
+                      .force(
+                          "collide",
+                          d3.forceCollide().radius((d) => d.radius + 1),
+                      )
+                : d3
+                      .forceSimulation(data.nodes)
+                      .force(
+                          "link",
+                          d3
+                              .forceLink(data.links)
+                              .id((d) => d.id)
+                              .distance(100)
+                              .strength(0.01),
+                      )
+                      .force(
+                          "charge",
+                          d3
+                              .forceManyBody()
+                              .strength((d) => {
+                                  if (d.category === "leaf") return -100; // Stronger repulsion for leaves
+                                  if (d.category === "trunk") return -20; // Medium repulsion
+                                  return -20; // Roots stay close together
+                              })
+                              .distanceMax(width / 4),
+                      )
+                      .force(
+                          "y",
+                          d3
+                              .forceY()
+                              .y((d) => {
+                                  // We use the same categories you defined for your metrics
+                                  if (d.category === "root")
+                                      return height * 0.85;
+                                  if (d.category === "trunk")
+                                      return height * 0.5;
+                                  if (d.category === "leaf")
+                                      return height * 0.25;
+                                  return height / 2;
+                              })
+                              .strength((d) => {
+                                  if (d.category === "none") return 0.1;
+                                  if (d.category === "leaf") return 0.3;
+                                  return 0.15;
+                              }), // Strength of the "lane" gravity
+                      )
+                      .force("x", d3.forceX(width / 2).strength(0.25))
+                      .force(
+                          "collide",
+                          d3.forceCollide().radius((d) => d.radius + 1),
+                      )
+                      .force("boundary", () => {
+                          const padding = 30;
+                          for (let node of data.nodes) {
+                              const r = 5 + padding;
+                              // If node goes past the left edge, give it a positive velocity boost
+                              if (node.x < r) node.vx += (r - node.x) * 0.1;
+                              // If node goes past the right edge, give it a negative boost
+                              if (node.x > width - r)
+                                  node.vx -= (node.x - (width - r)) * 0.1;
+
+                              // Repeat for Y...
+                              if (node.y < r) node.vy += (r - node.y) * 0.1;
+                              if (node.y > height - r)
+                                  node.vy -= (node.y - (height - r)) * 0.1;
+                          }
+                      });
+
+            const link = svg
+                .append("g")
+                .attr("stroke", "#999")
+                .attr("stroke-opacity", 0.6)
+                .selectAll("line")
+                .data(data.links)
+                .join("line")
+                .attr("stroke-width", 1)
+                .style("display", data.links.length < 1000 ? null : "none");
 
             const node = svg
                 .append("g")
@@ -641,6 +668,12 @@
             }
 
             simulation.on("tick", () => {
+                if (data.links.length < 1000) {
+                    link.attr("x1", (d) => d.source.x)
+                        .attr("y1", (d) => d.source.y)
+                        .attr("x2", (d) => d.target.x)
+                        .attr("y2", (d) => d.target.y);
+                }
                 node.attr("cx", (d) => d.x).attr("cy", (d) => d.y);
             });
 

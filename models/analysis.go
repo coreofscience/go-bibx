@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/coreofscience/go-bibx/internal/collections"
 	"github.com/hmdsefi/gograph"
 )
 
@@ -52,6 +53,26 @@ func (a *Analysis) CitationGraph() (gograph.Graph[string], error) {
 		}
 	}
 	return graph, nil
+}
+
+func (a *Analysis) Keep(ids []string) *Analysis {
+	toKeep := collections.NewSet(ids...)
+	nodes := make([]*Node, 0, len(a.Nodes))
+	for _, node := range a.Nodes {
+		if toKeep.Contains(node.ID) {
+			nodes = append(nodes, node)
+		}
+	}
+	links := make([]*Link, 0, len(a.Links))
+	for _, link := range a.Links {
+		if toKeep.Contains(link.Source) && toKeep.Contains(link.Target) {
+			links = append(links, link)
+		}
+	}
+	return &Analysis{
+		Nodes: nodes,
+		Links: links,
+	}
 }
 
 func (a *Analysis) Query(category string, top int) ([]*Result, error) {

@@ -79,7 +79,7 @@ func (s *SemanticSearchService) Store(ctx context.Context) error {
 }
 
 // Search implements the [SearchService] interface
-func (s *SemanticSearchService) Search(ctx context.Context, query string, limit int) ([]*models.Result, error) {
+func (s *SemanticSearchService) Search(ctx context.Context, query string, limit int) (*models.Analysis, error) {
 	vec, err := s.embeddingsClient.Embed(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to embed query: %w", err)
@@ -119,15 +119,10 @@ func (s *SemanticSearchService) Search(ctx context.Context, query string, limit 
 		return nil, fmt.Errorf("failed to run quasi-stainer: %w", err)
 	}
 
-	results := make([]*models.Result, relationGraph.Order())
-	for i, vertex := range relationGraph.GetAllVertices() {
-		if article, ok := articlesByID[vertex.Label()]; ok {
-			results[i] = &models.Result{
-				Score:   float64(i),
-				Article: article,
-			}
-		}
+	ids := make([]string, 0, relationGraph.Order())
+	for _, vertex := range relationGraph.GetAllVertices() {
+		ids = append(ids, vertex.Label())
 	}
 
-	return results, nil
+	return analysis.Keep(ids), nil
 }

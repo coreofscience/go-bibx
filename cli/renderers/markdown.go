@@ -58,3 +58,20 @@ func (e *MarkdownRenderer) RenderArticle(w io.Writer, article *models.Article) e
 	}
 	return nil
 }
+
+// RenderAnalysis implements [Renderer].
+func (e *MarkdownRenderer) RenderAnalysis(w io.Writer, analysis *models.Analysis) error {
+	for _, node := range analysis.Nodes {
+		if err := e.template.ExecuteTemplate(
+			w,
+			fmt.Sprintf("%s.md", e.format),
+			node.Article,
+		); err != nil {
+			return fmt.Errorf("error rendering template: %w", err)
+		}
+		if _, err := w.Write([]byte("\n\n---\n\n")); err != nil {
+			return fmt.Errorf("error writing separator: %w", err)
+		}
+	}
+	return nil
+}

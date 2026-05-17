@@ -36,3 +36,13 @@ func (e *JSONRenderer) RenderArticle(w io.Writer, article *models.Article) error
 	}
 	return nil
 }
+
+// RenderAnalysis implements [Renderer].
+func (e *JSONRenderer) RenderAnalysis(w io.Writer, analysis *models.Analysis) error {
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(analysis); err != nil {
+		return fmt.Errorf("error encoding article: %w", err)
+	}
+	return nil
+}

@@ -96,16 +96,16 @@ func (q *PseudoStainer[K]) Run(terminals []K) (gograph.Graph[K], error) {
 	mst, unionFind := graphs.MST(metaGraph)
 	components := unionFind.Components()
 	if len(components) == 1 {
-		slog.Info("graph is connected, no need to bridge")
+		slog.Debug("graph is connected, no need to bridge")
 		return q.materialize(mst), nil
 	}
 
-	slog.Info("graph is disconnected, need to bridge", "components", len(components))
+	slog.Debug("graph is disconnected, need to bridge", "components", len(components))
 
 	// First, try to find a best descendant.
 	bestDescendant := q.findBestDescendant(components)
 	if bestDescendant != nil {
-		slog.Info("found a best descendant", "descendant", *bestDescendant)
+		slog.Debug("found a best descendant", "descendant", *bestDescendant)
 		newTerminals := append(terminals, *bestDescendant)
 		return q.Run(newTerminals)
 	}
@@ -113,7 +113,7 @@ func (q *PseudoStainer[K]) Run(terminals []K) (gograph.Graph[K], error) {
 	// If no best descendant, try to find a best ancestor.
 	bestAncestor := q.findBestAncestor(components)
 	if bestAncestor != nil {
-		slog.Info("found a best ancestor", "ancestor", *bestAncestor)
+		slog.Debug("found a best ancestor", "ancestor", *bestAncestor)
 		newTerminals := append(terminals, *bestAncestor)
 		return q.Run(newTerminals)
 	}
