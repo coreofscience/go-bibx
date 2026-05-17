@@ -70,7 +70,7 @@ func New() *cli.Command {
 			query := c.StringArg("query")
 
 			analysisPath := path.Join(c.String("root"), ".bibx", "collection.json.gz")
-			searchPath := path.Join(c.String("root"), ".bibx", "search.graph")
+			searchPath := path.Join(c.String("root"), ".bibx", "search.json.gz")
 
 			embeddingsClient, err := embeddings.NewOllamaClient()
 			if err != nil {

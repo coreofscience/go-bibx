@@ -61,12 +61,12 @@ func (s *SemanticSearchService) Store(ctx context.Context) error {
 		}
 		texts = append(texts, buffer.String())
 	}
-	es, err := s.embeddingsClient.EmbedMany(ctx, texts)
+	vecs, err := s.embeddingsClient.EmbedMany(ctx, texts)
 	if err != nil {
 		return fmt.Errorf("failed to embed articles: %w", err)
 	}
-	for e, node := range utils.Zip(es, analysis.Nodes) {
-		err := v.Add(vector.NewNode(node.ID, e))
+	for vec, node := range utils.Zip(vecs, analysis.Nodes) {
+		err := v.Add(vector.NewNode(node.ID, vec))
 		if err != nil {
 			return fmt.Errorf("failed to add node: %w", err)
 		}

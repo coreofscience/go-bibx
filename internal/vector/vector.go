@@ -57,7 +57,6 @@ func (v *DumbVectors[K]) Search(vector []float32, limit int) ([]*Node[K], error)
 		distance float32
 	}
 	results := make([]*result, 0, len(v.Nodes))
-
 	for _, node := range v.Nodes {
 		distance := cosineDistance(node.Vector, vector)
 		results = append(results, &result{
@@ -65,12 +64,10 @@ func (v *DumbVectors[K]) Search(vector []float32, limit int) ([]*Node[K], error)
 			distance: distance,
 		})
 	}
-
 	// Sort results by distance
 	sort.Slice(results, func(i, j int) bool {
 		return results[i].distance < results[j].distance
 	})
-
 	// Return the top N results
 	limit = min(limit, len(results))
 	topResults := make([]*Node[K], limit)
