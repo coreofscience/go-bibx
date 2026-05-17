@@ -2,13 +2,16 @@ package search
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"path"
 
 	"github.com/coreofscience/go-bibx/cli/clients/embeddings"
 	"github.com/coreofscience/go-bibx/cli/renderers"
 	"github.com/coreofscience/go-bibx/cli/repos"
+	"github.com/coreofscience/go-bibx/cli/servers/viewer"
 	"github.com/coreofscience/go-bibx/cli/services"
 	"github.com/coreofscience/go-bibx/internal/collections"
 	"github.com/coreofscience/go-bibx/internal/utils"
@@ -50,6 +53,16 @@ func New() *cli.Command {
 				},
 			},
 			&cli.BoolFlag{
+				Name:  "view",
+				Usage: "visualize the search results",
+				Value: false,
+			},
+			&cli.IntFlag{
+				Name:  "port",
+				Usage: "port to serve the visualization on",
+				Value: 8080,
+			},
+			&cli.BoolFlag{
 				Name:  "verbose",
 				Usage: "enable verbose output",
 				Value: false,
@@ -70,7 +83,7 @@ func New() *cli.Command {
 			query := c.StringArg("query")
 
 			analysisPath := path.Join(c.String("root"), ".bibx", "collection.json.gz")
-			searchPath := path.Join(c.String("root"), ".bibx", "search.graph")
+			searchPath := path.Join(c.String("root"), ".bibx", "search.json.gz")
 
 			embeddingsClient, err := embeddings.NewOllamaClient()
 			if err != nil {
@@ -106,13 +119,23 @@ func New() *cli.Command {
 			)
 
 			limit := int(c.Int("limit"))
-			results, err := searchService.Search(ctx, query, limit)
+			analysis, err := searchService.Search(ctx, query, limit)
 			if err != nil {
 				slog.Error("failed to perform search", "error", err)
 				os.Exit(1)
 			}
 
-			if err := renderer.RenderResults(os.Stdout, results); err != nil {
+			if c.Bool("view") {
+				mux := viewer.New(analysis)
+				port := c.Int("port")
+				slog.Info("starting visualization server", "port", port)
+				if err := http.ListenAndServe(fmt.Sprintf(":%d", port), mux); err != nil {
+					slog.Error("failed to start server", "error", err)
+					os.Exit(1)
+				}
+			}
+
+			if err := renderer.RenderAnalysis(os.Stdout, analysis); err != nil {
 				slog.Error("failed to render results", "error", err)
 				os.Exit(1)
 			}

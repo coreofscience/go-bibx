@@ -1,15 +1,19 @@
 package viewer
 
 import (
+	"compress/gzip"
 	_ "embed"
+	"encoding/json"
 	"log/slog"
 	"net/http"
+
+	"github.com/coreofscience/go-bibx/models"
 )
 
 //go:embed templates/index.html
 var indexTemplate []byte
 
-func New(file string) *http.ServeMux {
+func New(analysis *models.Analysis) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -24,17 +28,16 @@ func New(file string) *http.ServeMux {
 		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate")
 		w.Header().Set("Pragma", "no-cache")
 		w.Header().Set("Expires", "0")
-		http.ServeFile(w, r, file)
-	})
-	mux.HandleFunc("GET /events", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/event-stream")
-		w.Header().Set("Connection", "keep-alive")
-		w.Header().Set("X-Accel-Buffering", "no")
-		w.Header().Set("Cache-Control", "no-cache")
-
-		// Just keep the connection open.
-		// When the server restarts, this connection breaks.
-		<-r.Context().Done()
+		gz := gzip.NewWriter(w)
+		defer func() {
+			if err := gz.Close(); err != nil {
+				slog.Error("failed to close gzip writer", "error", err)
+			}
+		}()
+		if err := json.NewEncoder(gz).Encode(analysis); err != nil {
+			slog.Error("failed to encode analysis", "error", err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+		}
 	})
 	return mux
 }

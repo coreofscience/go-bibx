@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/coreofscience/go-bibx/algorithms"
 	"github.com/coreofscience/go-bibx/cli/clients/embeddings"
 	"github.com/coreofscience/go-bibx/cli/renderers"
 	"github.com/coreofscience/go-bibx/cli/repos"
@@ -61,12 +62,12 @@ func (s *SemanticSearchService) Store(ctx context.Context) error {
 		}
 		texts = append(texts, buffer.String())
 	}
-	es, err := s.embeddingsClient.EmbedMany(ctx, texts)
+	vecs, err := s.embeddingsClient.EmbedMany(ctx, texts)
 	if err != nil {
 		return fmt.Errorf("failed to embed articles: %w", err)
 	}
-	for e, node := range utils.Zip(es, analysis.Nodes) {
-		err := v.Add(vector.NewNode(node.ID, e))
+	for vec, node := range utils.Zip(vecs, analysis.Nodes) {
+		err := v.Add(vector.NewNode(node.ID, vec))
 		if err != nil {
 			return fmt.Errorf("failed to add node: %w", err)
 		}
@@ -78,12 +79,12 @@ func (s *SemanticSearchService) Store(ctx context.Context) error {
 }
 
 // Search implements the [SearchService] interface
-func (s *SemanticSearchService) Search(ctx context.Context, query string, limit int) ([]*models.Result, error) {
-	v, err := s.embeddingsClient.Embed(ctx, query)
+func (s *SemanticSearchService) Search(ctx context.Context, query string, limit int) (*models.Analysis, error) {
+	vec, err := s.embeddingsClient.Embed(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to embed query: %w", err)
 	}
-	graph, err := s.searchRepo.Load(ctx)
+	searchEngine, err := s.searchRepo.Load(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load search graph: %w", err)
 	}
@@ -95,18 +96,33 @@ func (s *SemanticSearchService) Search(ctx context.Context, query string, limit 
 	for _, node := range analysis.Nodes {
 		articlesByID[node.ID] = node.Article
 	}
-	neighbors, err := graph.Search(v, limit)
+	searchResults, err := searchEngine.Search(vec, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search graph: %w", err)
 	}
-	results := make([]*models.Result, len(neighbors))
-	for i, neighbor := range neighbors {
-		if article, ok := articlesByID[neighbor.Key]; ok {
-			results[i] = &models.Result{
-				Score:   float64(i),
-				Article: article,
-			}
-		}
+	citationGraph, err := analysis.CitationGraph()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build citation graph: %w", err)
 	}
-	return results, nil
+	quasiStainer, err := algorithms.NewPseudoStainer(citationGraph)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create quasi-stainer: %w", err)
+	}
+
+	terminals := make([]string, len(searchResults))
+	for i, result := range searchResults {
+		terminals[i] = string(result.Key)
+	}
+
+	relationGraph, err := quasiStainer.Run(terminals)
+	if err != nil {
+		return nil, fmt.Errorf("failed to run quasi-stainer: %w", err)
+	}
+
+	ids := make([]string, 0, relationGraph.Order())
+	for _, vertex := range relationGraph.GetAllVertices() {
+		ids = append(ids, vertex.Label())
+	}
+
+	return analysis.Keep(ids), nil
 }
