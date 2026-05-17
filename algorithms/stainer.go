@@ -13,19 +13,19 @@ import (
 	"github.com/hmdsefi/gograph/traverse"
 )
 
-// QuasiStainer is a struct that represents a quasi-stainer algorithm.
-type QuasiStainer[K comparable] struct {
+// PseudoStainer is a struct that represents a quasi-stainer algorithm.
+type PseudoStainer[K comparable] struct {
 	graph             gograph.Graph[K]
 	topologicalOrder  []*gograph.Vertex[K]
 	topologicalIndex  map[K]int
 	shortestPathCache map[K]map[K][]K
 }
 
-// NewQuasiStainer creates a new QuasiStainer instance.
+// NewPseudoStainer creates a new QuasiStainer instance.
 //
 // It takes linear or amortized O(V + E) time to prepare the quasi-stainer
 // structure.
-func NewQuasiStainer[K comparable](graph gograph.Graph[K]) (*QuasiStainer[K], error) {
+func NewPseudoStainer[K comparable](graph gograph.Graph[K]) (*PseudoStainer[K], error) {
 	topologicalIterator, err := traverse.NewTopologicalIterator(graph)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create topological iterator: %w", err)
@@ -42,7 +42,7 @@ func NewQuasiStainer[K comparable](graph gograph.Graph[K]) (*QuasiStainer[K], er
 	for i, v := range topologicalOrder {
 		topologicalIndex[v.Label()] = i
 	}
-	return &QuasiStainer[K]{
+	return &PseudoStainer[K]{
 		graph:             graph,
 		topologicalOrder:  topologicalOrder,
 		topologicalIndex:  topologicalIndex,
@@ -55,7 +55,7 @@ func NewQuasiStainer[K comparable](graph gograph.Graph[K]) (*QuasiStainer[K], er
 //
 // Go figure what the complexity is. But don't call this with a large number of
 // terminals.
-func (q *QuasiStainer[K]) Run(terminals []K) (gograph.Graph[K], error) {
+func (q *PseudoStainer[K]) Run(terminals []K) (gograph.Graph[K], error) {
 	// Make sure all the terminals exists in the graph.
 	for _, terminal := range terminals {
 		if _, ok := q.topologicalIndex[terminal]; !ok {
@@ -96,12 +96,16 @@ func (q *QuasiStainer[K]) Run(terminals []K) (gograph.Graph[K], error) {
 	mst, unionFind := graphs.MST(metaGraph)
 	components := unionFind.Components()
 	if len(components) == 1 {
+		slog.Info("graph is connected, no need to bridge")
 		return q.materialize(mst), nil
 	}
+
+	slog.Info("graph is disconnected, need to bridge", "components", len(components))
 
 	// First, try to find a best descendant.
 	bestDescendant := q.findBestDescendant(components)
 	if bestDescendant != nil {
+		slog.Info("found a best descendant", "descendant", *bestDescendant)
 		newTerminals := append(terminals, *bestDescendant)
 		return q.Run(newTerminals)
 	}
@@ -109,6 +113,7 @@ func (q *QuasiStainer[K]) Run(terminals []K) (gograph.Graph[K], error) {
 	// If no best descendant, try to find a best ancestor.
 	bestAncestor := q.findBestAncestor(components)
 	if bestAncestor != nil {
+		slog.Info("found a best ancestor", "ancestor", *bestAncestor)
 		newTerminals := append(terminals, *bestAncestor)
 		return q.Run(newTerminals)
 	}
@@ -117,13 +122,13 @@ func (q *QuasiStainer[K]) Run(terminals []K) (gograph.Graph[K], error) {
 	return q.materialize(mst), nil
 }
 
-func (q *QuasiStainer[K]) sortTopological(items []K) {
+func (q *PseudoStainer[K]) sortTopological(items []K) {
 	slices.SortFunc(items, func(a, b K) int {
 		return cmp.Compare(q.topologicalIndex[a], q.topologicalIndex[b])
 	})
 }
 
-func (q *QuasiStainer[K]) shortestPath(a, b K) []K {
+func (q *PseudoStainer[K]) shortestPath(a, b K) []K {
 	indexA := q.topologicalIndex[a]
 	indexB := q.topologicalIndex[b]
 
@@ -181,14 +186,14 @@ func (q *QuasiStainer[K]) shortestPath(a, b K) []K {
 	return path
 }
 
-func (q *QuasiStainer[K]) cacheShortestPath(a, b K, path []K) {
+func (q *PseudoStainer[K]) cacheShortestPath(a, b K, path []K) {
 	if q.shortestPathCache[a] == nil {
 		q.shortestPathCache[a] = make(map[K][]K)
 	}
 	q.shortestPathCache[a][b] = path
 }
 
-func (q *QuasiStainer[K]) materialize(mst gograph.Graph[K]) gograph.Graph[K] {
+func (q *PseudoStainer[K]) materialize(mst gograph.Graph[K]) gograph.Graph[K] {
 	toKeep := make([]K, 0, len(mst.AllEdges()))
 	for _, vertex := range mst.GetAllVertices() {
 		toKeep = append(toKeep, vertex.Label())
@@ -206,7 +211,7 @@ func (q *QuasiStainer[K]) materialize(mst gograph.Graph[K]) gograph.Graph[K] {
 	return graph
 }
 
-func (q *QuasiStainer[K]) findBestDescendant(toBridge [][]K) *K {
+func (q *PseudoStainer[K]) findBestDescendant(toBridge [][]K) *K {
 	bestCost := math.MaxInt64
 
 	// Iterate over all pairs of components to bridge.
@@ -240,7 +245,7 @@ func (q *QuasiStainer[K]) findBestDescendant(toBridge [][]K) *K {
 	return candidate
 }
 
-func (q *QuasiStainer[K]) findBestAncestor(toBridge [][]K) *K {
+func (q *PseudoStainer[K]) findBestAncestor(toBridge [][]K) *K {
 	bestCost := math.MaxInt64
 
 	// Iterate over all pairs of components to bridge.

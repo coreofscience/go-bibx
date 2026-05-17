@@ -685,14 +685,4 @@
             });
         });
     </script>
-    <script>
-        const evtSource = new EventSource("/events");
-        evtSource.onerror = () => {
-            // The connection broke because the server shut down.
-            // Wait a moment for the build to finish, then poll for restart.
-            setTimeout(() => {
-                location.reload();
-            }, 500);
-        };
-    </script>
 </html>

@@ -16,4 +16,4 @@ pre-commit:
 pre-push:
   commands:
     tests:
-      run: go test ./... -short
+      run: go test -timeout 2s ./... -short

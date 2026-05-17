@@ -26,15 +26,5 @@ func New(file string) *http.ServeMux {
 		w.Header().Set("Expires", "0")
 		http.ServeFile(w, r, file)
 	})
-	mux.HandleFunc("GET /events", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/event-stream")
-		w.Header().Set("Connection", "keep-alive")
-		w.Header().Set("X-Accel-Buffering", "no")
-		w.Header().Set("Cache-Control", "no-cache")
-
-		// Just keep the connection open.
-		// When the server restarts, this connection breaks.
-		<-r.Context().Done()
-	})
 	return mux
 }

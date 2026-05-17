@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/coreofscience/go-bibx/algorithms"
 	"github.com/coreofscience/go-bibx/cli/clients/embeddings"
 	"github.com/coreofscience/go-bibx/cli/renderers"
 	"github.com/coreofscience/go-bibx/cli/repos"
@@ -79,11 +80,11 @@ func (s *SemanticSearchService) Store(ctx context.Context) error {
 
 // Search implements the [SearchService] interface
 func (s *SemanticSearchService) Search(ctx context.Context, query string, limit int) ([]*models.Result, error) {
-	v, err := s.embeddingsClient.Embed(ctx, query)
+	vec, err := s.embeddingsClient.Embed(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to embed query: %w", err)
 	}
-	graph, err := s.searchRepo.Load(ctx)
+	searchEngine, err := s.searchRepo.Load(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load search graph: %w", err)
 	}
@@ -95,18 +96,38 @@ func (s *SemanticSearchService) Search(ctx context.Context, query string, limit 
 	for _, node := range analysis.Nodes {
 		articlesByID[node.ID] = node.Article
 	}
-	neighbors, err := graph.Search(v, limit)
+	searchResults, err := searchEngine.Search(vec, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search graph: %w", err)
 	}
-	results := make([]*models.Result, len(neighbors))
-	for i, neighbor := range neighbors {
-		if article, ok := articlesByID[neighbor.Key]; ok {
+	citationGraph, err := analysis.CitationGraph()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build citation graph: %w", err)
+	}
+	quasiStainer, err := algorithms.NewPseudoStainer(citationGraph)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create quasi-stainer: %w", err)
+	}
+
+	terminals := make([]string, len(searchResults))
+	for i, result := range searchResults {
+		terminals[i] = string(result.Key)
+	}
+
+	relationGraph, err := quasiStainer.Run(terminals)
+	if err != nil {
+		return nil, fmt.Errorf("failed to run quasi-stainer: %w", err)
+	}
+
+	results := make([]*models.Result, relationGraph.Order())
+	for i, vertex := range relationGraph.GetAllVertices() {
+		if article, ok := articlesByID[vertex.Label()]; ok {
 			results[i] = &models.Result{
 				Score:   float64(i),
 				Article: article,
 			}
 		}
 	}
+
 	return results, nil
 }

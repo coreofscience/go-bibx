@@ -2,7 +2,10 @@ package models
 
 import (
 	"cmp"
+	"fmt"
 	"slices"
+
+	"github.com/hmdsefi/gograph"
 )
 
 type Category string
@@ -35,6 +38,20 @@ type Link struct {
 type Analysis struct {
 	Nodes []*Node `json:"nodes"`
 	Links []*Link `json:"links"`
+}
+
+func (a *Analysis) CitationGraph() (gograph.Graph[string], error) {
+	graph := gograph.New[string](gograph.Directed(), gograph.Acyclic())
+	for _, link := range a.Links {
+		_, err := graph.AddEdge(
+			gograph.NewVertex(link.Source),
+			gograph.NewVertex(link.Target),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to add edge: %w", err)
+		}
+	}
+	return graph, nil
 }
 
 func (a *Analysis) Query(category string, top int) ([]*Result, error) {
