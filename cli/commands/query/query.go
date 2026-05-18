@@ -2,7 +2,8 @@ package query
 
 import (
 	"context"
-	"log/slog"
+	"errors"
+	"fmt"
 	"os"
 	"path"
 
@@ -55,10 +56,10 @@ func New() *cli.Command {
 				Value: "json",
 				Validator: func(value string) error {
 					if value == "" {
-						return cli.Exit("format is required", 1)
+						return errors.New("format is required")
 					}
 					if !formats.Contains(value) {
-						return cli.Exit("invalid format, must be one of: simple, reference, markdown, json", 1)
+						return fmt.Errorf("invalid format, must be one of: simple, reference, markdown, json")
 					}
 					return nil
 				},
@@ -74,8 +75,7 @@ func New() *cli.Command {
 			)
 			results, err := service.Query(ctx, c.String("category"), c.Int("top"))
 			if err != nil {
-				slog.Error("failed to query analysis", "error", err)
-				os.Exit(1)
+				return fmt.Errorf("failed to query: %w", err)
 			}
 			format := c.String("format")
 			var renderer renderers.Renderer
@@ -85,16 +85,13 @@ func New() *cli.Command {
 			case "markdown", "simple", "reference":
 				renderer, err = renderers.NewMarkdownRenderer(format)
 			default:
-				slog.Error("unsupported format", "format", format)
-				os.Exit(1)
+				return fmt.Errorf("unsupported format: %s", format)
 			}
 			if err != nil {
-				slog.Error("failed to create renderer", "error", err)
-				os.Exit(1)
+				return fmt.Errorf("failed to create renderer: %w", err)
 			}
 			if err := renderer.RenderResults(os.Stdout, results); err != nil {
-				slog.Error("failed to render results", "error", err)
-				os.Exit(1)
+				return fmt.Errorf("failed to render results: %w", err)
 			}
 			return nil
 		},

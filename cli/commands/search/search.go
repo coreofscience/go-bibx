@@ -77,8 +77,7 @@ func New() *cli.Command {
 			searchPath := path.Join(c.String("root"), ".bibx", "search.json.gz")
 			embeddingsClient, err := embeddings.NewOllamaClient()
 			if err != nil {
-				slog.Error("failed to create embeddings client", "error", err)
-				os.Exit(1)
+				return fmt.Errorf("failed to create embeddings client: %w", err)
 			}
 			analysisRepo := repos.NewFileAnalysisRepo(analysisPath)
 			searchRepo := repos.NewFileSearchRepo(searchPath)
@@ -90,12 +89,10 @@ func New() *cli.Command {
 			case "markdown", "simple", "reference":
 				renderer, err = renderers.NewMarkdownRenderer(format)
 			default:
-				slog.Error("unsupported format", "format", format)
-				os.Exit(1)
+				return fmt.Errorf("unsupported format: %s", format)
 			}
 			if err != nil {
-				slog.Error("failed to create renderer", "error", err)
-				os.Exit(1)
+				return fmt.Errorf("failed to create renderer: %w", err)
 			}
 			searchService := services.NewSemanticSearchService(
 				analysisRepo,
@@ -106,21 +103,18 @@ func New() *cli.Command {
 			limit := int(c.Int("limit"))
 			analysis, err := searchService.Search(ctx, query, limit)
 			if err != nil {
-				slog.Error("failed to perform search", "error", err)
-				os.Exit(1)
+				return fmt.Errorf("failed to perform search: %w", err)
 			}
 			if c.Bool("view") {
 				mux := viewer.New(analysis)
 				port := c.Int("port")
 				slog.Info("starting visualization server", "port", port)
 				if err := http.ListenAndServe(fmt.Sprintf(":%d", port), mux); err != nil {
-					slog.Error("failed to start server", "error", err)
-					os.Exit(1)
+					return fmt.Errorf("failed to start server: %w", err)
 				}
 			}
 			if err := renderer.RenderAnalysis(os.Stdout, analysis); err != nil {
-				slog.Error("failed to render results", "error", err)
-				os.Exit(1)
+				return fmt.Errorf("failed to render results: %w", err)
 			}
 			return nil
 		},

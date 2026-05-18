@@ -33,14 +33,12 @@ func New() *cli.Command {
 			analysisRepo := repos.NewFileAnalysisRepo(fileName)
 			analysis, err := analysisRepo.Load(ctx)
 			if err != nil {
-				slog.Error("failed to load analysis", "error", err)
-				return err
+				return fmt.Errorf("failed to load analysis from file: %w", err)
 			}
 			mux := viewer.New(analysis)
 			slog.Info("visualization started", "port", port)
 			if err := http.ListenAndServe(fmt.Sprintf(":%d", port), mux); err != nil {
-				slog.Error("failed to start server", "error", err)
-				return err
+				return fmt.Errorf("failed to start visualization server: %w", err)
 			}
 			return nil
 		},

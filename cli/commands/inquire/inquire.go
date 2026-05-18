@@ -2,7 +2,7 @@ package inquire
 
 import (
 	"context"
-	"log/slog"
+	"fmt"
 	"os"
 	"path"
 
@@ -51,12 +51,10 @@ func New() *cli.Command {
 			searchPath := path.Join(c.String("root"), ".bibx", "search.json.gz")
 			force := c.Bool("force")
 			if _, err := os.Stat(analysisPath); err == nil && !force {
-				slog.Error("file already exists", "path", analysisPath)
-				os.Exit(1)
+				return fmt.Errorf("file already exists: %s", analysisPath)
 			}
 			if _, err := os.Stat(searchPath); err == nil && !force {
-				slog.Error("file already exists", "path", searchPath)
-				os.Exit(1)
+				return fmt.Errorf("file already exists: %s", searchPath)
 			}
 			query := c.StringArg("query")
 			limit := c.Int("limit")
@@ -67,19 +65,16 @@ func New() *cli.Command {
 				analysisRepo,
 			)
 			if err := analysisService.Store(context.Background(), query, limit); err != nil {
-				slog.Error("failed to store analysis", "error", err)
-				os.Exit(1)
+				return fmt.Errorf("failed to store analysis: %w", err)
 			}
 			searchRepo := repos.NewFileSearchRepo(searchPath)
 			embeddingsClient, err := embeddings.NewOllamaClient()
 			if err != nil {
-				slog.Error("failed to create embeddings client", "error", err)
-				os.Exit(1)
+				return fmt.Errorf("failed to create embeddings client: %w", err)
 			}
 			markdownRenderer, err := renderers.NewMarkdownRenderer("simple")
 			if err != nil {
-				slog.Error("failed to create markdown renderer", "error", err)
-				os.Exit(1)
+				return fmt.Errorf("failed to create markdown renderer: %w", err)
 			}
 			searchService := services.NewSemanticSearchService(
 				analysisRepo,
@@ -88,8 +83,7 @@ func New() *cli.Command {
 				markdownRenderer,
 			)
 			if err := searchService.Store(ctx); err != nil {
-				slog.Error("failed to store search graph", "error", err)
-				os.Exit(1)
+				return fmt.Errorf("failed to store search results: %w", err)
 			}
 			return nil
 		},

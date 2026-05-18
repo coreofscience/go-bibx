@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log/slog"
 	"os"
 
 	"github.com/coreofscience/go-bibx/cli/commands"
@@ -26,7 +27,9 @@ func main() {
 		},
 		Commands: commands.New(),
 	}
+	utils.SetDefaultLogger(false)
 	if err := cmd.Run(context.Background(), os.Args); err != nil {
+		slog.Error("command failed", "error", err)
 		os.Exit(1)
 	}
 }
