@@ -8,7 +8,6 @@ import (
 
 	"github.com/coreofscience/go-bibx/cli/repos"
 	"github.com/coreofscience/go-bibx/cli/servers/viewer"
-	"github.com/coreofscience/go-bibx/internal/utils"
 	"github.com/urfave/cli/v3"
 )
 
@@ -27,14 +26,8 @@ func New() *cli.Command {
 				Usage: "port to listen on",
 				Value: 8080,
 			},
-			&cli.BoolFlag{
-				Name:  "verbose",
-				Usage: "enable verbose logging",
-				Value: false,
-			},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
-			utils.SetDefaultLogger(c.Bool("verbose"))
 			port := c.Int("port")
 			fileName := c.String("file")
 			analysisRepo := repos.NewFileAnalysisRepo(fileName)

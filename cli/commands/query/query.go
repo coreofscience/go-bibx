@@ -11,7 +11,6 @@ import (
 	"github.com/coreofscience/go-bibx/cli/repos"
 	"github.com/coreofscience/go-bibx/cli/services"
 	"github.com/coreofscience/go-bibx/internal/collections"
-	"github.com/coreofscience/go-bibx/internal/utils"
 	"github.com/urfave/cli/v3"
 )
 
@@ -64,20 +63,13 @@ func New() *cli.Command {
 					return nil
 				},
 			},
-			&cli.BoolFlag{
-				Name:  "verbose",
-				Usage: "enable verbose output",
-				Value: false,
-			},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
-			utils.SetDefaultLogger(c.Bool("verbose"))
 			openalexClient := openalex.NewRestyClient()
 			analysisPath := path.Join(c.String("root"), ".bibx", "collection.json.gz")
 			analysisRepo := repos.NewFileAnalysisRepo(analysisPath)
 			service := services.NewOpenAlexAnalysisService(
 				openalexClient,
-				nil,
 				analysisRepo,
 			)
 			results, err := service.Query(ctx, c.String("category"), c.Int("top"))
@@ -85,7 +77,6 @@ func New() *cli.Command {
 				slog.Error("failed to query analysis", "error", err)
 				os.Exit(1)
 			}
-
 			format := c.String("format")
 			var renderer renderers.Renderer
 			switch format {
@@ -97,12 +88,10 @@ func New() *cli.Command {
 				slog.Error("unsupported format", "format", format)
 				os.Exit(1)
 			}
-
 			if err != nil {
 				slog.Error("failed to create renderer", "error", err)
 				os.Exit(1)
 			}
-
 			if err := renderer.RenderResults(os.Stdout, results); err != nil {
 				slog.Error("failed to render results", "error", err)
 				os.Exit(1)

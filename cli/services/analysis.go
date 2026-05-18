@@ -6,7 +6,6 @@ import (
 	"log/slog"
 
 	"github.com/coreofscience/go-bibx/algorithms"
-	"github.com/coreofscience/go-bibx/cli/clients/embeddings"
 	"github.com/coreofscience/go-bibx/cli/clients/openalex"
 	"github.com/coreofscience/go-bibx/cli/repos"
 	"github.com/coreofscience/go-bibx/models"
@@ -24,7 +23,6 @@ type OpenAlexAnalysisService struct {
 
 func NewOpenAlexAnalysisService(
 	openalexClient openalex.Client,
-	embeddingsClient embeddings.Client,
 	analysisRepo repos.AnalysisRepo,
 ) *OpenAlexAnalysisService {
 	return &OpenAlexAnalysisService{

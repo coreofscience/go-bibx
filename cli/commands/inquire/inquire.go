@@ -11,7 +11,6 @@ import (
 	"github.com/coreofscience/go-bibx/cli/renderers"
 	"github.com/coreofscience/go-bibx/cli/repos"
 	"github.com/coreofscience/go-bibx/cli/services"
-	"github.com/coreofscience/go-bibx/internal/utils"
 
 	"github.com/urfave/cli/v3"
 )
@@ -32,11 +31,6 @@ func New() *cli.Command {
 				Usage: "force overwrite of existing results",
 				Value: false,
 			},
-			&cli.BoolFlag{
-				Name:  "verbose",
-				Usage: "verbose output",
-				Value: false,
-			},
 			&cli.IntFlag{
 				Name:  "limit",
 				Usage: "number of initial results to fetch",
@@ -53,7 +47,6 @@ func New() *cli.Command {
 			},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
-			utils.SetDefaultLogger(c.Bool("verbose"))
 			analysisPath := path.Join(c.String("root"), ".bibx", "collection.json.gz")
 			searchPath := path.Join(c.String("root"), ".bibx", "search.json.gz")
 			force := c.Bool("force")
@@ -68,15 +61,9 @@ func New() *cli.Command {
 			query := c.StringArg("query")
 			limit := c.Int("limit")
 			openalexClient := openalex.NewRestyClient()
-			embeddingsClient, err := embeddings.NewOllamaClient()
-			if err != nil {
-				slog.Error("failed to create embeddings client", "error", err)
-				os.Exit(1)
-			}
 			analysisRepo := repos.NewFileAnalysisRepo(analysisPath)
 			analysisService := services.NewOpenAlexAnalysisService(
 				openalexClient,
-				embeddingsClient,
 				analysisRepo,
 			)
 			if err := analysisService.Store(context.Background(), query, limit); err != nil {
@@ -84,6 +71,11 @@ func New() *cli.Command {
 				os.Exit(1)
 			}
 			searchRepo := repos.NewFileSearchRepo(searchPath)
+			embeddingsClient, err := embeddings.NewOllamaClient()
+			if err != nil {
+				slog.Error("failed to create embeddings client", "error", err)
+				os.Exit(1)
+			}
 			markdownRenderer, err := renderers.NewMarkdownRenderer("simple")
 			if err != nil {
 				slog.Error("failed to create markdown renderer", "error", err)
