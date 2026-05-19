@@ -61,3 +61,24 @@ func TestReverseTopologicalOrder(t *testing.T) {
 		assert.Nil(t, order)
 	})
 }
+
+func TestTopologicalOrder(t *testing.T) {
+	t.Run("basic usage", func(t *testing.T) {
+		g := gograph.New[string](gograph.Directed())
+		vA := gograph.NewVertex("A")
+		vB := gograph.NewVertex("B")
+		vC := gograph.NewVertex("C")
+
+		// A -> B -> C
+		_, _ = g.AddEdge(vA, vB)
+		_, _ = g.AddEdge(vB, vC)
+
+		order, err := graphs.TopologicalOrder(g)
+		assert.NoError(t, err)
+		assert.Len(t, order, 3)
+
+		assert.Equal(t, "A", order[0].Label())
+		assert.Equal(t, "B", order[1].Label())
+		assert.Equal(t, "C", order[2].Label())
+	})
+}

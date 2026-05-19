@@ -2,23 +2,12 @@ package graphs
 
 import (
 	"fmt"
-	"slices"
 
 	"github.com/hmdsefi/gograph"
 	"github.com/hmdsefi/gograph/traverse"
 )
 
-func ReverseTopologicalOrder[V comparable](
-	graph gograph.Graph[V],
-) ([]*gograph.Vertex[V], error) {
-	result, err := TopologicalOrder(graph)
-	if err != nil {
-		return nil, err
-	}
-	slices.Reverse(result)
-	return result, nil
-}
-
+// TopologicalOrder returns the topological order of the graph.
 func TopologicalOrder[V comparable](
 	graph gograph.Graph[V],
 ) ([]*gograph.Vertex[V], error) {
@@ -33,6 +22,20 @@ func TopologicalOrder[V comparable](
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to iterate topological order: %w", err)
+	}
+	return result, nil
+}
+
+// ReverseTopologicalOrder returns the reverse topological order of the graph.
+func ReverseTopologicalOrder[V comparable](
+	graph gograph.Graph[V],
+) ([]*gograph.Vertex[V], error) {
+	result, err := TopologicalOrder(graph)
+	if err != nil {
+		return nil, err
+	}
+	for i, j := 0, len(result)-1; i < j; i, j = i+1, j-1 {
+		result[i], result[j] = result[j], result[i]
 	}
 	return result, nil
 }
