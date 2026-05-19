@@ -1,6 +1,7 @@
 package algorithms_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/coreofscience/go-bibx/algorithms"
@@ -102,4 +103,20 @@ func TestQuasiStainer(t *testing.T) {
 		assert.Equal(t, uint32(2), newGraph.Order())
 		assert.Equal(t, uint32(0), newGraph.Size())
 	})
+}
+
+func TestReverseSlices(t *testing.T) {
+	a := []int{1, 2, 3, 4, 5}
+	b := a[:3]
+	slices.Reverse(b)
+	assert.Equal(t, []int{3, 2, 1, 4, 5}, a)
+}
+
+func TestReverseSlicesPreservingOriginalOrdering(t *testing.T) {
+	a := []int{1, 2, 3, 4, 5}
+	b := make([]int, 3)
+	copy(b, a[:3])
+	slices.Reverse(b)
+	assert.Equal(t, []int{1, 2, 3, 4, 5}, a)
+	assert.Equal(t, []int{3, 2, 1}, b)
 }
