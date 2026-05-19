@@ -42,8 +42,14 @@ func New() *cli.Command {
 			},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
-			analysisPath := ctx.Value(utils.AnalysisPathKey).(string)
-			searchPath := ctx.Value(utils.SearchPathKey).(string)
+			analysisPath, ok := utils.GetAnalysisPath(ctx)
+			if !ok {
+				return fmt.Errorf("analysis path not set")
+			}
+			searchPath, ok := utils.GetSearchPath(ctx)
+			if !ok {
+				return fmt.Errorf("search path not set")
+			}
 			force := c.Bool("force")
 			if _, err := os.Stat(analysisPath); err == nil && !force {
 				return fmt.Errorf("file already exists: %s", analysisPath)

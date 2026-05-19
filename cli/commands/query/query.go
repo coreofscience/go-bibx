@@ -62,7 +62,10 @@ func New() *cli.Command {
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			openalexClient := openalex.NewRestyClient()
-			analysisPath := ctx.Value(utils.AnalysisPathKey).(string)
+			analysisPath, ok := utils.GetAnalysisPath(ctx)
+			if !ok {
+				return fmt.Errorf("analysis path not set")
+			}
 			analysisRepo := repos.NewFileAnalysisRepo(analysisPath)
 			service := services.NewOpenAlexAnalysisService(
 				openalexClient,

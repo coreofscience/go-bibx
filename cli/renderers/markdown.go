@@ -63,7 +63,7 @@ func (e *MarkdownRenderer) render(w io.Writer, item any, format string) error {
 	); err != nil {
 		return fmt.Errorf("error rendering template: %w", err)
 	}
-	if _, err := w.Write([]byte("\n---\n\n")); err != nil {
+	if _, err := w.Write([]byte("\n\n---\n\n")); err != nil {
 		return fmt.Errorf("error writing separator: %w", err)
 	}
 	return nil

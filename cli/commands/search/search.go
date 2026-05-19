@@ -68,8 +68,14 @@ func New() *cli.Command {
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			query := c.StringArg("query")
-			analysisPath := ctx.Value(utils.AnalysisPathKey).(string)
-			searchPath := ctx.Value(utils.SearchPathKey).(string)
+			analysisPath, ok := utils.GetAnalysisPath(ctx)
+			if !ok {
+				return fmt.Errorf("analysis path not set")
+			}
+			searchPath, ok := utils.GetSearchPath(ctx)
+			if !ok {
+				return fmt.Errorf("search path not set")
+			}
 			embeddingsClient, err := embeddings.NewOllamaClient()
 			if err != nil {
 				return fmt.Errorf("failed to create embeddings client: %w", err)

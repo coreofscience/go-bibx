@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"slices"
 
 	"github.com/coreofscience/go-bibx/internal/graphs"
+	"github.com/coreofscience/go-bibx/internal/utils"
 	"github.com/hmdsefi/gograph"
 )
 
@@ -109,7 +109,9 @@ func (s *Sap) computeRootness() map[string]float64 {
 			})
 		}
 	}
-	roots := limit(potentialRoots, s.roots)
+	roots := utils.Limit(potentialRoots, s.roots, func(a, b property) int {
+		return cmp.Compare(b.prop, a.prop)
+	})
 	rootness := make(map[string]float64)
 	for _, root := range roots {
 		rootness[root.label] = root.prop
@@ -135,7 +137,9 @@ func (s *Sap) computeLeafness(
 			})
 		}
 	}
-	leaves := limit(potentialLeaves, s.leaves)
+	leaves := utils.Limit(potentialLeaves, s.leaves, func(a, b property) int {
+		return cmp.Compare(b.prop, a.prop)
+	})
 	leafness := make(map[string]float64)
 	for _, leaf := range leaves {
 		leafness[leaf.label] = leaf.prop
@@ -300,7 +304,9 @@ func (s *Sap) computeTrunkness(
 			prop:  prop,
 		})
 	}
-	trunk := limit(potentialTrunk, s.trunks)
+	trunk := utils.Limit(potentialTrunk, s.trunks, func(a, b property) int {
+		return cmp.Compare(b.prop, a.prop)
+	})
 	result := make(map[string]float64, len(trunk))
 	for _, prop := range trunk {
 		result[prop.label] = prop.prop
@@ -341,14 +347,4 @@ func (s *Sap) computeCategories(
 type property struct {
 	label string
 	prop  float64
-}
-
-func limit(properties []property, n int) []property {
-	if len(properties) <= n {
-		return properties
-	}
-	slices.SortFunc(properties, func(a, b property) int {
-		return cmp.Compare(b.prop, a.prop)
-	})
-	return properties[:n]
 }

@@ -25,7 +25,10 @@ func New() *cli.Command {
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			port := c.Int("port")
-			analysisPath := ctx.Value(utils.AnalysisPathKey).(string)
+			analysisPath, ok := utils.GetAnalysisPath(ctx)
+			if !ok {
+				return fmt.Errorf("analysis path not set")
+			}
 			analysisRepo := repos.NewFileAnalysisRepo(analysisPath)
 			analysis, err := analysisRepo.Load(ctx)
 			if err != nil {

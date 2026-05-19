@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/coreofscience/go-bibx/internal/collections"
+	"github.com/coreofscience/go-bibx/internal/utils"
 )
 
 type Article struct {
@@ -72,18 +73,18 @@ func (a *Article) Merge(other *Article) *Article {
 		return a
 	}
 	merged := &Article{
-		Label:      *keepLongestString(a.Label, other.Label),
+		Label:      utils.KeepLongestString(a.Label, other.Label),
 		IDs:        a.IDs.Union(other.IDs),
 		Authors:    keepLongestSlice(a.Authors, other.Authors),
-		Year:       keep(a.Year, other.Year),
-		Title:      keep(a.Title, other.Title),
-		Journal:    keep(a.Journal, other.Journal),
-		Volume:     keep(a.Volume, other.Volume),
-		Issue:      keep(a.Issue, other.Issue),
-		Page:       keep(a.Page, other.Page),
-		DOI:        keep(a.DOI, other.DOI),
-		Permalink:  keep(a.Permalink, other.Permalink),
-		TimesCited: keep(a.TimesCited, other.TimesCited),
+		Year:       utils.Keep(a.Year, other.Year),
+		Title:      utils.Keep(a.Title, other.Title),
+		Journal:    utils.Keep(a.Journal, other.Journal),
+		Volume:     utils.Keep(a.Volume, other.Volume),
+		Issue:      utils.Keep(a.Issue, other.Issue),
+		Page:       utils.Keep(a.Page, other.Page),
+		DOI:        utils.Keep(a.DOI, other.DOI),
+		Permalink:  utils.Keep(a.Permalink, other.Permalink),
+		TimesCited: utils.Keep(a.TimesCited, other.TimesCited),
 		Keywords:   a.Keywords.Union(other.Keywords),
 		References: keepLongestSlice(a.References, other.References),
 		Rich:       a.Rich || other.Rich,
@@ -237,26 +238,6 @@ func (a *Article) SetSimpleLabel() *Article {
 		a.Label = *simpleLabel
 	}
 	return a
-}
-
-func keep[T any](a, b *T) *T {
-	if a != nil {
-		return a
-	}
-	return b
-}
-
-func keepLongestString(a, b string) *string {
-	if len(a) > len(b) {
-		return &a
-	}
-	if len(b) > len(a) {
-		return &b
-	}
-	if a > b {
-		return &b
-	}
-	return &a
 }
 
 func keepLongestSlice[T any](a, b []T) []T {

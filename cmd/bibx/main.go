@@ -4,7 +4,6 @@ import (
 	"context"
 	"log/slog"
 	"os"
-	"path"
 
 	"github.com/coreofscience/go-bibx/cli/commands"
 	"github.com/coreofscience/go-bibx/internal/utils"
@@ -29,11 +28,7 @@ func main() {
 		},
 		Before: func(ctx context.Context, c *cli.Command) (context.Context, error) {
 			utils.SetDefaultLogger(c.Bool("verbose"))
-			analysisPath := path.Join(c.String("root"), ".bibx", "collection.json.gz")
-			searchPath := path.Join(c.String("root"), ".bibx", "search.json.gz")
-			ctx = context.WithValue(ctx, utils.RootDirKey, c.String("root"))
-			ctx = context.WithValue(ctx, utils.AnalysisPathKey, analysisPath)
-			ctx = context.WithValue(ctx, utils.SearchPathKey, searchPath)
+			ctx = utils.WithRootDir(ctx, c.String("root"))
 			return ctx, nil
 		},
 		Commands: commands.New(),
