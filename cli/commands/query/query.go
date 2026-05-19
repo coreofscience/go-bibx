@@ -5,13 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path"
 
 	"github.com/coreofscience/go-bibx/cli/clients/openalex"
 	"github.com/coreofscience/go-bibx/cli/renderers"
 	"github.com/coreofscience/go-bibx/cli/repos"
 	"github.com/coreofscience/go-bibx/cli/services"
 	"github.com/coreofscience/go-bibx/internal/collections"
+	"github.com/coreofscience/go-bibx/internal/utils"
 	"github.com/urfave/cli/v3"
 )
 
@@ -26,11 +26,6 @@ func New() *cli.Command {
 		Name:  "query",
 		Usage: "query the bibx collection for relevant articles",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:  "root",
-				Usage: "root directory where the collection is stored",
-				Value: ".",
-			},
 			&cli.StringFlag{
 				Name:     "category",
 				Usage:    "category to filter by",
@@ -67,7 +62,7 @@ func New() *cli.Command {
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			openalexClient := openalex.NewRestyClient()
-			analysisPath := path.Join(c.String("root"), ".bibx", "collection.json.gz")
+			analysisPath := ctx.Value(utils.AnalysisPathKey).(string)
 			analysisRepo := repos.NewFileAnalysisRepo(analysisPath)
 			service := services.NewOpenAlexAnalysisService(
 				openalexClient,

@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"path"
 
 	"github.com/coreofscience/go-bibx/cli/clients/embeddings"
 	"github.com/coreofscience/go-bibx/cli/renderers"
@@ -14,6 +13,7 @@ import (
 	"github.com/coreofscience/go-bibx/cli/servers/viewer"
 	"github.com/coreofscience/go-bibx/cli/services"
 	"github.com/coreofscience/go-bibx/internal/collections"
+	"github.com/coreofscience/go-bibx/internal/utils"
 	"github.com/urfave/cli/v3"
 )
 
@@ -27,11 +27,6 @@ func New() *cli.Command {
 		Usage:     "semantic search for a research topic",
 		ArgsUsage: "<query>",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:  "root",
-				Usage: "root directory store the results",
-				Value: ".",
-			},
 			&cli.IntFlag{
 				Name:  "limit",
 				Usage: "number of top results to return",
@@ -73,8 +68,8 @@ func New() *cli.Command {
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			query := c.StringArg("query")
-			analysisPath := path.Join(c.String("root"), ".bibx", "collection.json.gz")
-			searchPath := path.Join(c.String("root"), ".bibx", "search.json.gz")
+			analysisPath := ctx.Value(utils.AnalysisPathKey).(string)
+			searchPath := ctx.Value(utils.SearchPathKey).(string)
 			embeddingsClient, err := embeddings.NewOllamaClient()
 			if err != nil {
 				return fmt.Errorf("failed to create embeddings client: %w", err)
