@@ -1,15 +1,14 @@
 package services
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"log/slog"
 
 	"github.com/coreofscience/go-bibx/algorithms"
 	"github.com/coreofscience/go-bibx/cli/clients/embeddings"
-	"github.com/coreofscience/go-bibx/cli/renderers"
 	"github.com/coreofscience/go-bibx/cli/repos"
+	"github.com/coreofscience/go-bibx/internal/texter"
 	"github.com/coreofscience/go-bibx/internal/utils"
 	"github.com/coreofscience/go-bibx/internal/vector"
 	"github.com/coreofscience/go-bibx/models"
@@ -27,20 +26,20 @@ type SemanticSearchService struct {
 	analysisRepo     repos.AnalysisRepo
 	searchRepo       repos.SearchRepo
 	embeddingsClient embeddings.Client
-	renderer         renderers.Renderer
+	texter           texter.ArticleTexter
 }
 
 func NewSemanticSearchService(
 	analysisRepo repos.AnalysisRepo,
 	searchRepo repos.SearchRepo,
 	embeddingsClient embeddings.Client,
-	renderer renderers.Renderer,
+	ttr texter.ArticleTexter,
 ) *SemanticSearchService {
 	return &SemanticSearchService{
 		analysisRepo:     analysisRepo,
 		searchRepo:       searchRepo,
 		embeddingsClient: embeddingsClient,
-		renderer:         renderer,
+		texter:           ttr,
 	}
 }
 
@@ -55,12 +54,8 @@ func (s *SemanticSearchService) Store(ctx context.Context) error {
 	slog.InfoContext(ctx, "embedding all the nodes in the graph", "count", totalNodes)
 	texts := make([]string, 0, totalNodes)
 	for _, node := range analysis.Nodes {
-		var buffer bytes.Buffer
-		err := s.renderer.RenderArticle(&buffer, node.Article)
-		if err != nil {
-			return fmt.Errorf("failed to render article: %w", err)
-		}
-		texts = append(texts, buffer.String())
+		text := s.texter.ExtractText(node.Article)
+		texts = append(texts, text)
 	}
 	vecs, err := s.embeddingsClient.EmbedMany(ctx, texts)
 	if err != nil {
@@ -80,7 +75,7 @@ func (s *SemanticSearchService) Store(ctx context.Context) error {
 
 // Search implements the [SearchService] interface
 func (s *SemanticSearchService) Search(ctx context.Context, query string, limit int) (*models.Analysis, error) {
-	vec, err := s.embeddingsClient.Embed(ctx, query)
+	vec, err := s.embeddingsClient.Embed(ctx, s.texter.CleanText(query))
 	if err != nil {
 		return nil, fmt.Errorf("failed to embed query: %w", err)
 	}

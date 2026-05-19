@@ -13,6 +13,7 @@ import (
 	"github.com/coreofscience/go-bibx/cli/servers/viewer"
 	"github.com/coreofscience/go-bibx/cli/services"
 	"github.com/coreofscience/go-bibx/internal/collections"
+	"github.com/coreofscience/go-bibx/internal/texter"
 	"github.com/coreofscience/go-bibx/internal/utils"
 	"github.com/urfave/cli/v3"
 )
@@ -95,11 +96,12 @@ func New() *cli.Command {
 			if err != nil {
 				return fmt.Errorf("failed to create renderer: %w", err)
 			}
+			ttr := texter.NewDefaultArticleTexter()
 			searchService := services.NewSemanticSearchService(
 				analysisRepo,
 				searchRepo,
 				embeddingsClient,
-				renderer,
+				ttr,
 			)
 			limit := int(c.Int("limit"))
 			analysis, err := searchService.Search(ctx, query, limit)

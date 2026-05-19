@@ -7,9 +7,9 @@ import (
 
 	"github.com/coreofscience/go-bibx/cli/clients/embeddings"
 	"github.com/coreofscience/go-bibx/cli/clients/openalex"
-	"github.com/coreofscience/go-bibx/cli/renderers"
 	"github.com/coreofscience/go-bibx/cli/repos"
 	"github.com/coreofscience/go-bibx/cli/services"
+	"github.com/coreofscience/go-bibx/internal/texter"
 	"github.com/coreofscience/go-bibx/internal/utils"
 
 	"github.com/urfave/cli/v3"
@@ -73,15 +73,12 @@ func New() *cli.Command {
 			if err != nil {
 				return fmt.Errorf("failed to create embeddings client: %w", err)
 			}
-			markdownRenderer, err := renderers.NewMarkdownRenderer("simple")
-			if err != nil {
-				return fmt.Errorf("failed to create markdown renderer: %w", err)
-			}
+			ttr := texter.NewDefaultArticleTexter()
 			searchService := services.NewSemanticSearchService(
 				analysisRepo,
 				searchRepo,
 				embeddingsClient,
-				markdownRenderer,
+				ttr,
 			)
 			if err := searchService.Store(ctx); err != nil {
 				return fmt.Errorf("failed to store search results: %w", err)
