@@ -8,6 +8,7 @@ import (
 
 	"github.com/coreofscience/go-bibx/cli/repos"
 	"github.com/coreofscience/go-bibx/cli/servers/viewer"
+	"github.com/coreofscience/go-bibx/internal/utils"
 	"github.com/urfave/cli/v3"
 )
 
@@ -16,11 +17,6 @@ func New() *cli.Command {
 		Name:  "view",
 		Usage: "visualize a collection graph",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:  "file",
-				Usage: "path to the collection graph file",
-				Value: ".bibx/collection.json.gz",
-			},
 			&cli.IntFlag{
 				Name:  "port",
 				Usage: "port to listen on",
@@ -29,8 +25,8 @@ func New() *cli.Command {
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			port := c.Int("port")
-			fileName := c.String("file")
-			analysisRepo := repos.NewFileAnalysisRepo(fileName)
+			analysisPath := ctx.Value(utils.AnalysisPathKey).(string)
+			analysisRepo := repos.NewFileAnalysisRepo(analysisPath)
 			analysis, err := analysisRepo.Load(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to load analysis from file: %w", err)
