@@ -41,8 +41,8 @@ func New() *cli.Command {
 				},
 			},
 			&cli.IntFlag{
-				Name:  "top",
-				Usage: "number of top results to return",
+				Name:  "limit",
+				Usage: "number of results to return",
 				Value: 5,
 			},
 			&cli.StringFlag{
@@ -68,7 +68,7 @@ func New() *cli.Command {
 				openalexClient,
 				analysisRepo,
 			)
-			results, err := service.Query(ctx, c.String("category"), c.Int("top"))
+			results, err := service.Query(ctx, c.String("category"), c.Int("limit"))
 			if err != nil {
 				return fmt.Errorf("failed to query: %w", err)
 			}
