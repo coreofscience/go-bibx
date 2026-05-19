@@ -5,11 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/coreofscience/go-bibx/cli/clients/embeddings"
-	"github.com/coreofscience/go-bibx/cli/clients/openalex"
-	"github.com/coreofscience/go-bibx/cli/repos"
 	"github.com/coreofscience/go-bibx/cli/services"
-	"github.com/coreofscience/go-bibx/internal/texter"
 	"github.com/coreofscience/go-bibx/internal/utils"
 
 	"github.com/urfave/cli/v3"
@@ -57,29 +53,21 @@ func New() *cli.Command {
 			if _, err := os.Stat(searchPath); err == nil && !force {
 				return fmt.Errorf("file already exists: %s", searchPath)
 			}
-			query := c.StringArg("query")
-			limit := c.Int("limit")
-			openalexClient := openalex.NewRestyClient()
-			analysisRepo := repos.NewFileAnalysisRepo(analysisPath)
-			analysisService := services.NewOpenAlexAnalysisService(
-				openalexClient,
-				analysisRepo,
-			)
-			if err := analysisService.Store(context.Background(), query, limit); err != nil {
+			analysisServiceConfig := &services.OpenAlexAnalysisServiceConfig{
+				AnalysisPath: analysisPath,
+			}
+			analysisService := services.NewOpenAlexAnalysisServiceFromConfig(analysisServiceConfig)
+			searchServiceConfig := &services.SematicSearchServiceConfig{
+				AnalysisPath: analysisPath,
+				SearchPath:   searchPath,
+			}
+			searchService, err := services.NewSemanticSearchServiceFromConfig(searchServiceConfig)
+			if err != nil {
+				return fmt.Errorf("failed to create search service: %w", err)
+			}
+			if err := analysisService.Store(ctx, c.StringArg("query"), c.Int("limit")); err != nil {
 				return fmt.Errorf("failed to store analysis: %w", err)
 			}
-			searchRepo := repos.NewFileSearchRepo(searchPath)
-			embeddingsClient, err := embeddings.NewOllamaClient()
-			if err != nil {
-				return fmt.Errorf("failed to create embeddings client: %w", err)
-			}
-			ttr := texter.NewDefaultArticleTexter()
-			searchService := services.NewSemanticSearchService(
-				analysisRepo,
-				searchRepo,
-				embeddingsClient,
-				ttr,
-			)
 			if err := searchService.Store(ctx); err != nil {
 				return fmt.Errorf("failed to store search results: %w", err)
 			}

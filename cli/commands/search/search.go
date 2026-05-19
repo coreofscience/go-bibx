@@ -7,13 +7,10 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/coreofscience/go-bibx/cli/clients/embeddings"
 	"github.com/coreofscience/go-bibx/cli/renderers"
-	"github.com/coreofscience/go-bibx/cli/repos"
 	"github.com/coreofscience/go-bibx/cli/servers/viewer"
 	"github.com/coreofscience/go-bibx/cli/services"
 	"github.com/coreofscience/go-bibx/internal/collections"
-	"github.com/coreofscience/go-bibx/internal/texter"
 	"github.com/coreofscience/go-bibx/internal/utils"
 	"github.com/urfave/cli/v3"
 )
@@ -68,7 +65,6 @@ func New() *cli.Command {
 			},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
-			query := c.StringArg("query")
 			analysisPath, ok := utils.GetAnalysisPath(ctx)
 			if !ok {
 				return fmt.Errorf("analysis path not set")
@@ -77,34 +73,19 @@ func New() *cli.Command {
 			if !ok {
 				return fmt.Errorf("search path not set")
 			}
-			embeddingsClient, err := embeddings.NewOllamaClient()
+			searchConfig := &services.SematicSearchServiceConfig{
+				AnalysisPath: analysisPath,
+				SearchPath:   searchPath,
+			}
+			searchService, err := services.NewSemanticSearchServiceFromConfig(searchConfig)
 			if err != nil {
-				return fmt.Errorf("failed to create embeddings client: %w", err)
+				return fmt.Errorf("failed to create search service: %w", err)
 			}
-			analysisRepo := repos.NewFileAnalysisRepo(analysisPath)
-			searchRepo := repos.NewFileSearchRepo(searchPath)
-			format := c.String("format")
-			var renderer renderers.Renderer
-			switch format {
-			case "json":
-				renderer = renderers.NewJSONRenderer()
-			case "markdown", "simple", "reference":
-				renderer, err = renderers.NewMarkdownRenderer(format)
-			default:
-				return fmt.Errorf("unsupported format: %s", format)
-			}
+			renderer, err := renderers.NewRendererWithFormat(c.String("format"))
 			if err != nil {
 				return fmt.Errorf("failed to create renderer: %w", err)
 			}
-			ttr := texter.NewDefaultArticleTexter()
-			searchService := services.NewSemanticSearchService(
-				analysisRepo,
-				searchRepo,
-				embeddingsClient,
-				ttr,
-			)
-			limit := int(c.Int("limit"))
-			analysis, err := searchService.Search(ctx, query, limit)
+			analysis, err := searchService.Search(ctx, c.StringArg("query"), int(c.Int("limit")))
 			if err != nil {
 				return fmt.Errorf("failed to perform search: %w", err)
 			}

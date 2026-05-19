@@ -43,6 +43,27 @@ func NewSemanticSearchService(
 	}
 }
 
+type SematicSearchServiceConfig struct {
+	AnalysisPath string
+	SearchPath   string
+}
+
+func NewSemanticSearchServiceFromConfig(cfg *SematicSearchServiceConfig) (*SemanticSearchService, error) {
+	analysisRepo := repos.NewFileAnalysisRepo(cfg.AnalysisPath)
+	searchRepo := repos.NewFileSearchRepo(cfg.SearchPath)
+	embeddingsClient, err := embeddings.NewOllamaClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create embeddings client: %w", err)
+	}
+	ttr := texter.NewDefaultArticleTexter()
+	return NewSemanticSearchService(
+		analysisRepo,
+		searchRepo,
+		embeddingsClient,
+		ttr,
+	), nil
+}
+
 // Store implements the [SearchService] interface
 func (s *SemanticSearchService) Store(ctx context.Context) error {
 	analysis, err := s.analysisRepo.Load(ctx)

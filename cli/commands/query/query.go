@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/coreofscience/go-bibx/cli/clients/openalex"
 	"github.com/coreofscience/go-bibx/cli/renderers"
-	"github.com/coreofscience/go-bibx/cli/repos"
 	"github.com/coreofscience/go-bibx/cli/services"
 	"github.com/coreofscience/go-bibx/internal/collections"
 	"github.com/coreofscience/go-bibx/internal/utils"
@@ -61,32 +59,21 @@ func New() *cli.Command {
 			},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
-			openalexClient := openalex.NewRestyClient()
 			analysisPath, ok := utils.GetAnalysisPath(ctx)
 			if !ok {
 				return fmt.Errorf("analysis path not set")
 			}
-			analysisRepo := repos.NewFileAnalysisRepo(analysisPath)
-			service := services.NewOpenAlexAnalysisService(
-				openalexClient,
-				analysisRepo,
-			)
+			analysisServiceConfig := &services.OpenAlexAnalysisServiceConfig{
+				AnalysisPath: analysisPath,
+			}
+			service := services.NewOpenAlexAnalysisServiceFromConfig(analysisServiceConfig)
+			renderer, err := renderers.NewRendererWithFormat(c.String("format"))
+			if err != nil {
+				return fmt.Errorf("failed to create renderer: %w", err)
+			}
 			results, err := service.Query(ctx, c.String("category"), c.Int("limit"))
 			if err != nil {
 				return fmt.Errorf("failed to query: %w", err)
-			}
-			format := c.String("format")
-			var renderer renderers.Renderer
-			switch format {
-			case "json":
-				renderer = renderers.NewJSONRenderer()
-			case "markdown", "simple", "reference":
-				renderer, err = renderers.NewMarkdownRenderer(format)
-			default:
-				return fmt.Errorf("unsupported format: %s", format)
-			}
-			if err != nil {
-				return fmt.Errorf("failed to create renderer: %w", err)
 			}
 			if err := renderer.RenderResults(os.Stdout, results); err != nil {
 				return fmt.Errorf("failed to render results: %w", err)

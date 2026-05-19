@@ -31,6 +31,19 @@ func NewOpenAlexAnalysisService(
 	}
 }
 
+type OpenAlexAnalysisServiceConfig struct {
+	AnalysisPath string
+}
+
+func NewOpenAlexAnalysisServiceFromConfig(config *OpenAlexAnalysisServiceConfig) *OpenAlexAnalysisService {
+	openalexClient := openalex.NewRestyClient()
+	analysisRepo := repos.NewFileAnalysisRepo(config.AnalysisPath)
+	return &OpenAlexAnalysisService{
+		openalexClient: openalexClient,
+		analysisRepo:   analysisRepo,
+	}
+}
+
 func (s *OpenAlexAnalysisService) Store(
 	ctx context.Context,
 	query string,
