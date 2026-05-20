@@ -112,7 +112,7 @@ func (s *SemanticSearchService) Search(ctx context.Context, query string, limit 
 	if err != nil {
 		return nil, fmt.Errorf("failed to build citation graph: %w", err)
 	}
-	quasiStainer, err := algorithms.NewPseudoStainer(citationGraph)
+	quasiStainer, err := algorithms.NewPseudoSteiner(citationGraph)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create quasi-stainer: %w", err)
 	}
