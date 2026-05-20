@@ -22,11 +22,6 @@ func (e *JSONRenderer) RenderResults(w io.Writer, results []*models.Result) erro
 	return e.render(w, results, "results")
 }
 
-// RenderArticle implements the [Renderer] interface
-func (e *JSONRenderer) RenderArticle(w io.Writer, article *models.Article) error {
-	return e.render(w, article, "article")
-}
-
 // RenderAnalysis implements [Renderer].
 func (e *JSONRenderer) RenderAnalysis(w io.Writer, analysis *models.Analysis) error {
 	return e.render(w, analysis, "analysis")

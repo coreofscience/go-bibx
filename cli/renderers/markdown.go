@@ -1,12 +1,16 @@
 package renderers
 
 import (
+	"embed"
 	"fmt"
 	"io"
 	"text/template"
 
 	"github.com/coreofscience/go-bibx/models"
 )
+
+//go:embed templates/*.md
+var templatesFS embed.FS
 
 type MarkdownRenderer struct {
 	template *template.Template
@@ -38,11 +42,6 @@ func (e *MarkdownRenderer) RenderResults(w io.Writer, results []*models.Result) 
 		}
 	}
 	return nil
-}
-
-// RenderArticle implements the [Renderer] interface
-func (e *MarkdownRenderer) RenderArticle(w io.Writer, article *models.Article) error {
-	return e.render(w, article, e.format)
 }
 
 // RenderAnalysis implements [Renderer].
