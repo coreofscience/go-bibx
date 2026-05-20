@@ -16,7 +16,10 @@ func TestQuasiStainer(t *testing.T) {
 		g.AddVertex(gograph.NewVertex("A"))
 		g.AddVertex(gograph.NewVertex("B"))
 		g.AddVertex(gograph.NewVertex("C"))
-		quasiStainer, err := algorithms.NewPseudoStainer(g)
+		quasiStainer, err := algorithms.NewPseudoStainer(
+			g,
+			algorithms.WithMaxEffort[string](10),
+		)
 		require.NoError(t, err)
 		assert.NotNil(t, quasiStainer)
 		newGraph, err := quasiStainer.Run([]string{"D"})
@@ -34,7 +37,10 @@ func TestQuasiStainer(t *testing.T) {
 		_, _ = g.AddEdge(vB, vA)
 		_, _ = g.AddEdge(vC, vA)
 
-		quasiStainer, err := algorithms.NewPseudoStainer(g)
+		quasiStainer, err := algorithms.NewPseudoStainer(
+			g,
+			algorithms.WithMaxEffort[string](10),
+		)
 		require.NoError(t, err)
 		assert.NotNil(t, quasiStainer)
 		newGraph, err := quasiStainer.Run([]string{"B", "C"})
@@ -54,7 +60,10 @@ func TestQuasiStainer(t *testing.T) {
 		_, _ = g.AddEdge(vA, vB)
 		_, _ = g.AddEdge(vA, vC)
 
-		quasiStainer, err := algorithms.NewPseudoStainer(g)
+		quasiStainer, err := algorithms.NewPseudoStainer(
+			g,
+			algorithms.WithMaxEffort[string](10),
+		)
 		require.NoError(t, err)
 		assert.NotNil(t, quasiStainer)
 		newGraph, err := quasiStainer.Run([]string{"B", "C"})
@@ -74,7 +83,10 @@ func TestQuasiStainer(t *testing.T) {
 		_, _ = g.AddEdge(vA, vB)
 		_, _ = g.AddEdge(vB, vC)
 
-		quasiStainer, err := algorithms.NewPseudoStainer(g)
+		quasiStainer, err := algorithms.NewPseudoStainer(
+			g,
+			algorithms.WithMaxEffort[string](10),
+		)
 		require.NoError(t, err)
 		assert.NotNil(t, quasiStainer)
 		newGraph, err := quasiStainer.Run([]string{"A", "C"})
@@ -94,7 +106,10 @@ func TestQuasiStainer(t *testing.T) {
 		g.AddVertex(vC)
 		_, _ = g.AddEdge(vA, vB)
 
-		quasiStainer, err := algorithms.NewPseudoStainer(g)
+		quasiStainer, err := algorithms.NewPseudoStainer(
+			g,
+			algorithms.WithMaxEffort[string](10),
+		)
 		require.NoError(t, err)
 		assert.NotNil(t, quasiStainer)
 		newGraph, err := quasiStainer.Run([]string{"A", "C"})
