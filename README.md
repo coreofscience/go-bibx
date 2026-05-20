@@ -29,8 +29,9 @@ metaphor, it categorizes articles into:
   citation network.
 - **Visualize**: Interactive, browser-based graph exploration of your
   collections.
-- **Semantic Search**: Find information in your collection using semantic
-  relevance.
+- **Semantic Search**: Graph Semantic Search allows users to find articles
+  related to a query by leveraging both semantic relevance and their deep
+  relationships within the citation graph.
 - **Queries**: Query your collection by relevance in three main categories:
   - *Rootness*: how seminal the article is.
   - *Trunkness*: how important is this article within the structure of the
@@ -38,13 +39,6 @@ metaphor, it categorizes articles into:
   - *Leafness*: how complete and recent the article is.
 - **Interoperable**: Designed as a standalone CLI that fits perfectly into
   automated workflows.
-
-## Coming Soon: Graph part of Semantic Search
-
-We are actively working on expanding the semantic search to a **Graph Semantic
-Search**. Similar in spirit to GraphRAG, this will allow users to find articles
-related to a query by leveraging both semantic relevance and their deep
-relationships within the citation graph.
 
 ## Installation
 
@@ -72,10 +66,11 @@ Fetch papers related to a specific topic and save them to a compressed JSON
 file:
 
 ```bash
-./bibx inquire "bibliometric analysis" --limit 100
+./bibx inquire "bibliometric analysis" --limit 100 --force
 ```
 
-This will create a collection file at `.bibx/collection.json.gz`.
+This will create a collection file at `.bibx/collection.json.gz` and a search
+graph at `.bibx/search.json.gz`.
 
 ### 2. View the collection
 
@@ -92,7 +87,7 @@ Open [http://localhost:8080](http://localhost:8080) to explore the interactive g
 Perform a semantic search to find relevant articles:
 
 ```bash
-./bibx search "your query"
+./bibx search "your query" --limit 10 --format markdown --view --port 8081
 ```
 
 ### 4. Query
@@ -100,7 +95,7 @@ Perform a semantic search to find relevant articles:
 Query your collection by relevance in three main categories (e.g., root, trunk, leaf):
 
 ```bash
-./bibx query --category root
+./bibx query --category root --top 10 --format reference
 ```
 
 ## Development
