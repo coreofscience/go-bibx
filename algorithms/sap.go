@@ -63,13 +63,13 @@ func NewSapAlgorithm(graph gograph.Graph[string], opts ...SapOption) (*Sap, erro
 
 	order, err := graphs.ReverseTopologicalOrder(graph)
 	if err != nil {
-		return nil, fmt.Errorf("failed to compute root connections: %w", err)
+		return nil, fmt.Errorf("failed to compute reverse topological order: %w", err)
 	}
 
 	invertedGraph := graphs.Invert(graph)
 	invertedOrder, err := graphs.ReverseTopologicalOrder(invertedGraph)
 	if err != nil {
-		return nil, fmt.Errorf("failed to compute leaf connections: %w", err)
+		return nil, fmt.Errorf("failed to compute reverse topological order for inverted graph: %w", err)
 	}
 
 	s := &Sap{
