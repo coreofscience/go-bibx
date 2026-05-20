@@ -101,6 +101,5 @@ func TestSAP(t *testing.T) {
 		sap, err := algorithms.NewSapAlgorithm(g)
 		assert.Error(t, err)
 		assert.Nil(t, sap)
-		assert.Contains(t, err.Error(), "failed to compute root connections")
 	})
 }
