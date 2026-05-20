@@ -17,37 +17,27 @@ func New() *cli.Command {
 		Name:  "view",
 		Usage: "visualize a collection graph",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:  "file",
-				Usage: "path to the collection graph file",
-				Value: ".bibx/collection.json.gz",
-			},
 			&cli.IntFlag{
 				Name:  "port",
 				Usage: "port to listen on",
 				Value: 8080,
 			},
-			&cli.BoolFlag{
-				Name:  "verbose",
-				Usage: "enable verbose logging",
-				Value: false,
-			},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
-			utils.SetDefaultLogger(c.Bool("verbose"))
 			port := c.Int("port")
-			fileName := c.String("file")
-			analysisRepo := repos.NewFileAnalysisRepo(fileName)
+			analysisPath, ok := utils.GetAnalysisPath(ctx)
+			if !ok {
+				return fmt.Errorf("analysis path not set")
+			}
+			analysisRepo := repos.NewFileAnalysisRepo(analysisPath)
 			analysis, err := analysisRepo.Load(ctx)
 			if err != nil {
-				slog.Error("failed to load analysis", "error", err)
-				return err
+				return fmt.Errorf("failed to load analysis from file: %w", err)
 			}
 			mux := viewer.New(analysis)
 			slog.Info("visualization started", "port", port)
 			if err := http.ListenAndServe(fmt.Sprintf(":%d", port), mux); err != nil {
-				slog.Error("failed to start server", "error", err)
-				return err
+				return fmt.Errorf("failed to start visualization server: %w", err)
 			}
 			return nil
 		},

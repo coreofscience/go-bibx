@@ -1,12 +1,16 @@
 package renderers
 
 import (
+	"embed"
 	"fmt"
 	"io"
 	"text/template"
 
 	"github.com/coreofscience/go-bibx/models"
 )
+
+//go:embed templates/*.md
+var templatesFS embed.FS
 
 type MarkdownRenderer struct {
 	template *template.Template
@@ -33,28 +37,9 @@ func NewMarkdownRenderer(format string) (*MarkdownRenderer, error) {
 // RenderResults implements the [Renderer] interface
 func (e *MarkdownRenderer) RenderResults(w io.Writer, results []*models.Result) error {
 	for _, result := range results {
-		if err := e.template.ExecuteTemplate(
-			w,
-			fmt.Sprintf("%s.md", e.format),
-			result.Article,
-		); err != nil {
-			return fmt.Errorf("error rendering template: %w", err)
+		if err := e.render(w, result.Article, e.format); err != nil {
+			return err
 		}
-		if _, err := w.Write([]byte("\n\n---\n\n")); err != nil {
-			return fmt.Errorf("error writing separator: %w", err)
-		}
-	}
-	return nil
-}
-
-// RenderArticle implements the [Renderer] interface
-func (e *MarkdownRenderer) RenderArticle(w io.Writer, article *models.Article) error {
-	if err := e.template.ExecuteTemplate(
-		w,
-		fmt.Sprintf("%s.md", e.format),
-		article,
-	); err != nil {
-		return fmt.Errorf("error rendering template: %w", err)
 	}
 	return nil
 }
@@ -62,16 +47,23 @@ func (e *MarkdownRenderer) RenderArticle(w io.Writer, article *models.Article) e
 // RenderAnalysis implements [Renderer].
 func (e *MarkdownRenderer) RenderAnalysis(w io.Writer, analysis *models.Analysis) error {
 	for _, node := range analysis.Nodes {
-		if err := e.template.ExecuteTemplate(
-			w,
-			fmt.Sprintf("%s.md", e.format),
-			node.Article,
-		); err != nil {
-			return fmt.Errorf("error rendering template: %w", err)
+		if err := e.render(w, node.Article, e.format); err != nil {
+			return err
 		}
-		if _, err := w.Write([]byte("\n\n---\n\n")); err != nil {
-			return fmt.Errorf("error writing separator: %w", err)
-		}
+	}
+	return nil
+}
+
+func (e *MarkdownRenderer) render(w io.Writer, item any, format string) error {
+	if err := e.template.ExecuteTemplate(
+		w,
+		fmt.Sprintf("%s.md", format),
+		item,
+	); err != nil {
+		return fmt.Errorf("error rendering template: %w", err)
+	}
+	if _, err := w.Write([]byte("\n\n---\n\n")); err != nil {
+		return fmt.Errorf("error writing separator: %w", err)
 	}
 	return nil
 }

@@ -2,14 +2,9 @@ package inquire
 
 import (
 	"context"
-	"log/slog"
+	"fmt"
 	"os"
-	"path"
 
-	"github.com/coreofscience/go-bibx/cli/clients/embeddings"
-	"github.com/coreofscience/go-bibx/cli/clients/openalex"
-	"github.com/coreofscience/go-bibx/cli/renderers"
-	"github.com/coreofscience/go-bibx/cli/repos"
 	"github.com/coreofscience/go-bibx/cli/services"
 	"github.com/coreofscience/go-bibx/internal/utils"
 
@@ -22,19 +17,9 @@ func New() *cli.Command {
 		Usage:     "inquire for a research topic",
 		ArgsUsage: "<query>",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:  "root",
-				Usage: "root directory store the results",
-				Value: ".",
-			},
 			&cli.BoolFlag{
 				Name:  "force",
 				Usage: "force overwrite of existing results",
-				Value: false,
-			},
-			&cli.BoolFlag{
-				Name:  "verbose",
-				Usage: "verbose output",
 				Value: false,
 			},
 			&cli.IntFlag{
@@ -53,51 +38,38 @@ func New() *cli.Command {
 			},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
-			utils.SetDefaultLogger(c.Bool("verbose"))
-			analysisPath := path.Join(c.String("root"), ".bibx", "collection.json.gz")
-			searchPath := path.Join(c.String("root"), ".bibx", "search.json.gz")
+			analysisPath, ok := utils.GetAnalysisPath(ctx)
+			if !ok {
+				return fmt.Errorf("analysis path not set")
+			}
+			searchPath, ok := utils.GetSearchPath(ctx)
+			if !ok {
+				return fmt.Errorf("search path not set")
+			}
 			force := c.Bool("force")
 			if _, err := os.Stat(analysisPath); err == nil && !force {
-				slog.Error("file already exists", "path", analysisPath)
-				os.Exit(1)
+				return fmt.Errorf("file already exists: %s", analysisPath)
 			}
 			if _, err := os.Stat(searchPath); err == nil && !force {
-				slog.Error("file already exists", "path", searchPath)
-				os.Exit(1)
+				return fmt.Errorf("file already exists: %s", searchPath)
 			}
-			query := c.StringArg("query")
-			limit := c.Int("limit")
-			openalexClient := openalex.NewRestyClient()
-			embeddingsClient, err := embeddings.NewOllamaClient()
+			analysisServiceConfig := &services.OpenAlexAnalysisServiceConfig{
+				AnalysisPath: analysisPath,
+			}
+			analysisService := services.NewOpenAlexAnalysisServiceFromConfig(analysisServiceConfig)
+			searchServiceConfig := &services.SemanticSearchServiceConfig{
+				AnalysisPath: analysisPath,
+				SearchPath:   searchPath,
+			}
+			searchService, err := services.NewSemanticSearchServiceFromConfig(searchServiceConfig)
 			if err != nil {
-				slog.Error("failed to create embeddings client", "error", err)
-				os.Exit(1)
+				return fmt.Errorf("failed to create search service: %w", err)
 			}
-			analysisRepo := repos.NewFileAnalysisRepo(analysisPath)
-			analysisService := services.NewOpenAlexAnalysisService(
-				openalexClient,
-				embeddingsClient,
-				analysisRepo,
-			)
-			if err := analysisService.Store(context.Background(), query, limit); err != nil {
-				slog.Error("failed to store analysis", "error", err)
-				os.Exit(1)
+			if err := analysisService.Store(ctx, c.StringArg("query"), c.Int("limit")); err != nil {
+				return fmt.Errorf("failed to store analysis: %w", err)
 			}
-			searchRepo := repos.NewFileSearchRepo(searchPath)
-			markdownRenderer, err := renderers.NewMarkdownRenderer("simple")
-			if err != nil {
-				slog.Error("failed to create markdown renderer", "error", err)
-				os.Exit(1)
-			}
-			searchService := services.NewSemanticSearchService(
-				analysisRepo,
-				searchRepo,
-				embeddingsClient,
-				markdownRenderer,
-			)
 			if err := searchService.Store(ctx); err != nil {
-				slog.Error("failed to store search graph", "error", err)
-				os.Exit(1)
+				return fmt.Errorf("failed to store search results: %w", err)
 			}
 			return nil
 		},

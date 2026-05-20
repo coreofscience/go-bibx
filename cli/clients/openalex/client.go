@@ -286,13 +286,13 @@ func WorkToArticle(work *Work) *models.Article {
 	for source, id := range work.IDs {
 		realID := id
 		if source == "doi" {
-			realID = extractDOI(id)
+			realID = utils.ExtractDOI(id)
 		}
 		ids.Add(fmt.Sprintf("%s:%s", source, realID))
 	}
 	var authors []string
 	for _, author := range work.Authorships {
-		authors = append(authors, invertName(author.Author.DisplayName))
+		authors = append(authors, utils.InvertName(author.Author.DisplayName))
 	}
 	var journal *string
 	if work.PrimaryLocation != nil && work.PrimaryLocation.Source != nil {
@@ -300,7 +300,7 @@ func WorkToArticle(work *Work) *models.Article {
 	}
 	var doi *string
 	if work.DOI != nil {
-		doiVal := extractDOI(*work.DOI)
+		doiVal := utils.ExtractDOI(*work.DOI)
 		doi = &doiVal
 	}
 	var permalink *string
@@ -315,7 +315,7 @@ func WorkToArticle(work *Work) *models.Article {
 	for _, keyword := range work.Keywords {
 		keywords.Add(keyword.DisplayName)
 	}
-	abstract := invertAbstract(work.AbstractInvertedIndex)
+	abstract := utils.InvertAbstract(work.AbstractInvertedIndex)
 	return &models.Article{
 		Label:      work.ID,
 		IDs:        ids,
@@ -344,60 +344,4 @@ func ReferenceToArticle(reference string) *models.Article {
 		Permalink: &reference,
 		Rich:      false,
 	}
-}
-
-func extractDOI(doi string) string {
-	doi = strings.TrimSpace(doi)
-	prefixes := []string{
-		"https://doi.org/",
-		"http://doi.org/",
-		"https://dx.doi.org/",
-		"http://dx.doi.org/",
-		"doi:",
-	}
-	for _, prefix := range prefixes {
-		if strings.HasPrefix(strings.ToLower(doi), prefix) {
-			return doi[len(prefix):]
-		}
-	}
-	return doi
-}
-
-func invertName(name string) string {
-	name = strings.TrimSpace(name)
-	if name == "" || strings.Contains(name, ",") {
-		return name
-	}
-	parts := strings.Fields(name)
-	if len(parts) < 2 {
-		return name
-	}
-	lastName := parts[len(parts)-1]
-	firstNames := parts[:len(parts)-1]
-	return fmt.Sprintf("%s, %s", lastName, strings.Join(firstNames, " "))
-}
-
-func invertAbstract(abstractInvertedIndex *map[string][]int) string {
-	if abstractInvertedIndex == nil {
-		return ""
-	}
-	length := 0
-	for _, indices := range *abstractInvertedIndex {
-		maxIndex := 0
-		for _, index := range indices {
-			if index > maxIndex {
-				maxIndex = index
-			}
-		}
-		if maxIndex > length {
-			length = maxIndex
-		}
-	}
-	words := make([]string, length+1)
-	for word, indices := range *abstractInvertedIndex {
-		for _, index := range indices {
-			words[index] = word
-		}
-	}
-	return strings.TrimSpace(strings.Join(words, " "))
 }

@@ -1,50 +1,61 @@
 package services
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"log/slog"
 
 	"github.com/coreofscience/go-bibx/algorithms"
 	"github.com/coreofscience/go-bibx/cli/clients/embeddings"
-	"github.com/coreofscience/go-bibx/cli/renderers"
 	"github.com/coreofscience/go-bibx/cli/repos"
+	"github.com/coreofscience/go-bibx/internal/texter"
 	"github.com/coreofscience/go-bibx/internal/utils"
 	"github.com/coreofscience/go-bibx/internal/vector"
 	"github.com/coreofscience/go-bibx/models"
 )
 
-type SearchService interface {
-	// Store creates an stores a new search graph.
-	Store(ctx context.Context) error
-
-	// Search performs a search for the given query and returns a list of results.
-	Search(ctx context.Context, query string, limit int) ([]*models.Result, error)
-}
-
 type SemanticSearchService struct {
 	analysisRepo     repos.AnalysisRepo
 	searchRepo       repos.SearchRepo
 	embeddingsClient embeddings.Client
-	renderer         renderers.Renderer
+	texter           texter.ArticleTexter
 }
 
 func NewSemanticSearchService(
 	analysisRepo repos.AnalysisRepo,
 	searchRepo repos.SearchRepo,
 	embeddingsClient embeddings.Client,
-	renderer renderers.Renderer,
+	ttr texter.ArticleTexter,
 ) *SemanticSearchService {
 	return &SemanticSearchService{
 		analysisRepo:     analysisRepo,
 		searchRepo:       searchRepo,
 		embeddingsClient: embeddingsClient,
-		renderer:         renderer,
+		texter:           ttr,
 	}
 }
 
-// Store implements the [SearchService] interface
+type SemanticSearchServiceConfig struct {
+	AnalysisPath string
+	SearchPath   string
+}
+
+func NewSemanticSearchServiceFromConfig(cfg *SemanticSearchServiceConfig) (*SemanticSearchService, error) {
+	analysisRepo := repos.NewFileAnalysisRepo(cfg.AnalysisPath)
+	searchRepo := repos.NewFileSearchRepo(cfg.SearchPath)
+	embeddingsClient, err := embeddings.NewOllamaClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create embeddings client: %w", err)
+	}
+	ttr := texter.NewDefaultArticleTexter()
+	return NewSemanticSearchService(
+		analysisRepo,
+		searchRepo,
+		embeddingsClient,
+		ttr,
+	), nil
+}
+
 func (s *SemanticSearchService) Store(ctx context.Context) error {
 	analysis, err := s.analysisRepo.Load(ctx)
 	if err != nil {
@@ -55,12 +66,8 @@ func (s *SemanticSearchService) Store(ctx context.Context) error {
 	slog.InfoContext(ctx, "embedding all the nodes in the graph", "count", totalNodes)
 	texts := make([]string, 0, totalNodes)
 	for _, node := range analysis.Nodes {
-		var buffer bytes.Buffer
-		err := s.renderer.RenderArticle(&buffer, node.Article)
-		if err != nil {
-			return fmt.Errorf("failed to render article: %w", err)
-		}
-		texts = append(texts, buffer.String())
+		text := s.texter.ExtractText(node.Article)
+		texts = append(texts, text)
 	}
 	vecs, err := s.embeddingsClient.EmbedMany(ctx, texts)
 	if err != nil {
@@ -78,9 +85,8 @@ func (s *SemanticSearchService) Store(ctx context.Context) error {
 	return nil
 }
 
-// Search implements the [SearchService] interface
 func (s *SemanticSearchService) Search(ctx context.Context, query string, limit int) (*models.Analysis, error) {
-	vec, err := s.embeddingsClient.Embed(ctx, query)
+	vec, err := s.embeddingsClient.Embed(ctx, s.texter.CleanText(query))
 	if err != nil {
 		return nil, fmt.Errorf("failed to embed query: %w", err)
 	}
@@ -91,10 +97,6 @@ func (s *SemanticSearchService) Search(ctx context.Context, query string, limit 
 	analysis, err := s.analysisRepo.Load(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load analysis: %w", err)
-	}
-	articlesByID := make(map[string]*models.Article)
-	for _, node := range analysis.Nodes {
-		articlesByID[node.ID] = node.Article
 	}
 	searchResults, err := searchEngine.Search(vec, limit)
 	if err != nil {
@@ -108,21 +110,17 @@ func (s *SemanticSearchService) Search(ctx context.Context, query string, limit 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create quasi-stainer: %w", err)
 	}
-
 	terminals := make([]string, len(searchResults))
 	for i, result := range searchResults {
 		terminals[i] = string(result.Key)
 	}
-
 	relationGraph, err := quasiStainer.Run(terminals)
 	if err != nil {
 		return nil, fmt.Errorf("failed to run quasi-stainer: %w", err)
 	}
-
 	ids := make([]string, 0, relationGraph.Order())
 	for _, vertex := range relationGraph.GetAllVertices() {
 		ids = append(ids, vertex.Label())
 	}
-
 	return analysis.Keep(ids), nil
 }

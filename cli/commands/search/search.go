@@ -6,11 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"path"
 
-	"github.com/coreofscience/go-bibx/cli/clients/embeddings"
 	"github.com/coreofscience/go-bibx/cli/renderers"
-	"github.com/coreofscience/go-bibx/cli/repos"
 	"github.com/coreofscience/go-bibx/cli/servers/viewer"
 	"github.com/coreofscience/go-bibx/cli/services"
 	"github.com/coreofscience/go-bibx/internal/collections"
@@ -28,11 +25,6 @@ func New() *cli.Command {
 		Usage:     "semantic search for a research topic",
 		ArgsUsage: "<query>",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:  "root",
-				Usage: "root directory store the results",
-				Value: ".",
-			},
 			&cli.IntFlag{
 				Name:  "limit",
 				Usage: "number of top results to return",
@@ -62,11 +54,6 @@ func New() *cli.Command {
 				Usage: "port to serve the visualization on",
 				Value: 8080,
 			},
-			&cli.BoolFlag{
-				Name:  "verbose",
-				Usage: "enable verbose output",
-				Value: false,
-			},
 		},
 		Arguments: []cli.Argument{
 			&cli.StringArg{
@@ -78,68 +65,41 @@ func New() *cli.Command {
 			},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
-			utils.SetDefaultLogger(c.Bool("verbose"))
-
-			query := c.StringArg("query")
-
-			analysisPath := path.Join(c.String("root"), ".bibx", "collection.json.gz")
-			searchPath := path.Join(c.String("root"), ".bibx", "search.json.gz")
-
-			embeddingsClient, err := embeddings.NewOllamaClient()
+			analysisPath, ok := utils.GetAnalysisPath(ctx)
+			if !ok {
+				return fmt.Errorf("analysis path not set")
+			}
+			searchPath, ok := utils.GetSearchPath(ctx)
+			if !ok {
+				return fmt.Errorf("search path not set")
+			}
+			searchConfig := &services.SemanticSearchServiceConfig{
+				AnalysisPath: analysisPath,
+				SearchPath:   searchPath,
+			}
+			searchService, err := services.NewSemanticSearchServiceFromConfig(searchConfig)
 			if err != nil {
-				slog.Error("failed to create embeddings client", "error", err)
-				os.Exit(1)
+				return fmt.Errorf("failed to create search service: %w", err)
 			}
-
-			analysisRepo := repos.NewFileAnalysisRepo(analysisPath)
-			searchRepo := repos.NewFileSearchRepo(searchPath)
-
-			format := c.String("format")
-			var renderer renderers.Renderer
-			switch format {
-			case "json":
-				renderer = renderers.NewJSONRenderer()
-			case "markdown", "simple", "reference":
-				renderer, err = renderers.NewMarkdownRenderer(format)
-			default:
-				slog.Error("unsupported format", "format", format)
-				os.Exit(1)
-			}
-
+			renderer, err := renderers.NewRendererWithFormat(c.String("format"))
 			if err != nil {
-				slog.Error("failed to create renderer", "error", err)
-				os.Exit(1)
+				return fmt.Errorf("failed to create renderer: %w", err)
 			}
-
-			searchService := services.NewSemanticSearchService(
-				analysisRepo,
-				searchRepo,
-				embeddingsClient,
-				renderer,
-			)
-
-			limit := int(c.Int("limit"))
-			analysis, err := searchService.Search(ctx, query, limit)
+			analysis, err := searchService.Search(ctx, c.StringArg("query"), int(c.Int("limit")))
 			if err != nil {
-				slog.Error("failed to perform search", "error", err)
-				os.Exit(1)
+				return fmt.Errorf("failed to perform search: %w", err)
 			}
-
 			if c.Bool("view") {
 				mux := viewer.New(analysis)
 				port := c.Int("port")
 				slog.Info("starting visualization server", "port", port)
 				if err := http.ListenAndServe(fmt.Sprintf(":%d", port), mux); err != nil {
-					slog.Error("failed to start server", "error", err)
-					os.Exit(1)
+					return fmt.Errorf("failed to start server: %w", err)
 				}
 			}
-
 			if err := renderer.RenderAnalysis(os.Stdout, analysis); err != nil {
-				slog.Error("failed to render results", "error", err)
-				os.Exit(1)
+				return fmt.Errorf("failed to render results: %w", err)
 			}
-
 			return nil
 		},
 	}

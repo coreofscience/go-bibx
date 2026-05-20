@@ -19,13 +19,23 @@ type PseudoStainer[K comparable] struct {
 	topologicalOrder  []*gograph.Vertex[K]
 	topologicalIndex  map[K]int
 	shortestPathCache map[K]map[K][]K
+	maxEffort         int
+}
+
+type PseudoStainerOption[K comparable] func(*PseudoStainer[K])
+
+// WithMaxEffort sets the maximum effort for the pseudo-stainer algorithm.
+func WithMaxEffort[K comparable](maxEffort int) PseudoStainerOption[K] {
+	return func(q *PseudoStainer[K]) {
+		q.maxEffort = maxEffort
+	}
 }
 
 // NewPseudoStainer creates a new QuasiStainer instance.
 //
 // It takes linear or amortized O(V + E) time to prepare the quasi-stainer
 // structure.
-func NewPseudoStainer[K comparable](graph gograph.Graph[K]) (*PseudoStainer[K], error) {
+func NewPseudoStainer[K comparable](graph gograph.Graph[K], opts ...PseudoStainerOption[K]) (*PseudoStainer[K], error) {
 	topologicalIterator, err := traverse.NewTopologicalIterator(graph)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create topological iterator: %w", err)
@@ -42,12 +52,17 @@ func NewPseudoStainer[K comparable](graph gograph.Graph[K]) (*PseudoStainer[K], 
 	for i, v := range topologicalOrder {
 		topologicalIndex[v.Label()] = i
 	}
-	return &PseudoStainer[K]{
+	pseudoStainer := &PseudoStainer[K]{
 		graph:             graph,
 		topologicalOrder:  topologicalOrder,
 		topologicalIndex:  topologicalIndex,
 		shortestPathCache: make(map[K]map[K][]K),
-	}, nil
+		maxEffort:         8,
+	}
+	for _, opt := range opts {
+		opt(pseudoStainer)
+	}
+	return pseudoStainer, nil
 }
 
 // Run runs the quasi-stainer algorithm on the given terminals and returns the
@@ -229,6 +244,10 @@ func (q *PseudoStainer[K]) findBestDescendant(toBridge [][]K) *K {
 					continue
 				}
 				cost := len(distA) + len(distB)
+				if cost > q.maxEffort {
+					slog.Debug("descendant cost exceeds max effort", "cost", cost, "maxEffort", q.maxEffort)
+					break
+				}
 				if cost < bestCost {
 					bestCost = cost
 					candidate = &labelW
@@ -254,8 +273,9 @@ func (q *PseudoStainer[K]) findBestAncestor(toBridge [][]K) *K {
 		for a, b := range cartesianProduct(sources, targets) {
 			indexA := q.topologicalIndex[a]
 			indexB := q.topologicalIndex[b]
-			earliestAncestor := min(indexA, indexB)
-			for _, w := range q.topologicalOrder[:earliestAncestor] {
+			oldestAncestor := min(indexA, indexB)
+			for i := oldestAncestor - 1; i >= 0; i-- {
+				w := q.topologicalOrder[i]
 				labelW := w.Label()
 				distA := q.shortestPath(labelW, a)
 				distB := q.shortestPath(labelW, b)
@@ -263,6 +283,10 @@ func (q *PseudoStainer[K]) findBestAncestor(toBridge [][]K) *K {
 					continue
 				}
 				cost := len(distA) + len(distB)
+				if cost > q.maxEffort {
+					slog.Debug("ancestor cost exceeds max effort", "cost", cost, "maxEffort", q.maxEffort)
+					break
+				}
 				if cost < bestCost {
 					bestCost = cost
 					label := w.Label()
