@@ -11,11 +11,6 @@ import (
 	"github.com/coreofscience/go-bibx/models"
 )
 
-type AnalysisService interface {
-	Store(ctx context.Context, query string, limit int) error
-	Query(ctx context.Context, category string, limit int) ([]*models.Result, error)
-}
-
 type OpenAlexAnalysisService struct {
 	openalexClient openalex.Client
 	analysisRepo   repos.AnalysisRepo
@@ -118,6 +113,22 @@ func (s *OpenAlexAnalysisService) Store(
 	return nil
 }
 
+func (s *OpenAlexAnalysisService) Query(
+	ctx context.Context,
+	category string,
+	limit int,
+) ([]*models.Result, error) {
+	analysis, err := s.analysisRepo.Load(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load analysis: %w", err)
+	}
+	results, err := analysis.Query(category, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query analysis: %w", err)
+	}
+	return results, nil
+}
+
 func (s *OpenAlexAnalysisService) enrich(
 	ctx context.Context,
 	c *models.Collection,
@@ -176,20 +187,4 @@ func (s *OpenAlexAnalysisService) enrich(
 	}
 	slog.Debug("enriched articles", "enriched", len(newArticles), "discarded", discarded)
 	return models.NewCollection(newArticles)
-}
-
-func (s *OpenAlexAnalysisService) Query(
-	ctx context.Context,
-	category string,
-	limit int,
-) ([]*models.Result, error) {
-	analysis, err := s.analysisRepo.Load(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load analysis: %w", err)
-	}
-	results, err := analysis.Query(category, limit)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query analysis: %w", err)
-	}
-	return results, nil
 }

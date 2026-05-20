@@ -14,14 +14,6 @@ import (
 	"github.com/coreofscience/go-bibx/models"
 )
 
-type SearchService interface {
-	// Store creates an stores a new search graph.
-	Store(ctx context.Context) error
-
-	// Search performs a search for the given query and returns a list of results.
-	Search(ctx context.Context, query string, limit int) ([]*models.Result, error)
-}
-
 type SemanticSearchService struct {
 	analysisRepo     repos.AnalysisRepo
 	searchRepo       repos.SearchRepo
@@ -43,12 +35,12 @@ func NewSemanticSearchService(
 	}
 }
 
-type SematicSearchServiceConfig struct {
+type SemanticSearchServiceConfig struct {
 	AnalysisPath string
 	SearchPath   string
 }
 
-func NewSemanticSearchServiceFromConfig(cfg *SematicSearchServiceConfig) (*SemanticSearchService, error) {
+func NewSemanticSearchServiceFromConfig(cfg *SemanticSearchServiceConfig) (*SemanticSearchService, error) {
 	analysisRepo := repos.NewFileAnalysisRepo(cfg.AnalysisPath)
 	searchRepo := repos.NewFileSearchRepo(cfg.SearchPath)
 	embeddingsClient, err := embeddings.NewOllamaClient()
@@ -64,7 +56,6 @@ func NewSemanticSearchServiceFromConfig(cfg *SematicSearchServiceConfig) (*Seman
 	), nil
 }
 
-// Store implements the [SearchService] interface
 func (s *SemanticSearchService) Store(ctx context.Context) error {
 	analysis, err := s.analysisRepo.Load(ctx)
 	if err != nil {
@@ -94,7 +85,6 @@ func (s *SemanticSearchService) Store(ctx context.Context) error {
 	return nil
 }
 
-// Search implements the [SearchService] interface
 func (s *SemanticSearchService) Search(ctx context.Context, query string, limit int) (*models.Analysis, error) {
 	vec, err := s.embeddingsClient.Embed(ctx, s.texter.CleanText(query))
 	if err != nil {

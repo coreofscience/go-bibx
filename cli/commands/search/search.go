@@ -73,7 +73,7 @@ func New() *cli.Command {
 			if !ok {
 				return fmt.Errorf("search path not set")
 			}
-			searchConfig := &services.SematicSearchServiceConfig{
+			searchConfig := &services.SemanticSearchServiceConfig{
 				AnalysisPath: analysisPath,
 				SearchPath:   searchPath,
 			}

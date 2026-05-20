@@ -57,7 +57,7 @@ func New() *cli.Command {
 				AnalysisPath: analysisPath,
 			}
 			analysisService := services.NewOpenAlexAnalysisServiceFromConfig(analysisServiceConfig)
-			searchServiceConfig := &services.SematicSearchServiceConfig{
+			searchServiceConfig := &services.SemanticSearchServiceConfig{
 				AnalysisPath: analysisPath,
 				SearchPath:   searchPath,
 			}
