@@ -113,7 +113,7 @@ func Purge[V comparable](g gograph.Graph[V], toRemove []V) (gograph.Graph[V], er
 		}
 		source := gograph.NewVertex(sourceLabel)
 		dest := gograph.NewVertex(destLabel)
-		if edge := newGraph.GetEdge(dest, source); edge != nil {
+		if edge := newGraph.GetEdge(source, dest); edge != nil {
 			continue
 		}
 		_, err := newGraph.AddEdge(source, dest, gograph.WithEdgeWeight(edge.Weight()))
