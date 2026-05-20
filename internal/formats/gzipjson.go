@@ -9,15 +9,15 @@ import (
 	"path/filepath"
 )
 
-func LoadGzipJSON(fileName string, v any) error {
+func LoadGzipJSON(fileName string, v any) (err error) {
 	file, err := os.Open(fileName)
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
 	}
 	defer func() {
-		err := file.Close()
-		if err != nil {
-			slog.Error("failed to close file", "error", err)
+		if cerr := file.Close(); cerr != nil {
+			slog.Error("failed to close file", "error", cerr)
+			err = fmt.Errorf("failed to close file: %w", cerr)
 		}
 	}()
 	gz, err := gzip.NewReader(file)
@@ -25,9 +25,9 @@ func LoadGzipJSON(fileName string, v any) error {
 		return fmt.Errorf("failed to create gzip reader: %w", err)
 	}
 	defer func() {
-		err := gz.Close()
-		if err != nil {
-			slog.Error("failed to close gzip reader", "error", err)
+		if cerr := gz.Close(); cerr != nil {
+			slog.Error("failed to close gzip reader", "error", cerr)
+			err = fmt.Errorf("failed to close gzip reader: %w", cerr)
 		}
 	}()
 	if err := json.NewDecoder(gz).Decode(v); err != nil {
@@ -36,7 +36,7 @@ func LoadGzipJSON(fileName string, v any) error {
 	return nil
 }
 
-func StoreGzipJSON(fileName string, v any) error {
+func StoreGzipJSON(fileName string, v any) (err error) {
 	dir := filepath.Dir(fileName)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
@@ -46,16 +46,16 @@ func StoreGzipJSON(fileName string, v any) error {
 		return fmt.Errorf("failed to create file: %w", err)
 	}
 	defer func() {
-		err := file.Close()
-		if err != nil {
-			slog.Error("failed to close file", "error", err)
+		if cerr := file.Close(); cerr != nil {
+			slog.Error("failed to close file", "error", cerr)
+			err = fmt.Errorf("failed to close file: %w", cerr)
 		}
 	}()
 	gz := gzip.NewWriter(file)
 	defer func() {
-		err := gz.Close()
-		if err != nil {
-			slog.Error("failed to close gzip writer", "error", err)
+		if cerr := gz.Close(); cerr != nil {
+			slog.Error("failed to close gzip writer", "error", cerr)
+			err = fmt.Errorf("failed to close gzip writer: %w", cerr)
 		}
 	}()
 	if err := json.NewEncoder(gz).Encode(v); err != nil {
