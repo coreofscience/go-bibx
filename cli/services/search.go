@@ -98,10 +98,6 @@ func (s *SemanticSearchService) Search(ctx context.Context, query string, limit 
 	if err != nil {
 		return nil, fmt.Errorf("failed to load analysis: %w", err)
 	}
-	articlesByID := make(map[string]*models.Article)
-	for _, node := range analysis.Nodes {
-		articlesByID[node.ID] = node.Article
-	}
 	searchResults, err := searchEngine.Search(vec, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search graph: %w", err)
