@@ -2,7 +2,7 @@ package utils
 
 import (
 	"context"
-	"path"
+	"path/filepath"
 )
 
 type ContextKey string
@@ -14,8 +14,8 @@ const (
 )
 
 func WithRootDir(ctx context.Context, rootDir string) context.Context {
-	analysisPath := path.Join(rootDir, ".bibx", "collection.json.gz")
-	searchPath := path.Join(rootDir, ".bibx", "search.json.gz")
+	analysisPath := filepath.Join(rootDir, ".bibx", "collection.json.gz")
+	searchPath := filepath.Join(rootDir, ".bibx", "search.json.gz")
 	ctx = context.WithValue(ctx, RootDirKey, rootDir)
 	ctx = context.WithValue(ctx, AnalysisPathKey, analysisPath)
 	ctx = context.WithValue(ctx, SearchPathKey, searchPath)
