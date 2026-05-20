@@ -34,7 +34,7 @@ func WithMaxEffort[K comparable](maxEffort float64) PseudoSteinerOption[K] {
 
 // NewPseudoSteiner creates a new PseudoSteiner instance.
 //
-// It takes linear or amortized O(V + E) time to prepare the quasi-steiner
+// It takes linear or amortized O(V + E) time to prepare the pseudo-steiner
 // structure.
 func NewPseudoSteiner[K comparable](graph gograph.Graph[K], opts ...PseudoSteinerOption[K]) (*PseudoSteiner[K], error) {
 	topologicalIterator, err := traverse.NewTopologicalIterator(graph)
