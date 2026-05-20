@@ -160,7 +160,7 @@ func (q *PseudoStainer[K]) shortestPath(a, b K) []K {
 	maxLength := indexB - indexA + 1
 
 	// Initialize the distance map and parent map.
-	dist := make(map[K]int, maxLength)
+	dist := make(map[K]float64, maxLength)
 	dist[a] = 0
 
 	// Initialize the parent map.
@@ -169,10 +169,14 @@ func (q *PseudoStainer[K]) shortestPath(a, b K) []K {
 	for _, u := range q.topologicalOrder[indexA : indexB+1] {
 		for _, edge := range q.graph.EdgesOf(u) {
 			v := edge.Destination()
+			weight := float64(1)
+			if q.graph.IsWeighted() {
+				weight = edge.Weight()
+			}
 			if du, ok := dist[u.Label()]; ok {
 				dv, ok := dist[v.Label()]
-				if !ok || dv > du+1 {
-					dist[v.Label()] = du + 1
+				if !ok || dv > du+weight {
+					dist[v.Label()] = du + weight
 					parent[v.Label()] = u.Label()
 				}
 			}
