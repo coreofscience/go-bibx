@@ -274,10 +274,8 @@ func (q *PseudoStainer[K]) findBestAncestor(toBridge [][]K) *K {
 			indexA := q.topologicalIndex[a]
 			indexB := q.topologicalIndex[b]
 			oldestAncestor := min(indexA, indexB)
-			reverseOrder := make([]*gograph.Vertex[K], oldestAncestor)
-			copy(reverseOrder, q.topologicalOrder[:oldestAncestor])
-			slices.Reverse(reverseOrder)
-			for _, w := range reverseOrder {
+			for i := oldestAncestor - 1; i >= 0; i-- {
+				w := q.topologicalOrder[i]
 				labelW := w.Label()
 				distA := q.shortestPath(labelW, a)
 				distB := q.shortestPath(labelW, b)
