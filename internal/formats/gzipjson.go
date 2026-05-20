@@ -3,6 +3,7 @@ package formats
 import (
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -17,7 +18,7 @@ func LoadGzipJSON(fileName string, v any) (err error) {
 	defer func() {
 		if cerr := file.Close(); cerr != nil {
 			slog.Error("failed to close file", "error", cerr)
-			err = fmt.Errorf("failed to close file: %w", cerr)
+			err = errors.Join(err, fmt.Errorf("failed to close file: %w", cerr))
 		}
 	}()
 	gz, err := gzip.NewReader(file)
@@ -27,7 +28,7 @@ func LoadGzipJSON(fileName string, v any) (err error) {
 	defer func() {
 		if cerr := gz.Close(); cerr != nil {
 			slog.Error("failed to close gzip reader", "error", cerr)
-			err = fmt.Errorf("failed to close gzip reader: %w", cerr)
+			err = errors.Join(err, fmt.Errorf("failed to close gzip reader: %w", cerr))
 		}
 	}()
 	if err := json.NewDecoder(gz).Decode(v); err != nil {
@@ -48,14 +49,14 @@ func StoreGzipJSON(fileName string, v any) (err error) {
 	defer func() {
 		if cerr := file.Close(); cerr != nil {
 			slog.Error("failed to close file", "error", cerr)
-			err = fmt.Errorf("failed to close file: %w", cerr)
+			err = errors.Join(err, fmt.Errorf("failed to close file: %w", cerr))
 		}
 	}()
 	gz := gzip.NewWriter(file)
 	defer func() {
 		if cerr := gz.Close(); cerr != nil {
 			slog.Error("failed to close gzip writer", "error", cerr)
-			err = fmt.Errorf("failed to close gzip writer: %w", cerr)
+			err = errors.Join(err, fmt.Errorf("failed to close gzip writer: %w", cerr))
 		}
 	}()
 	if err := json.NewEncoder(gz).Encode(v); err != nil {

@@ -110,21 +110,17 @@ func (s *SemanticSearchService) Search(ctx context.Context, query string, limit 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create quasi-stainer: %w", err)
 	}
-
 	terminals := make([]string, len(searchResults))
 	for i, result := range searchResults {
 		terminals[i] = string(result.Key)
 	}
-
 	relationGraph, err := quasiStainer.Run(terminals)
 	if err != nil {
 		return nil, fmt.Errorf("failed to run quasi-stainer: %w", err)
 	}
-
 	ids := make([]string, 0, relationGraph.Order())
 	for _, vertex := range relationGraph.GetAllVertices() {
 		ids = append(ids, vertex.Label())
 	}
-
 	return analysis.Keep(ids), nil
 }
