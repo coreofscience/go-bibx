@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"github.com/coreofscience/go-bibx/internal/collections"
+	"github.com/coreofscience/go-bibx/internal/utils"
 	"github.com/hmdsefi/gograph"
 )
 
@@ -24,6 +25,67 @@ type Node struct {
 	Trunkness float64  `json:"trunkness"`
 	Leafness  float64  `json:"leafness"`
 	Article   *Article `json:"article"`
+}
+
+type NodeMetadata struct {
+	ID         string              `yaml:"id"`
+	Label      string              `yaml:"label"`
+	Category   string              `yaml:"category"`
+	Rootness   float64             `yaml:"rootness"`
+	Trunkness  float64             `yaml:"trunkness"`
+	Leafness   float64             `yaml:"leafness"`
+	Rich       bool                `yaml:"rich"`
+	Title      *utils.FoldedString `yaml:"title,omitempty"`
+	Year       *int                `yaml:"year,omitempty"`
+	Journal    *utils.FoldedString `yaml:"journal,omitempty"`
+	Volume     *string             `yaml:"volume,omitempty"`
+	Issue      *string             `yaml:"issue,omitempty"`
+	Page       *string             `yaml:"page,omitempty"`
+	DOI        *string             `yaml:"doi,omitempty"`
+	Permalink  *string             `yaml:"permalink,omitempty"`
+	TimesCited *int                `yaml:"times_cited,omitempty"`
+	Authors    []string            `yaml:"authors,omitempty"`
+	IDs        []string            `yaml:"ids,omitempty"`
+}
+
+func (n *Node) Metadata() *NodeMetadata {
+	if n == nil {
+		return nil
+	}
+	art := n.Article
+	if art == nil {
+		return &NodeMetadata{
+			ID:        n.ID,
+			Category:  string(n.Category),
+			Rootness:  n.Rootness,
+			Trunkness: n.Trunkness,
+			Leafness:  n.Leafness,
+		}
+	}
+	var ids []string
+	if art.IDs != nil {
+		ids = art.IDs.Items()
+	}
+	return &NodeMetadata{
+		ID:         n.ID,
+		Label:      art.Label,
+		Category:   string(n.Category),
+		Rootness:   n.Rootness,
+		Trunkness:  n.Trunkness,
+		Leafness:   n.Leafness,
+		Rich:       art.Rich,
+		Title:      utils.NewFoldedString(art.Title),
+		Year:       art.Year,
+		Journal:    utils.NewFoldedString(art.Journal),
+		Volume:     art.Volume,
+		Issue:      art.Issue,
+		Page:       art.Page,
+		DOI:        art.DOI,
+		Permalink:  art.Permalink,
+		TimesCited: art.TimesCited,
+		Authors:    art.Authors,
+		IDs:        ids,
+	}
 }
 
 type Result struct {

@@ -3,3 +3,4 @@ tmp/
 bibx
 bibx.exe
 !cmd/bibx
+raw/

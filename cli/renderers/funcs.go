@@ -6,7 +6,7 @@ import (
 	"text/template"
 
 	"github.com/coreofscience/go-bibx/models"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 func wrap(limit int, v any) string {

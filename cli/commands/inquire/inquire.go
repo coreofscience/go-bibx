@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
+	"github.com/coreofscience/go-bibx/cli/repos"
 	"github.com/coreofscience/go-bibx/cli/services"
 	"github.com/coreofscience/go-bibx/internal/utils"
 
@@ -71,6 +73,23 @@ func New() *cli.Command {
 			if err := searchService.Store(ctx); err != nil {
 				return fmt.Errorf("failed to store search results: %w", err)
 			}
+
+			analysisRepo := repos.NewFileAnalysisRepo(analysisPath)
+			analysis, err := analysisRepo.Load(ctx)
+			if err != nil {
+				return fmt.Errorf("failed to load analysis for export: %w", err)
+			}
+
+			rootDir, ok := utils.GetRootDir(ctx)
+			if !ok {
+				rootDir = "."
+			}
+
+			markdownRepo := repos.NewFolderMarkdownRepo(filepath.Join(rootDir, "raw", "collection"))
+			if err := markdownRepo.Store(ctx, analysis); err != nil {
+				return fmt.Errorf("failed to export markdown collection: %w", err)
+			}
+
 			return nil
 		},
 	}
