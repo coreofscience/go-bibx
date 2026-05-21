@@ -82,7 +82,15 @@ func (s *SemanticSearchService) Store(ctx context.Context) error {
 		}
 	}
 	for _, link := range analysis.Links {
-		weight := vector.CosineDistance(vecByID[link.Source], vecByID[link.Target])
+		sourceVec, ok := vecByID[link.Source]
+		if !ok {
+			return fmt.Errorf("missing vector for source node %s", link.Source)
+		}
+		targetVec, ok := vecByID[link.Target]
+		if !ok {
+			return fmt.Errorf("missing vector for target node %s", link.Target)
+		}
+		weight := vector.CosineDistance(sourceVec, targetVec)
 		v.Link(vector.NewLink(link.Source, link.Target, weight))
 	}
 	if err := s.searchRepo.Store(ctx, v); err != nil {
