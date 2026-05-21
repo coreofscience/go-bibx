@@ -10,16 +10,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestQuasiStainer(t *testing.T) {
+func TestPseudoSteiner(t *testing.T) {
 	t.Run("sources not in graph", func(t *testing.T) {
 		g := gograph.New[string](gograph.Directed(), gograph.Acyclic())
 		g.AddVertex(gograph.NewVertex("A"))
 		g.AddVertex(gograph.NewVertex("B"))
 		g.AddVertex(gograph.NewVertex("C"))
-		quasiStainer, err := algorithms.NewPseudoStainer(g)
+		pseudoSteiner, err := algorithms.NewPseudoSteiner(
+			g,
+			algorithms.WithMaxEffort[string](10),
+		)
 		require.NoError(t, err)
-		assert.NotNil(t, quasiStainer)
-		newGraph, err := quasiStainer.Run([]string{"D"})
+		assert.NotNil(t, pseudoSteiner)
+		newGraph, err := pseudoSteiner.Run([]string{"D"})
 		require.Error(t, err)
 		assert.Nil(t, newGraph)
 	})
@@ -34,10 +37,13 @@ func TestQuasiStainer(t *testing.T) {
 		_, _ = g.AddEdge(vB, vA)
 		_, _ = g.AddEdge(vC, vA)
 
-		quasiStainer, err := algorithms.NewPseudoStainer(g)
+		pseudoSteiner, err := algorithms.NewPseudoSteiner(
+			g,
+			algorithms.WithMaxEffort[string](10),
+		)
 		require.NoError(t, err)
-		assert.NotNil(t, quasiStainer)
-		newGraph, err := quasiStainer.Run([]string{"B", "C"})
+		assert.NotNil(t, pseudoSteiner)
+		newGraph, err := pseudoSteiner.Run([]string{"B", "C"})
 		require.NoError(t, err)
 		assert.NotNil(t, newGraph)
 		assert.Equal(t, uint32(3), newGraph.Order())
@@ -54,10 +60,13 @@ func TestQuasiStainer(t *testing.T) {
 		_, _ = g.AddEdge(vA, vB)
 		_, _ = g.AddEdge(vA, vC)
 
-		quasiStainer, err := algorithms.NewPseudoStainer(g)
+		pseudoSteiner, err := algorithms.NewPseudoSteiner(
+			g,
+			algorithms.WithMaxEffort[string](10),
+		)
 		require.NoError(t, err)
-		assert.NotNil(t, quasiStainer)
-		newGraph, err := quasiStainer.Run([]string{"B", "C"})
+		assert.NotNil(t, pseudoSteiner)
+		newGraph, err := pseudoSteiner.Run([]string{"B", "C"})
 		require.NoError(t, err)
 		assert.NotNil(t, newGraph)
 		assert.Equal(t, uint32(3), newGraph.Order())
@@ -74,10 +83,13 @@ func TestQuasiStainer(t *testing.T) {
 		_, _ = g.AddEdge(vA, vB)
 		_, _ = g.AddEdge(vB, vC)
 
-		quasiStainer, err := algorithms.NewPseudoStainer(g)
+		pseudoSteiner, err := algorithms.NewPseudoSteiner(
+			g,
+			algorithms.WithMaxEffort[string](10),
+		)
 		require.NoError(t, err)
-		assert.NotNil(t, quasiStainer)
-		newGraph, err := quasiStainer.Run([]string{"A", "C"})
+		assert.NotNil(t, pseudoSteiner)
+		newGraph, err := pseudoSteiner.Run([]string{"A", "C"})
 		require.NoError(t, err)
 		assert.NotNil(t, newGraph)
 		assert.Equal(t, uint32(3), newGraph.Order())
@@ -94,10 +106,13 @@ func TestQuasiStainer(t *testing.T) {
 		g.AddVertex(vC)
 		_, _ = g.AddEdge(vA, vB)
 
-		quasiStainer, err := algorithms.NewPseudoStainer(g)
+		pseudoSteiner, err := algorithms.NewPseudoSteiner(
+			g,
+			algorithms.WithMaxEffort[string](10),
+		)
 		require.NoError(t, err)
-		assert.NotNil(t, quasiStainer)
-		newGraph, err := quasiStainer.Run([]string{"A", "C"})
+		assert.NotNil(t, pseudoSteiner)
+		newGraph, err := pseudoSteiner.Run([]string{"A", "C"})
 		require.NoError(t, err)
 		assert.NotNil(t, newGraph)
 		assert.Equal(t, uint32(2), newGraph.Order())

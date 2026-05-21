@@ -61,7 +61,6 @@ func (s *SemanticSearchService) Store(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to load analysis: %w", err)
 	}
-	v := vector.NewDumbVectors[string]()
 	totalNodes := len(analysis.Nodes)
 	slog.InfoContext(ctx, "embedding all the nodes in the graph", "count", totalNodes)
 	texts := make([]string, 0, totalNodes)
@@ -73,11 +72,26 @@ func (s *SemanticSearchService) Store(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to embed articles: %w", err)
 	}
+	v := vector.NewDumbVectors[string]()
+	vecByID := make(map[string][]float32)
 	for vec, node := range utils.Zip(vecs, analysis.Nodes) {
+		vecByID[node.ID] = vec
 		err := v.Add(vector.NewNode(node.ID, vec))
 		if err != nil {
 			return fmt.Errorf("failed to add node: %w", err)
 		}
+	}
+	for _, link := range analysis.Links {
+		sourceVec, ok := vecByID[link.Source]
+		if !ok {
+			return fmt.Errorf("missing vector for source node %s", link.Source)
+		}
+		targetVec, ok := vecByID[link.Target]
+		if !ok {
+			return fmt.Errorf("missing vector for target node %s", link.Target)
+		}
+		weight := vector.CosineDistance(sourceVec, targetVec)
+		v.Link(vector.NewLink(link.Source, link.Target, weight))
 	}
 	if err := s.searchRepo.Store(ctx, v); err != nil {
 		return fmt.Errorf("failed to store search graph: %w", err)
@@ -102,21 +116,21 @@ func (s *SemanticSearchService) Search(ctx context.Context, query string, limit 
 	if err != nil {
 		return nil, fmt.Errorf("failed to search graph: %w", err)
 	}
-	citationGraph, err := analysis.CitationGraph()
+	citationGraph, err := searchEngine.Graph()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build citation graph: %w", err)
 	}
-	quasiStainer, err := algorithms.NewPseudoStainer(citationGraph)
+	pseudoStainer, err := algorithms.NewPseudoSteiner(citationGraph)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create quasi-stainer: %w", err)
+		return nil, fmt.Errorf("failed to create pseudo-stainer: %w", err)
 	}
 	terminals := make([]string, len(searchResults))
 	for i, result := range searchResults {
 		terminals[i] = string(result.Key)
 	}
-	relationGraph, err := quasiStainer.Run(terminals)
+	relationGraph, err := pseudoStainer.Run(terminals)
 	if err != nil {
-		return nil, fmt.Errorf("failed to run quasi-stainer: %w", err)
+		return nil, fmt.Errorf("failed to run pseudo-stainer: %w", err)
 	}
 	ids := make([]string, 0, relationGraph.Order())
 	for _, vertex := range relationGraph.GetAllVertices() {
