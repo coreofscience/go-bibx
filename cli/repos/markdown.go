@@ -11,6 +11,10 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
+type MarkdownRepo interface {
+	Store(ctx context.Context, a *models.Analysis) error
+}
+
 type FolderMarkdownRepo struct {
 	Dir string
 }

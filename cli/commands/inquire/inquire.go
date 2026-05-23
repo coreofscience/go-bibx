@@ -2,11 +2,11 @@ package inquire
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log/slog"
 	"os"
-	"path/filepath"
 
-	"github.com/coreofscience/go-bibx/cli/repos"
 	"github.com/coreofscience/go-bibx/cli/services"
 	"github.com/coreofscience/go-bibx/internal/utils"
 
@@ -48,6 +48,10 @@ func New() *cli.Command {
 			if !ok {
 				return fmt.Errorf("search path not set")
 			}
+			rawPath, ok := utils.GetRawPath(ctx)
+			if !ok {
+				return fmt.Errorf("raw path not set")
+			}
 			force := c.Bool("force")
 			if _, err := os.Stat(analysisPath); err == nil && !force {
 				return fmt.Errorf("file already exists: %s", analysisPath)
@@ -67,26 +71,37 @@ func New() *cli.Command {
 			if err != nil {
 				return fmt.Errorf("failed to create search service: %w", err)
 			}
-			if err := analysisService.Store(ctx, c.StringArg("query"), c.Int("limit")); err != nil {
+			rawFileService, err := services.NewMarkdownFileServiceWithConfig(
+				&services.MarkdownFileServiceConfig{
+					AnalysisPath: analysisPath,
+					MarkdownDir:  rawPath,
+				},
+			)
+			if err != nil {
+				return fmt.Errorf("failed to create markdown file service: %w", err)
+			}
+
+			query := c.StringArg("query")
+			if query == "" {
+				return errors.New("query argument is required")
+			}
+			limit := c.Int("limit")
+			if limit <= 0 {
+				return errors.New("limit must be greater than 0")
+			}
+
+			slog.Info("starting inquiry", "query", query, "limit", limit)
+			if err := analysisService.Store(ctx, query, limit); err != nil {
 				return fmt.Errorf("failed to store analysis: %w", err)
 			}
+
+			slog.Info("building semantic search index")
 			if err := searchService.Store(ctx); err != nil {
 				return fmt.Errorf("failed to store search results: %w", err)
 			}
 
-			analysisRepo := repos.NewFileAnalysisRepo(analysisPath)
-			analysis, err := analysisRepo.Load(ctx)
-			if err != nil {
-				return fmt.Errorf("failed to load analysis for export: %w", err)
-			}
-
-			rootDir, ok := utils.GetRootDir(ctx)
-			if !ok {
-				rootDir = "."
-			}
-
-			markdownRepo := repos.NewFolderMarkdownRepo(filepath.Join(rootDir, "raw", "collection"))
-			if err := markdownRepo.Store(ctx, analysis); err != nil {
+			slog.Info("exporting markdown collection")
+			if err := rawFileService.Store(ctx); err != nil {
 				return fmt.Errorf("failed to export markdown collection: %w", err)
 			}
 
