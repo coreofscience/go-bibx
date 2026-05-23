@@ -112,11 +112,11 @@ func (n *Node) Filename() string {
 	slug := strings.ToLower(title)
 
 	// Replace non-alphanumeric with spaces
-	reg := regexp.MustCompile(`[^a-z0-9\s-_]`)
+	reg := regexp.MustCompile(`[^a-z0-9\s_-]`)
 	slug = reg.ReplaceAllString(slug, "")
 
 	// Replace whitespace/dashes/underscores with a single dash
-	regSpace := regexp.MustCompile(`[\s-_]+`)
+	regSpace := regexp.MustCompile(`[\s_-]+`)
 	slug = regSpace.ReplaceAllString(slug, "-")
 
 	// Trim leading/trailing dashes
