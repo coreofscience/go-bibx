@@ -27,14 +27,23 @@ func NewFolderMarkdownRepo(dir string) *FolderMarkdownRepo {
 }
 
 func (r *FolderMarkdownRepo) Store(ctx context.Context, a *models.Analysis) error {
-	// Clean/clear the directory first
-	if err := os.RemoveAll(r.Dir); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("failed to clean target directory %s: %w", r.Dir, err)
-	}
-
-	// Recreate target directory
+	// Ensure the target directory exists
 	if err := os.MkdirAll(r.Dir, 0755); err != nil {
 		return fmt.Errorf("failed to create target directory %s: %w", r.Dir, err)
+	}
+
+	// Remove only markdown files in the target directory
+	entries, err := os.ReadDir(r.Dir)
+	if err == nil {
+		for _, entry := range entries {
+			if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".md") {
+				if err := os.Remove(filepath.Join(r.Dir, entry.Name())); err != nil && !os.IsNotExist(err) {
+					return fmt.Errorf("failed to remove markdown file %s: %w", entry.Name(), err)
+				}
+			}
+		}
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("failed to read target directory %s: %w", r.Dir, err)
 	}
 
 	for _, node := range a.Nodes {
