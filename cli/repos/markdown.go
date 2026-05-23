@@ -121,6 +121,8 @@ func formatNodeMarkdown(node *models.Node) (string, error) {
 				id := ""
 				if ref.Key() != nil {
 					id = *ref.Key()
+				} else if ref.Label != "" {
+					id = ref.Label
 				}
 				tempNode := &models.Node{
 					ID:      id,
@@ -154,53 +156,38 @@ func formatReference(ref *models.Article) string {
 	if !ref.Rich {
 		return ref.Label
 	}
-
-	var sb strings.Builder
-
+	parts := make([]string, 0)
 	if len(ref.Authors) > 0 {
-		sb.WriteString(strings.Join(ref.Authors, ", "))
+		parts = append(parts, strings.Join(ref.Authors, ", "))
 	}
-
-	sb.WriteString(`, "`)
-
 	if ref.Title != nil {
-		sb.WriteString(*ref.Title)
+		parts = append(parts, fmt.Sprintf(`"%s"`, *ref.Title))
 	}
-
-	sb.WriteString(`", `)
-
 	if ref.Journal != nil && *ref.Journal != "" {
-		sb.WriteString("*")
-		sb.WriteString(*ref.Journal)
-		sb.WriteString("*")
+		parts = append(parts, fmt.Sprintf("*%s*", *ref.Journal))
 	}
-
 	if ref.Volume != nil && *ref.Volume != "" {
-		sb.WriteString(", vol. ")
-		sb.WriteString(*ref.Volume)
+		parts = append(parts, fmt.Sprintf("vol. %s", *ref.Volume))
 	}
-
 	if ref.Issue != nil && *ref.Issue != "" {
-		sb.WriteString(", no. ")
-		sb.WriteString(*ref.Issue)
+		parts = append(parts, fmt.Sprintf("no. %s", *ref.Issue))
 	}
-
 	if ref.Page != nil && *ref.Page != "" {
-		sb.WriteString(", pp. ")
-		sb.WriteString(*ref.Page)
+		parts = append(parts, fmt.Sprintf("pp. %s", *ref.Page))
 	}
-
 	if ref.Year != nil {
-		sb.WriteString(", ")
-		fmt.Fprintf(&sb, "%d", *ref.Year)
+		parts = append(parts, fmt.Sprintf("%d", *ref.Year))
 	}
-
+	refString := strings.Join(parts, ", ")
+	var sb strings.Builder
+	if refString != "" {
+		sb.WriteString(refString)
+		sb.WriteString(".")
+	}
 	if ref.DOI != nil && *ref.DOI != "" {
-		sb.WriteString(". doi: ")
+		sb.WriteString(" doi: ")
 		sb.WriteString(*ref.DOI)
 	}
-
 	sb.WriteString(".")
-
 	return sb.String()
 }

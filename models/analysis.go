@@ -22,6 +22,11 @@ const (
 	CategoryLeaf  Category = "leaf"
 )
 
+var (
+	nonAlphanumericReg = regexp.MustCompile(`[^a-z0-9\s_-]`)
+	spaceReg           = regexp.MustCompile(`[\s_-]+`)
+)
+
 type Node struct {
 	ID        string   `json:"id"`
 	Category  Category `json:"category"`
@@ -112,17 +117,15 @@ func (n *Node) Filename() string {
 	slug := strings.ToLower(title)
 
 	// Replace non-alphanumeric with spaces
-	reg := regexp.MustCompile(`[^a-z0-9\s_-]`)
-	slug = reg.ReplaceAllString(slug, "")
+	slug = nonAlphanumericReg.ReplaceAllString(slug, "")
 
 	// Replace whitespace/dashes/underscores with a single dash
-	regSpace := regexp.MustCompile(`[\s_-]+`)
-	slug = regSpace.ReplaceAllString(slug, "-")
+	slug = spaceReg.ReplaceAllString(slug, "-")
 
 	// Trim leading/trailing dashes
 	slug = strings.Trim(slug, "-")
 
-	// Cap at 70 characters
+	// Cap at 60 characters
 	if len(slug) > 60 {
 		slug = slug[:60]
 		slug = strings.TrimRight(slug, "-")
