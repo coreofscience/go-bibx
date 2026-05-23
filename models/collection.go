@@ -181,5 +181,9 @@ func (c *Collection) Clean() (*Collection, error) {
 
 // MarshalJSON implements the json.Marshaler interface for Collection.
 func (c *Collection) MarshalJSON() ([]byte, error) {
-	return json.Marshal(c.articles)
+	bytes, err := json.Marshal(c.articles)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal Collection: %w", err)
+	}
+	return bytes, nil
 }

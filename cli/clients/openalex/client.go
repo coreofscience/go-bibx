@@ -194,7 +194,7 @@ func fetchParallel[I any](ctx context.Context, inputs []I, fetch func(context.Co
 			for input := range inputChan {
 				res, err := fetch(ctx, input)
 				if err != nil {
-					return err
+					return fmt.Errorf("error fetching works: %w", err)
 				}
 				if res != nil {
 					select {
@@ -232,7 +232,7 @@ func fetchParallel[I any](ctx context.Context, inputs []I, fetch func(context.Co
 	err := group.Wait()
 	close(responses)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error waiting for fetches to complete: %w", err)
 	}
 	waitGroup.Wait()
 

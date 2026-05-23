@@ -4,6 +4,8 @@ linters:
     - testpackage
     - gocyclo
     - revive
+    - wrapcheck
+    - govet
   settings:
     gocyclo:
       min-complexity: 30
@@ -22,3 +24,6 @@ linters:
         - name: import-shadowing
         - name: dot-imports
         - name: import-alias-naming
+    wrapcheck:
+      ignoreSigs:
+        - .EOF

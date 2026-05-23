@@ -111,11 +111,15 @@ func (s *Set[T]) Items() []T {
 
 // MarshalJSON implements the json.Marshaler interface.
 func (s *Set[T]) MarshalJSON() ([]byte, error) {
-	return json.Marshal(s.Items())
+	bytes, err := json.Marshal(s.Items())
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal set: %w", err)
+	}
+	return bytes, nil
 }
 
 // MarshalYAML implements the yaml.Marshaler interface.
-func (s *Set[T]) MarshalYAML() (interface{}, error) {
+func (s *Set[T]) MarshalYAML() (any, error) {
 	return s.Items(), nil
 }
 

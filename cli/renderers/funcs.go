@@ -2,6 +2,7 @@ package renderers
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"text/template"
 
@@ -85,7 +86,7 @@ func render(templ *template.Template) func(name string, data any) (string, error
 	return func(name string, data any) (string, error) {
 		var buf bytes.Buffer
 		if err := templ.ExecuteTemplate(&buf, name, data); err != nil {
-			return "", err
+			return "", fmt.Errorf("failed to render template: %w", err)
 		}
 		return buf.String(), nil
 	}
