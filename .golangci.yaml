@@ -16,6 +16,3 @@ linters:
         - name: import-shadowing
         - name: dot-imports
         - name: import-alias-naming
-    wrapcheck:
-      ignoreSigs:
-        - .EOF
