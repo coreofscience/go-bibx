@@ -186,5 +186,9 @@ func (s *OpenAlexAnalysisService) enrich(
 		newArticles = append(newArticles, newArticle)
 	}
 	slog.Debug("enriched articles", "enriched", len(newArticles), "discarded", discarded)
-	return models.NewCollection(newArticles)
+	collection, err := models.NewCollection(newArticles)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create enriched collection: %w", err)
+	}
+	return collection, nil
 }

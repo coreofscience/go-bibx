@@ -2,10 +2,15 @@ package models
 
 import (
 	"cmp"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"regexp"
 	"slices"
+	"strings"
 
 	"github.com/coreofscience/go-bibx/internal/collections"
+	"github.com/coreofscience/go-bibx/internal/utils"
 	"github.com/hmdsefi/gograph"
 )
 
@@ -17,6 +22,11 @@ const (
 	CategoryLeaf  Category = "leaf"
 )
 
+var (
+	nonAlphanumericReg = regexp.MustCompile(`[^a-z0-9\s_-]`)
+	spaceReg           = regexp.MustCompile(`[\s_-]+`)
+)
+
 type Node struct {
 	ID        string   `json:"id"`
 	Category  Category `json:"category"`
@@ -24,6 +34,108 @@ type Node struct {
 	Trunkness float64  `json:"trunkness"`
 	Leafness  float64  `json:"leafness"`
 	Article   *Article `json:"article"`
+}
+
+type NodeMetadata struct {
+	ID         string              `yaml:"id"`
+	Label      string              `yaml:"label"`
+	Category   string              `yaml:"category"`
+	Rootness   float64             `yaml:"rootness"`
+	Trunkness  float64             `yaml:"trunkness"`
+	Leafness   float64             `yaml:"leafness"`
+	Rich       bool                `yaml:"rich"`
+	Title      *utils.FoldedString `yaml:"title,omitempty"`
+	Year       *int                `yaml:"year,omitempty"`
+	Journal    *utils.FoldedString `yaml:"journal,omitempty"`
+	Volume     *string             `yaml:"volume,omitempty"`
+	Issue      *string             `yaml:"issue,omitempty"`
+	Page       *string             `yaml:"page,omitempty"`
+	DOI        *string             `yaml:"doi,omitempty"`
+	Permalink  *string             `yaml:"permalink,omitempty"`
+	TimesCited *int                `yaml:"times_cited,omitempty"`
+	Authors    []string            `yaml:"authors,omitempty"`
+	IDs        []string            `yaml:"ids,omitempty"`
+}
+
+func (n *Node) Metadata() *NodeMetadata {
+	if n == nil {
+		return nil
+	}
+	art := n.Article
+	if art == nil {
+		return &NodeMetadata{
+			ID:        n.ID,
+			Category:  string(n.Category),
+			Rootness:  n.Rootness,
+			Trunkness: n.Trunkness,
+			Leafness:  n.Leafness,
+		}
+	}
+	var ids []string
+	if art.IDs != nil {
+		ids = art.IDs.Items()
+	}
+	return &NodeMetadata{
+		ID:         n.ID,
+		Label:      art.Label,
+		Category:   string(n.Category),
+		Rootness:   n.Rootness,
+		Trunkness:  n.Trunkness,
+		Leafness:   n.Leafness,
+		Rich:       art.Rich,
+		Title:      utils.NewFoldedString(art.Title),
+		Year:       art.Year,
+		Journal:    utils.NewFoldedString(art.Journal),
+		Volume:     art.Volume,
+		Issue:      art.Issue,
+		Page:       art.Page,
+		DOI:        art.DOI,
+		Permalink:  art.Permalink,
+		TimesCited: art.TimesCited,
+		Authors:    art.Authors,
+		IDs:        ids,
+	}
+}
+
+func (n *Node) Filename() string {
+	id := n.ID
+	hashBytes := sha256.Sum256([]byte(id))
+	hashStr := hex.EncodeToString(hashBytes[:])[:8]
+
+	var title string
+	if n.Article != nil && n.Article.Title != nil {
+		title = *n.Article.Title
+	}
+	if title == "" && n.Article != nil {
+		title = n.Article.Label
+	}
+	if title == "" {
+		title = "article"
+	}
+
+	// Slugify the title
+	slug := strings.ToLower(title)
+
+	// Replace non-alphanumeric with spaces
+	slug = nonAlphanumericReg.ReplaceAllString(slug, "")
+
+	// Replace whitespace/dashes/underscores with a single dash
+	slug = spaceReg.ReplaceAllString(slug, "-")
+
+	// Trim leading/trailing dashes
+	slug = strings.Trim(slug, "-")
+
+	// Cap at 60 characters
+	if len(slug) > 60 {
+		slug = slug[:60]
+		slug = strings.TrimRight(slug, "-")
+	}
+
+	if slug == "" {
+		slug = "article"
+	}
+
+	return fmt.Sprintf("%s-%s.md", slug, hashStr)
 }
 
 type Result struct {

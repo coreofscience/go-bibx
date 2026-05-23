@@ -1,6 +1,9 @@
 package models
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 // References prevents circular references by using a slice of Article pointers.
 type References []*Article
@@ -20,5 +23,9 @@ func (r References) MarshalJSON() ([]byte, error) {
 			References: nil,
 		}
 	}
-	return json.Marshal(toMarshal)
+	bytes, err := json.Marshal(toMarshal)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal References: %w", err)
+	}
+	return bytes, nil
 }

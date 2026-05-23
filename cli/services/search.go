@@ -62,7 +62,7 @@ func (s *SemanticSearchService) Store(ctx context.Context) error {
 		return fmt.Errorf("failed to load analysis: %w", err)
 	}
 	totalNodes := len(analysis.Nodes)
-	slog.InfoContext(ctx, "embedding all the nodes in the graph", "count", totalNodes)
+	slog.DebugContext(ctx, "embedding all the nodes in the graph", "count", totalNodes)
 	texts := make([]string, 0, totalNodes)
 	for _, node := range analysis.Nodes {
 		text := s.texter.ExtractText(node.Article)

@@ -2,10 +2,12 @@ package search
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/coreofscience/go-bibx/cli/renderers"
 	"github.com/coreofscience/go-bibx/cli/servers/viewer"
@@ -16,10 +18,11 @@ import (
 )
 
 var (
-	formats = collections.NewSet("reference", "markdown", "json", "simple")
+	formats = collections.NewSet(renderers.AnalysisFormats()...)
 )
 
 func New() *cli.Command {
+	supportedFormats := strings.Join(formats.Items(), ", ")
 	return &cli.Command{
 		Name:      "search",
 		Usage:     "semantic search for a research topic",
@@ -32,14 +35,14 @@ func New() *cli.Command {
 			},
 			&cli.StringFlag{
 				Name:  "format",
-				Usage: "format to output results in (simple, reference, markdown, json, etc.)",
+				Usage: fmt.Sprintf("format to output results in (%s)", supportedFormats),
 				Value: "simple",
 				Validator: func(value string) error {
 					if value == "" {
-						return cli.Exit("format is required", 1)
+						return fmt.Errorf("format is required")
 					}
 					if !formats.Contains(value) {
-						return cli.Exit("invalid format, must be one of: simple, reference, markdown, json", 1)
+						return fmt.Errorf("invalid format, must be one of: %s", supportedFormats)
 					}
 					return nil
 				},
@@ -81,11 +84,15 @@ func New() *cli.Command {
 			if err != nil {
 				return fmt.Errorf("failed to create search service: %w", err)
 			}
-			renderer, err := renderers.NewRendererWithFormat(c.String("format"))
+			renderer, err := renderers.NewAnalysisRendererWithFormat(c.String("format"))
 			if err != nil {
 				return fmt.Errorf("failed to create renderer: %w", err)
 			}
-			analysis, err := searchService.Search(ctx, c.StringArg("query"), int(c.Int("limit")))
+			query := c.StringArg("query")
+			if query == "" {
+				return errors.New("query is required")
+			}
+			analysis, err := searchService.Search(ctx, query, int(c.Int("limit")))
 			if err != nil {
 				return fmt.Errorf("failed to perform search: %w", err)
 			}

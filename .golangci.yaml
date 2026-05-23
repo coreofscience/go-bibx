@@ -4,20 +4,14 @@ linters:
     - testpackage
     - gocyclo
     - revive
+    - wrapcheck
+    - govet
   settings:
     gocyclo:
       min-complexity: 30
     revive:
-      confidence: 0.8
+      confidence: 0.9
       rules:
-        # - name: var-naming
-        #   severity: error
-        #   arguments:
-        #     - ["ID", "IDs"]
-        #     - ["url", "ctx", "http", "path"]
-        # Recommended: catches blank imports, exported docs, etc.
-        # - name: package-comments
-        # - name: exported
         - name: indent-error-flow
         - name: import-shadowing
         - name: dot-imports
