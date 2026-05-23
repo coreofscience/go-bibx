@@ -92,7 +92,7 @@ func New() *cli.Command {
 			if query == "" {
 				return errors.New("query is required")
 			}
-			analysis, err := searchService.Search(ctx, c.StringArg("query"), int(c.Int("limit")))
+			analysis, err := searchService.Search(ctx, query, int(c.Int("limit")))
 			if err != nil {
 				return fmt.Errorf("failed to perform search: %w", err)
 			}
