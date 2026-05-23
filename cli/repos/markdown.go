@@ -2,12 +2,9 @@ package repos
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/coreofscience/go-bibx/models"
@@ -40,7 +37,7 @@ func (r *FolderMarkdownRepo) Store(ctx context.Context, a *models.Analysis) erro
 			continue
 		}
 
-		filename := generateFilename(node)
+		filename := node.Filename()
 		filePath := filepath.Join(r.Dir, filename)
 
 		content, err := formatNodeMarkdown(node)
@@ -54,49 +51,6 @@ func (r *FolderMarkdownRepo) Store(ctx context.Context, a *models.Analysis) erro
 	}
 
 	return nil
-}
-
-func generateFilename(node *models.Node) string {
-	id := node.ID
-	hashBytes := sha256.Sum256([]byte(id))
-	hashStr := hex.EncodeToString(hashBytes[:])[:8]
-
-	var title string
-	if node.Article != nil && node.Article.Title != nil {
-		title = *node.Article.Title
-	}
-	if title == "" && node.Article != nil {
-		title = node.Article.Label
-	}
-	if title == "" {
-		title = "article"
-	}
-
-	// Slugify the title
-	slug := strings.ToLower(title)
-
-	// Replace non-alphanumeric with spaces
-	reg := regexp.MustCompile(`[^a-z0-9\s-_]`)
-	slug = reg.ReplaceAllString(slug, "")
-
-	// Replace whitespace/dashes/underscores with a single dash
-	regSpace := regexp.MustCompile(`[\s-_]+`)
-	slug = regSpace.ReplaceAllString(slug, "-")
-
-	// Trim leading/trailing dashes
-	slug = strings.Trim(slug, "-")
-
-	// Cap at 70 characters
-	if len(slug) > 70 {
-		slug = slug[:70]
-		slug = strings.TrimRight(slug, "-")
-	}
-
-	if slug == "" {
-		slug = "article"
-	}
-
-	return fmt.Sprintf("%s-%s.md", slug, hashStr)
 }
 
 func formatNodeMarkdown(node *models.Node) (string, error) {

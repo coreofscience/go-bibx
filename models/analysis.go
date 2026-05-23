@@ -2,8 +2,12 @@ package models
 
 import (
 	"cmp"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"regexp"
 	"slices"
+	"strings"
 
 	"github.com/coreofscience/go-bibx/internal/collections"
 	"github.com/coreofscience/go-bibx/internal/utils"
@@ -86,6 +90,49 @@ func (n *Node) Metadata() *NodeMetadata {
 		Authors:    art.Authors,
 		IDs:        ids,
 	}
+}
+
+func (n *Node) Filename() string {
+	id := n.ID
+	hashBytes := sha256.Sum256([]byte(id))
+	hashStr := hex.EncodeToString(hashBytes[:])[:8]
+
+	var title string
+	if n.Article != nil && n.Article.Title != nil {
+		title = *n.Article.Title
+	}
+	if title == "" && n.Article != nil {
+		title = n.Article.Label
+	}
+	if title == "" {
+		title = "article"
+	}
+
+	// Slugify the title
+	slug := strings.ToLower(title)
+
+	// Replace non-alphanumeric with spaces
+	reg := regexp.MustCompile(`[^a-z0-9\s-_]`)
+	slug = reg.ReplaceAllString(slug, "")
+
+	// Replace whitespace/dashes/underscores with a single dash
+	regSpace := regexp.MustCompile(`[\s-_]+`)
+	slug = regSpace.ReplaceAllString(slug, "-")
+
+	// Trim leading/trailing dashes
+	slug = strings.Trim(slug, "-")
+
+	// Cap at 70 characters
+	if len(slug) > 70 {
+		slug = slug[:70]
+		slug = strings.TrimRight(slug, "-")
+	}
+
+	if slug == "" {
+		slug = "article"
+	}
+
+	return fmt.Sprintf("%s-%s.md", slug, hashStr)
 }
 
 type Result struct {
