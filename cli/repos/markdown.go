@@ -107,6 +107,24 @@ func formatNodeMarkdown(node *models.Node) (string, error) {
 		for i, ref := range art.References {
 			formatted := formatReference(ref)
 			wrapped := utils.WrapText(formatted, 80)
+
+			if ref.Rich {
+				id := ""
+				if ref.Key() != nil {
+					id = *ref.Key()
+				}
+				tempNode := &models.Node{
+					ID:      id,
+					Article: ref,
+				}
+				filename := tempNode.Filename()
+				linkName, _ := strings.CutSuffix(filename, ".md")
+
+				sb.WriteString("[[")
+				sb.WriteString(linkName)
+				sb.WriteString("]]\n")
+			}
+
 			sb.WriteString(wrapped)
 			if i < len(art.References)-1 {
 				sb.WriteString("\n\n")

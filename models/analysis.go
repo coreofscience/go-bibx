@@ -123,8 +123,8 @@ func (n *Node) Filename() string {
 	slug = strings.Trim(slug, "-")
 
 	// Cap at 70 characters
-	if len(slug) > 70 {
-		slug = slug[:70]
+	if len(slug) > 60 {
+		slug = slug[:60]
 		slug = strings.TrimRight(slug, "-")
 	}
 
