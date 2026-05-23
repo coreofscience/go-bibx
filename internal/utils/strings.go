@@ -41,3 +41,25 @@ func InvertAbstract(abstractInvertedIndex *map[string][]int) string {
 	}
 	return strings.TrimSpace(strings.Join(words, " "))
 }
+
+// WrapText wraps the given text to a maximum line length of limit.
+func WrapText(text string, limit int) string {
+	words := strings.Fields(text)
+	if len(words) == 0 {
+		return ""
+	}
+	var sb strings.Builder
+	lineLen := 0
+	for i, word := range words {
+		if lineLen+len(word)+1 > limit && lineLen > 0 {
+			sb.WriteString("\n")
+			lineLen = 0
+		} else if i > 0 {
+			sb.WriteString(" ")
+			lineLen++
+		}
+		sb.WriteString(word)
+		lineLen += len(word)
+	}
+	return sb.String()
+}

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/coreofscience/go-bibx/internal/utils"
 	"github.com/coreofscience/go-bibx/models"
 	"go.yaml.in/yaml/v4"
 )
@@ -83,7 +84,7 @@ func formatNodeMarkdown(node *models.Node) (string, error) {
 	} else {
 		abstractText = "No abstract available."
 	}
-	sb.WriteString(wrapText(abstractText, 80))
+	sb.WriteString(utils.WrapText(abstractText, 80))
 	sb.WriteString("\n\n")
 
 	// Write keywords
@@ -94,32 +95,85 @@ func formatNodeMarkdown(node *models.Node) (string, error) {
 	}
 	if len(keywordsList) > 0 {
 		keywordsStr := strings.Join(keywordsList, ", ")
-		sb.WriteString(wrapText(keywordsStr, 80))
+		sb.WriteString(utils.WrapText(keywordsStr, 80))
 	} else {
 		sb.WriteString("No keywords available.")
+	}
+	sb.WriteString("\n\n")
+
+	// Write references
+	sb.WriteString("# References\n\n")
+	if len(art.References) > 0 {
+		for i, ref := range art.References {
+			formatted := formatReference(ref)
+			wrapped := utils.WrapText(formatted, 80)
+			sb.WriteString(wrapped)
+			if i < len(art.References)-1 {
+				sb.WriteString("\n\n")
+			}
+		}
+	} else {
+		sb.WriteString("No references available.")
 	}
 	sb.WriteString("\n")
 
 	return sb.String(), nil
 }
 
-func wrapText(text string, limit int) string {
-	words := strings.Fields(text)
-	if len(words) == 0 {
+func formatReference(ref *models.Article) string {
+	if ref == nil {
 		return ""
 	}
-	var sb strings.Builder
-	lineLen := 0
-	for i, word := range words {
-		if lineLen+len(word)+1 > limit && lineLen > 0 {
-			sb.WriteString("\n")
-			lineLen = 0
-		} else if i > 0 {
-			sb.WriteString(" ")
-			lineLen++
-		}
-		sb.WriteString(word)
-		lineLen += len(word)
+	if !ref.Rich {
+		return ref.Label
 	}
+
+	var sb strings.Builder
+
+	if len(ref.Authors) > 0 {
+		sb.WriteString(strings.Join(ref.Authors, ", "))
+	}
+
+	sb.WriteString(`, "`)
+
+	if ref.Title != nil {
+		sb.WriteString(*ref.Title)
+	}
+
+	sb.WriteString(`", `)
+
+	if ref.Journal != nil && *ref.Journal != "" {
+		sb.WriteString("*")
+		sb.WriteString(*ref.Journal)
+		sb.WriteString("*")
+	}
+
+	if ref.Volume != nil && *ref.Volume != "" {
+		sb.WriteString(", vol. ")
+		sb.WriteString(*ref.Volume)
+	}
+
+	if ref.Issue != nil && *ref.Issue != "" {
+		sb.WriteString(", no. ")
+		sb.WriteString(*ref.Issue)
+	}
+
+	if ref.Page != nil && *ref.Page != "" {
+		sb.WriteString(", pp. ")
+		sb.WriteString(*ref.Page)
+	}
+
+	if ref.Year != nil {
+		sb.WriteString(", ")
+		fmt.Fprintf(&sb, "%d", *ref.Year)
+	}
+
+	if ref.DOI != nil && *ref.DOI != "" {
+		sb.WriteString(". doi: ")
+		sb.WriteString(*ref.DOI)
+	}
+
+	sb.WriteString(".")
+
 	return sb.String()
 }

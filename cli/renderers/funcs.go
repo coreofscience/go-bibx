@@ -6,6 +6,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/coreofscience/go-bibx/internal/utils"
 	"github.com/coreofscience/go-bibx/models"
 	"go.yaml.in/yaml/v4"
 )
@@ -23,24 +24,7 @@ func wrap(limit int, v any) string {
 	default:
 		return ""
 	}
-	words := strings.Fields(s)
-	if len(words) == 0 {
-		return ""
-	}
-	var result strings.Builder
-	lineLen := 0
-	for i, word := range words {
-		if lineLen+len(word)+1 > limit && lineLen > 0 {
-			result.WriteString("\n")
-			lineLen = 0
-		} else if i > 0 {
-			result.WriteString(" ")
-			lineLen++
-		}
-		result.WriteString(word)
-		lineLen += len(word)
-	}
-	return result.String()
+	return utils.WrapText(s, limit)
 }
 
 func join(sep string, items []string) string {
