@@ -24,7 +24,7 @@ func New() *cli.Command {
 	supportedCategories := strings.Join(categories.Items(), ", ")
 	return &cli.Command{
 		Name:  "query",
-		Usage: "query the bibx collection for relevant articles",
+		Usage: "Query the bibx collection for relevant articles",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:     "category",

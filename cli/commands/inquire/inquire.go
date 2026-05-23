@@ -16,7 +16,7 @@ import (
 func New() *cli.Command {
 	return &cli.Command{
 		Name:      "inquire",
-		Usage:     "inquire for a research topic",
+		Usage:     "Inquire for a research topic",
 		ArgsUsage: "<query>",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{

@@ -25,7 +25,7 @@ func New() *cli.Command {
 	supportedFormats := strings.Join(formats.Items(), ", ")
 	return &cli.Command{
 		Name:      "search",
-		Usage:     "semantic search for a research topic",
+		Usage:     "Perform a semantic search on the bibx collection",
 		ArgsUsage: "<query>",
 		Flags: []cli.Flag{
 			&cli.IntFlag{

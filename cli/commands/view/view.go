@@ -15,7 +15,7 @@ import (
 func New() *cli.Command {
 	return &cli.Command{
 		Name:  "view",
-		Usage: "visualize a collection graph",
+		Usage: "Visualize the analysis results in a web browser",
 		Flags: []cli.Flag{
 			&cli.IntFlag{
 				Name:  "port",
