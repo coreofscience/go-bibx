@@ -21,21 +21,21 @@ var (
 
 func New() *cli.Command {
 	supportedFormats := strings.Join(formats.Items(), ", ")
-	suportedCategories := strings.Join(categories.Items(), ", ")
+	supportedCategories := strings.Join(categories.Items(), ", ")
 	return &cli.Command{
 		Name:  "query",
 		Usage: "query the bibx collection for relevant articles",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:     "category",
-				Usage:    fmt.Sprintf("category to filter by (%s)", suportedCategories),
+				Usage:    fmt.Sprintf("category to filter by (%s)", supportedCategories),
 				Required: true,
 				Validator: func(value string) error {
 					if value == "" {
 						return errors.New("category is required")
 					}
 					if !categories.Contains(value) {
-						return fmt.Errorf("invalid category, must be one of: %s", suportedCategories)
+						return fmt.Errorf("invalid category, must be one of: %s", supportedCategories)
 					}
 					return nil
 				},
