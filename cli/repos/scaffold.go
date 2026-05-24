@@ -34,15 +34,11 @@ func (r *TemplateScaffoldRepo) Scaffold() error {
 			return fmt.Errorf("failed to walk templates: %w", err)
 		}
 
-		println("Processing path:", path)
-
 		// Get the relative path from the "templates" directory
 		relPath, err := filepath.Rel("templates", path)
 		if err != nil {
 			return fmt.Errorf("failed to get relative path: %w", err)
 		}
-
-		println("Relative path:", relPath)
 
 		// Construct the destination path in the root directory
 		destPath := filepath.Join(r.rootDir, relPath)
