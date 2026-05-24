@@ -320,7 +320,7 @@ func (q *PseudoSteiner[K]) findBestAncestor(toBridge [][]K) *K {
 	}
 
 	// If no candidate was found, return nil.
-	if bestCost == math.MaxInt64 || candidate == nil {
+	if math.IsInf(bestCost, 1) || candidate == nil {
 		return nil
 	}
 
