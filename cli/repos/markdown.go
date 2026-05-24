@@ -182,9 +182,11 @@ func formatReference(ref *models.Article) string {
 	var sb strings.Builder
 	if refString != "" {
 		sb.WriteString(refString)
-		sb.WriteString(".")
 	}
 	if ref.DOI != nil && *ref.DOI != "" {
+		if refString != "" {
+			sb.WriteString(".")
+		}
 		sb.WriteString(" doi: ")
 		sb.WriteString(*ref.DOI)
 	}

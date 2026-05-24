@@ -12,6 +12,9 @@ func KeepLongestSlice[T any](a, b []T) []T {
 
 // Chunks splits a slice into chunks of the specified size
 func Chunks[T any](slice []T, chunkSize int) [][]T {
+	if chunkSize <= 0 {
+		return [][]T{slice}
+	}
 	numChunks := (len(slice) + chunkSize - 1) / chunkSize
 	chunked := make([][]T, 0, numChunks)
 	for i := 0; i < len(slice); i += chunkSize {
@@ -23,6 +26,9 @@ func Chunks[T any](slice []T, chunkSize int) [][]T {
 
 func Limit[T any](slice []T, n int, compare func(a, b T) int) []T {
 	slices.SortFunc(slice, compare)
+	if n <= 0 {
+		return []T{}
+	}
 	if n >= len(slice) {
 		return slice
 	}
