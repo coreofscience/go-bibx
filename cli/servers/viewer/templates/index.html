@@ -622,7 +622,7 @@
                 .data(data.links)
                 .join("line")
                 .attr("stroke-width", 1)
-                .style("display", data.links.length < 1000 ? null : "none");
+                .style("display", isTree ? "none" : null);
 
             const node = svg
                 .append("g")

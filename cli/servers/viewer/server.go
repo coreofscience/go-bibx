@@ -1,6 +1,7 @@
 package viewer
 
 import (
+	"bytes"
 	"compress/gzip"
 	_ "embed"
 	"encoding/json"
@@ -23,20 +24,27 @@ func New(analysis *models.Analysis) *http.ServeMux {
 		}
 	})
 	mux.HandleFunc("GET /collection.json.gz", func(w http.ResponseWriter, r *http.Request) {
+		var buf bytes.Buffer
+		gz := gzip.NewWriter(&buf)
+		if err := json.NewEncoder(gz).Encode(analysis); err != nil {
+			slog.Error("failed to encode analysis", "error", err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		if err := gz.Close(); err != nil {
+			slog.Error("failed to close gzip writer", "error", err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Content-Encoding", "gzip")
 		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate")
 		w.Header().Set("Pragma", "no-cache")
 		w.Header().Set("Expires", "0")
-		gz := gzip.NewWriter(w)
-		defer func() {
-			if err := gz.Close(); err != nil {
-				slog.Error("failed to close gzip writer", "error", err)
-			}
-		}()
-		if err := json.NewEncoder(gz).Encode(analysis); err != nil {
-			slog.Error("failed to encode analysis", "error", err)
-			http.Error(w, "internal server error", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusOK)
+		if _, err := w.Write(buf.Bytes()); err != nil {
+			slog.Error("failed to write response", "error", err)
 		}
 	})
 	return mux
