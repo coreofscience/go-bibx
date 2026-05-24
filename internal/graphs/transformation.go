@@ -149,7 +149,7 @@ func Undirected[V comparable](g gograph.Graph[V]) (gograph.Graph[V], error) {
 		destLabel := edge.Destination().Label()
 		source := gograph.NewVertex(sourceLabel)
 		dest := gograph.NewVertex(destLabel)
-		if edge := g.GetEdge(dest, source); edge != nil {
+		if newGraph.GetEdge(dest, source) != nil || newGraph.GetEdge(source, dest) != nil {
 			continue
 		}
 		_, err := newGraph.AddEdge(source, dest, gograph.WithEdgeWeight(edge.Weight()))
