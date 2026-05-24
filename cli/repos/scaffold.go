@@ -73,7 +73,7 @@ func copyEmbedFile(embedFS embed.FS, srcPath, destPath string) (err error) {
 	defer func() {
 		cerr := srcFile.Close()
 		if cerr != nil {
-			slog.Error("failed to close destination file", "file", destPath, "error", cerr)
+			slog.Error("failed to close source file", "file", srcPath, "error", cerr)
 			err = errors.Join(err, fmt.Errorf("failed to close destination file %s: %w", destPath, cerr))
 		}
 	}()
