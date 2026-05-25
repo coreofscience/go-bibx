@@ -148,7 +148,7 @@ func (c *RestyClient) ListRecentArticles(ctx context.Context, query string, limi
 	}
 
 	if len(works) < limit {
-		slog.Debug("fetched fewer works than limit", "fetched", len(works), "limit", limit)
+		slog.DebugContext(ctx, "fetched fewer works than limit", "fetched", len(works), "limit", limit)
 	}
 
 	if len(works) > limit {
@@ -187,7 +187,7 @@ func fetchParallel[I any](ctx context.Context, inputs []I, fetch func(context.Co
 	responses := make(chan *WorksResponse)
 
 	concurrency := min(MaxConcurrentRequests, len(inputs))
-	slog.Debug("fetching in parallel", "numInputs", len(inputs), "concurrency", concurrency)
+	slog.DebugContext(ctx, "fetching in parallel", "numInputs", len(inputs), "concurrency", concurrency)
 
 	for range concurrency {
 		group.Go(func() error {
@@ -250,7 +250,7 @@ func (c *RestyClient) fetchWorks(ctx context.Context, queryParams map[string]str
 		return nil, fmt.Errorf("error fetching works: %w", err)
 	}
 	if response.IsError() {
-		slog.Debug("error response", "status", response.Status(), "body", response.String())
+		slog.DebugContext(ctx, "error response", "status", response.Status(), "body", response.String())
 		return nil, fmt.Errorf("error fetching works: %s", response.Status())
 	}
 	result := response.Result().(*WorksResponse)

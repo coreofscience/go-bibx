@@ -40,11 +40,11 @@ func (c *OllamaClient) Sync(ctx context.Context) error {
 		Model: modelID,
 	}, func(progress api.ProgressResponse) error {
 		if progress.Total == 0 || progress.Completed == progress.Total {
-			slog.Info("pulling model", "model", modelID, "status", progress.Status)
+			slog.InfoContext(ctx, "pulling model", "model", modelID, "status", progress.Status)
 			return nil
 		}
 		percent := float64(progress.Completed) / float64(progress.Total)
-		slog.Debug("pulling model", "model", modelID, "status", progress.Status, "progress", fmt.Sprintf("%.2f%%", percent*100))
+		slog.DebugContext(ctx, "pulling model", "model", modelID, "status", progress.Status, "progress", fmt.Sprintf("%.2f%%", percent*100))
 		return nil
 	})
 	if err != nil {
@@ -84,7 +84,7 @@ func (c *OllamaClient) EmbedMany(ctx context.Context, texts []string) ([][]float
 			return nil, fmt.Errorf("number of embeddings returned does not match number of input texts")
 		}
 		results = append(results, resp.Embeddings...)
-		slog.Debug("done embedding chunk", "chunk", i+1, "total", len(chunks))
+		slog.DebugContext(ctx, "done embedding chunk", "chunk", i+1, "total", len(chunks))
 	}
 	return results, nil
 }
