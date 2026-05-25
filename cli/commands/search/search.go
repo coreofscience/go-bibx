@@ -25,7 +25,7 @@ func New() *cli.Command {
 	supportedFormats := strings.Join(formats.Items(), ", ")
 	return &cli.Command{
 		Name:      "search",
-		Usage:     "semantic search for a research topic",
+		Usage:     "Perform a semantic search on the bibx collection",
 		ArgsUsage: "<query>",
 		Flags: []cli.Flag{
 			&cli.IntFlag{
@@ -99,7 +99,7 @@ func New() *cli.Command {
 			if c.Bool("view") {
 				mux := viewer.New(analysis)
 				port := c.Int("port")
-				slog.Info("starting visualization server", "port", port)
+				slog.InfoContext(ctx, "starting visualization server", "port", port)
 				if err := http.ListenAndServe(fmt.Sprintf(":%d", port), mux); err != nil {
 					return fmt.Errorf("failed to start server: %w", err)
 				}

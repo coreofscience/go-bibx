@@ -209,7 +209,7 @@ func (q *PseudoSteiner[K]) shortestPath(a, b K) (float64, []K) {
 
 func (q *PseudoSteiner[K]) getShortestPathFromCache(a, b K) (float64, []K, bool) {
 	cachedPath, ok := q.shortestPathCache[a][b]
-	if ok {
+	if !ok {
 		return math.Inf(1), nil, false
 	}
 	cachedDistance, ok := q.shortestDistanceCache[a][b]
@@ -280,7 +280,7 @@ func (q *PseudoSteiner[K]) findBestDescendant(toBridge [][]K) *K {
 	}
 
 	// If no candidate was found, return nil.
-	if bestCost == math.MaxInt64 || candidate == nil {
+	if math.IsInf(bestCost, 1) || candidate == nil {
 		return nil
 	}
 
@@ -320,7 +320,7 @@ func (q *PseudoSteiner[K]) findBestAncestor(toBridge [][]K) *K {
 	}
 
 	// If no candidate was found, return nil.
-	if bestCost == math.MaxInt64 || candidate == nil {
+	if math.IsInf(bestCost, 1) || candidate == nil {
 		return nil
 	}
 

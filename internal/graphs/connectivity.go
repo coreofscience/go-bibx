@@ -58,15 +58,15 @@ func Giant[V comparable](g gograph.Graph[V]) (gograph.Graph[V], error) {
 	if len(ccs) == 0 {
 		return gograph.New[V](), nil
 	}
+	slices.SortFunc(ccs, func(a, b []*gograph.Vertex[V]) int {
+		return cmp.Compare(len(b), len(a))
+	})
 	slog.Debug(
 		"found connected components",
 		"size", len(ccs),
 		"largest", len(ccs[0]),
 		"smallest", len(ccs[len(ccs)-1]),
 	)
-	slices.SortFunc(ccs, func(a, b []*gograph.Vertex[V]) int {
-		return cmp.Compare(len(b), len(a))
-	})
 	largestCC := ccs[0]
 	toKeep := make([]V, len(largestCC))
 	for i, vertex := range largestCC {

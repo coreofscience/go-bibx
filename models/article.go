@@ -223,6 +223,9 @@ func (a *Article) AddSimpleId() *Article {
 	simpleId := a.SimpleId()
 	if simpleId != nil && *simpleId != "" {
 		id := fmt.Sprintf("simple:%s", *simpleId)
+		if a.IDs == nil {
+			a.IDs = collections.NewSet[string]()
+		}
 		a.IDs.Add(id)
 	}
 	return a

@@ -15,7 +15,7 @@ import (
 func New() *cli.Command {
 	return &cli.Command{
 		Name:  "view",
-		Usage: "visualize a collection graph",
+		Usage: "Visualize the analysis results in a web browser",
 		Flags: []cli.Flag{
 			&cli.IntFlag{
 				Name:  "port",
@@ -35,7 +35,7 @@ func New() *cli.Command {
 				return fmt.Errorf("failed to load analysis from file: %w", err)
 			}
 			mux := viewer.New(analysis)
-			slog.Info("visualization started", "port", port)
+			slog.InfoContext(ctx, "visualization started", "port", port)
 			if err := http.ListenAndServe(fmt.Sprintf(":%d", port), mux); err != nil {
 				return fmt.Errorf("failed to start visualization server: %w", err)
 			}

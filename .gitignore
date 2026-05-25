@@ -4,3 +4,4 @@ bibx
 bibx.exe
 !cmd/bibx
 raw/
+!cli/repos/templates/raw/

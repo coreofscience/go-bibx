@@ -82,7 +82,7 @@ func (s *OpenAlexAnalysisService) Store(
 	for article := range collection.All() {
 		articleKey := article.Key()
 		if articleKey == nil {
-			slog.Warn("article without key, skipping", "label", article.Label)
+			slog.WarnContext(ctx, "article without key, skipping", "label", article.Label)
 			continue
 		}
 		key := *articleKey
@@ -139,7 +139,7 @@ func (s *OpenAlexAnalysisService) enrich(
 			toEnrich = append(toEnrich, article)
 		}
 	}
-	slog.Debug("enriching articles", "count", len(toEnrich))
+	slog.DebugContext(ctx, "enriching articles", "count", len(toEnrich))
 	ids := make([]string, 0, len(toEnrich))
 	for _, article := range toEnrich {
 		id, ok := article.ID("openalex")
@@ -147,13 +147,13 @@ func (s *OpenAlexAnalysisService) enrich(
 			ids = append(ids, id)
 		}
 	}
-	slog.Debug("listing works by ids", "count", len(ids), "articles", len(toEnrich))
+	slog.DebugContext(ctx, "listing works by ids", "count", len(ids), "articles", len(toEnrich))
 	works, err := s.openalexClient.ListArticlesByIDs(ctx, ids)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list articles by ids: %w", err)
 	}
 	idToArticle := make(map[string]*models.Article, len(works))
-	slog.Debug("mapping works to articles", "count", len(works))
+	slog.DebugContext(ctx, "mapping works to articles", "count", len(works))
 	for _, work := range works {
 		idToArticle[work.ID] = openalex.WorkToArticle(work)
 	}
@@ -161,7 +161,7 @@ func (s *OpenAlexAnalysisService) enrich(
 	discarded := 0
 	for article := range c.Main() {
 		if !article.Rich {
-			slog.Warn("found a main work still to enrich, which is weird")
+			slog.WarnContext(ctx, "found a main work still to enrich, which is weird")
 		}
 		newArticle := article.Clone()
 		newReferences := make(models.References, 0, len(article.References))
@@ -172,7 +172,7 @@ func (s *OpenAlexAnalysisService) enrich(
 			}
 			id, ok := ref.ID("openalex")
 			if !ok {
-				slog.Warn("found a reference without an openalex id, skipping enrichment", "label", ref.Label)
+				slog.WarnContext(ctx, "found a reference without an openalex id, skipping enrichment", "label", ref.Label)
 				newReferences = append(newReferences, ref)
 				continue
 			}
@@ -185,7 +185,7 @@ func (s *OpenAlexAnalysisService) enrich(
 		newArticle.References = newReferences
 		newArticles = append(newArticles, newArticle)
 	}
-	slog.Debug("enriched articles", "enriched", len(newArticles), "discarded", discarded)
+	slog.DebugContext(ctx, "enriched articles", "enriched", len(newArticles), "discarded", discarded)
 	collection, err := models.NewCollection(newArticles)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create enriched collection: %w", err)

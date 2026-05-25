@@ -16,7 +16,7 @@ import (
 func New() *cli.Command {
 	return &cli.Command{
 		Name:      "inquire",
-		Usage:     "inquire for a research topic",
+		Usage:     "Inquire for a research topic",
 		ArgsUsage: "<query>",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
@@ -90,17 +90,17 @@ func New() *cli.Command {
 				return errors.New("limit must be greater than 0")
 			}
 
-			slog.Info("starting inquiry", "query", query, "limit", limit)
+			slog.InfoContext(ctx, "starting inquiry", "query", query, "limit", limit)
 			if err := analysisService.Store(ctx, query, limit); err != nil {
 				return fmt.Errorf("failed to store analysis: %w", err)
 			}
 
-			slog.Info("building semantic search index")
+			slog.InfoContext(ctx, "building semantic search index")
 			if err := searchService.Store(ctx); err != nil {
 				return fmt.Errorf("failed to store search results: %w", err)
 			}
 
-			slog.Info("exporting markdown collection")
+			slog.InfoContext(ctx, "exporting markdown collection")
 			if err := rawFileService.Store(ctx); err != nil {
 				return fmt.Errorf("failed to export markdown collection: %w", err)
 			}
