@@ -20,14 +20,16 @@ func New() *cli.Command {
 		ArgsUsage: "<query>",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
-				Name:  "force",
-				Usage: "force overwrite of existing results",
-				Value: false,
+				Name:    "force",
+				Aliases: []string{"f"},
+				Usage:   "force overwrite of existing results",
+				Value:   false,
 			},
 			&cli.IntFlag{
-				Name:  "limit",
-				Usage: "number of initial results to fetch",
-				Value: 200,
+				Name:    "limit",
+				Aliases: []string{"l"},
+				Usage:   "number of initial results to fetch",
+				Value:   200,
 			},
 		},
 		Arguments: []cli.Argument{
