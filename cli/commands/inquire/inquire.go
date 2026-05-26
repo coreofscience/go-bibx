@@ -48,10 +48,6 @@ func New() *cli.Command {
 			if !ok {
 				return fmt.Errorf("search path not set")
 			}
-			rawPath, ok := utils.GetRawPath(ctx)
-			if !ok {
-				return fmt.Errorf("raw path not set")
-			}
 			force := c.Bool("force")
 			if _, err := os.Stat(analysisPath); err == nil && !force {
 				return fmt.Errorf("file already exists: %s", analysisPath)
@@ -71,15 +67,6 @@ func New() *cli.Command {
 			if err != nil {
 				return fmt.Errorf("failed to create search service: %w", err)
 			}
-			rawFileService, err := services.NewMarkdownFileServiceWithConfig(
-				&services.MarkdownFileServiceConfig{
-					AnalysisPath: analysisPath,
-					MarkdownDir:  rawPath,
-				},
-			)
-			if err != nil {
-				return fmt.Errorf("failed to create markdown file service: %w", err)
-			}
 
 			query := c.StringArg("query")
 			if query == "" {
@@ -98,11 +85,6 @@ func New() *cli.Command {
 			slog.InfoContext(ctx, "building semantic search index")
 			if err := searchService.Store(ctx); err != nil {
 				return fmt.Errorf("failed to store search results: %w", err)
-			}
-
-			slog.InfoContext(ctx, "exporting markdown collection")
-			if err := rawFileService.Store(ctx); err != nil {
-				return fmt.Errorf("failed to export markdown collection: %w", err)
 			}
 
 			return nil

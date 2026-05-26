@@ -11,17 +11,14 @@ const (
 	RootDirKey      ContextKey = "rootDir"
 	AnalysisPathKey ContextKey = "analysisPath"
 	SearchPathKey   ContextKey = "searchPath"
-	RawPathKey      ContextKey = "rawPath"
 )
 
 func WithRootDir(ctx context.Context, rootDir string) context.Context {
 	analysisPath := filepath.Join(rootDir, ".bibx", "collection.json.gz")
 	searchPath := filepath.Join(rootDir, ".bibx", "search.json.gz")
-	rawPath := filepath.Join(rootDir, "raw", "collection")
 	ctx = context.WithValue(ctx, RootDirKey, rootDir)
 	ctx = context.WithValue(ctx, AnalysisPathKey, analysisPath)
 	ctx = context.WithValue(ctx, SearchPathKey, searchPath)
-	ctx = context.WithValue(ctx, RawPathKey, rawPath)
 	return ctx
 }
 
@@ -38,9 +35,4 @@ func GetAnalysisPath(ctx context.Context) (string, bool) {
 func GetSearchPath(ctx context.Context) (string, bool) {
 	searchPath, ok := ctx.Value(SearchPathKey).(string)
 	return searchPath, ok
-}
-
-func GetRawPath(ctx context.Context) (string, bool) {
-	rawPath, ok := ctx.Value(RawPathKey).(string)
-	return rawPath, ok
 }
