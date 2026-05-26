@@ -18,9 +18,10 @@ func New() *cli.Command {
 		Usage: "Visualize the analysis results in a web browser",
 		Flags: []cli.Flag{
 			&cli.IntFlag{
-				Name:  "port",
-				Usage: "port to listen on",
-				Value: 8080,
+				Name:    "port",
+				Aliases: []string{"p"},
+				Usage:   "port to listen on",
+				Value:   8080,
 			},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {

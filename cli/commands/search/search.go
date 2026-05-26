@@ -29,14 +29,16 @@ func New() *cli.Command {
 		ArgsUsage: "<query>",
 		Flags: []cli.Flag{
 			&cli.IntFlag{
-				Name:  "limit",
-				Usage: "number of top results to return",
-				Value: 5,
+				Name:    "limit",
+				Aliases: []string{"l"},
+				Usage:   "number of nodes to start the graph algorithm with",
+				Value:   5,
 			},
 			&cli.StringFlag{
-				Name:  "format",
-				Usage: fmt.Sprintf("format to output results in (%s)", supportedFormats),
-				Value: "simple",
+				Name:    "format",
+				Aliases: []string{"f"},
+				Usage:   fmt.Sprintf("format to output results in (%s)", supportedFormats),
+				Value:   "simple",
 				Validator: func(value string) error {
 					if value == "" {
 						return fmt.Errorf("format is required")
@@ -48,14 +50,16 @@ func New() *cli.Command {
 				},
 			},
 			&cli.BoolFlag{
-				Name:  "view",
-				Usage: "visualize the search results",
-				Value: false,
+				Name:    "view",
+				Aliases: []string{"v"},
+				Usage:   "visualize the search results",
+				Value:   false,
 			},
 			&cli.IntFlag{
-				Name:  "port",
-				Usage: "port to serve the visualization on",
-				Value: 8080,
+				Name:    "port",
+				Aliases: []string{"p"},
+				Usage:   "port to serve the visualization on",
+				Value:   8080,
 			},
 		},
 		Arguments: []cli.Argument{

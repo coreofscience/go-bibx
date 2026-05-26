@@ -28,6 +28,7 @@ func New() *cli.Command {
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:     "category",
+				Aliases:  []string{"c"},
 				Usage:    fmt.Sprintf("category to filter by (%s)", supportedCategories),
 				Required: true,
 				Validator: func(value string) error {
@@ -41,14 +42,16 @@ func New() *cli.Command {
 				},
 			},
 			&cli.IntFlag{
-				Name:  "limit",
-				Usage: "number of results to return",
-				Value: 5,
+				Name:    "limit",
+				Aliases: []string{"l"},
+				Usage:   "number of results to return",
+				Value:   5,
 			},
 			&cli.StringFlag{
-				Name:  "format",
-				Usage: fmt.Sprintf("format to output results in (%s)", supportedFormats),
-				Value: "json",
+				Name:    "format",
+				Aliases: []string{"f"},
+				Usage:   fmt.Sprintf("format to output results in (%s)", supportedFormats),
+				Value:   "json",
 				Validator: func(value string) error {
 					if value == "" {
 						return errors.New("format is required")

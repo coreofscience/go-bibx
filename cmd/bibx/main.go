@@ -21,9 +21,10 @@ func main() {
 				Value: false,
 			},
 			&cli.StringFlag{
-				Name:  "root",
-				Usage: "path to the root directory",
-				Value: ".",
+				Name:    "root",
+				Aliases: []string{"r"},
+				Usage:   "path to the root directory",
+				Value:   ".",
 			},
 		},
 		Before: func(ctx context.Context, c *cli.Command) (context.Context, error) {
