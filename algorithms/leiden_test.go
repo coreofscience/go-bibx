@@ -21,17 +21,17 @@ func TestLeiden_UnweightedGraph(t *testing.T) {
 	}
 
 	// Triangle 1
-	_ , _ = g.AddEdge(g.GetVertexByID("A"), g.GetVertexByID("B"))
-	_ , _ = g.AddEdge(g.GetVertexByID("B"), g.GetVertexByID("C"))
-	_ , _ = g.AddEdge(g.GetVertexByID("C"), g.GetVertexByID("A"))
+	_, _ = g.AddEdge(g.GetVertexByID("A"), g.GetVertexByID("B"))
+	_, _ = g.AddEdge(g.GetVertexByID("B"), g.GetVertexByID("C"))
+	_, _ = g.AddEdge(g.GetVertexByID("C"), g.GetVertexByID("A"))
 
 	// Triangle 2
-	_ , _ = g.AddEdge(g.GetVertexByID("D"), g.GetVertexByID("E"))
-	_ , _ = g.AddEdge(g.GetVertexByID("E"), g.GetVertexByID("F"))
-	_ , _ = g.AddEdge(g.GetVertexByID("F"), g.GetVertexByID("D"))
+	_, _ = g.AddEdge(g.GetVertexByID("D"), g.GetVertexByID("E"))
+	_, _ = g.AddEdge(g.GetVertexByID("E"), g.GetVertexByID("F"))
+	_, _ = g.AddEdge(g.GetVertexByID("F"), g.GetVertexByID("D"))
 
 	// Bridge
-	_ , _ = g.AddEdge(g.GetVertexByID("C"), g.GetVertexByID("D"))
+	_, _ = g.AddEdge(g.GetVertexByID("C"), g.GetVertexByID("D"))
 
 	leiden := algorithms.NewLeiden(g)
 	partition := leiden.Run()
@@ -51,7 +51,7 @@ func TestLeiden_UnweightedGraph(t *testing.T) {
 
 func TestLeiden_WeightedGraph(t *testing.T) {
 	// Create a graph where weights heavily favor a certain split
-	g := gograph.New[string]( gograph.Weighted())
+	g := gograph.New[string](gograph.Weighted())
 
 	nodes := []string{"1", "2", "3", "4"}
 	for _, n := range nodes {
@@ -59,13 +59,13 @@ func TestLeiden_WeightedGraph(t *testing.T) {
 	}
 
 	// Strong connection 1-2
-	_ , _ = g.AddEdge(g.GetVertexByID("1"), g.GetVertexByID("2"), gograph.WithEdgeWeight(10.0))
+	_, _ = g.AddEdge(g.GetVertexByID("1"), g.GetVertexByID("2"), gograph.WithEdgeWeight(10.0))
 	// Strong connection 3-4
-	_ , _ = g.AddEdge(g.GetVertexByID("3"), g.GetVertexByID("4"), gograph.WithEdgeWeight(10.0))
+	_, _ = g.AddEdge(g.GetVertexByID("3"), g.GetVertexByID("4"), gograph.WithEdgeWeight(10.0))
 
 	// Weak connections
-	_ , _ = g.AddEdge(g.GetVertexByID("2"), g.GetVertexByID("3"), gograph.WithEdgeWeight(1.0))
-	_ , _ = g.AddEdge(g.GetVertexByID("1"), g.GetVertexByID("4"), gograph.WithEdgeWeight(1.0))
+	_, _ = g.AddEdge(g.GetVertexByID("2"), g.GetVertexByID("3"), gograph.WithEdgeWeight(1.0))
+	_, _ = g.AddEdge(g.GetVertexByID("1"), g.GetVertexByID("4"), gograph.WithEdgeWeight(1.0))
 
 	leiden := algorithms.NewLeiden(g)
 	partition := leiden.Run()
