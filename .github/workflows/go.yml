@@ -26,6 +26,9 @@ jobs:
       - name: Test
         run: go test -timeout 5s -v ./...
 
+      - name: Check formatting
+        run: go fmt -d . && test -z "$(go fmt -l .)"
+
       - name: Lint
         uses: golangci/golangci-lint-action@v9
         with:
