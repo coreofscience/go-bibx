@@ -32,7 +32,7 @@ func New() *cli.Command {
 				Name:    "limit",
 				Aliases: []string{"l"},
 				Usage:   "number of nodes to start the graph algorithm with",
-				Value:   5,
+				Value:   10,
 			},
 			&cli.StringFlag{
 				Name:    "format",
