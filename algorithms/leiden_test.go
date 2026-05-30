@@ -1,4 +1,8 @@
-package algorithms
+package algorithms_test
+
+import (
+	"github.com/coreofscience/go-bibx/algorithms"
+)
 
 import (
 	"testing"
@@ -17,19 +21,19 @@ func TestLeiden_UnweightedGraph(t *testing.T) {
 	}
 
 	// Triangle 1
-	g.AddEdge(g.GetVertexByID("A"), g.GetVertexByID("B"))
-	g.AddEdge(g.GetVertexByID("B"), g.GetVertexByID("C"))
-	g.AddEdge(g.GetVertexByID("C"), g.GetVertexByID("A"))
+	_ , _ = g.AddEdge(g.GetVertexByID("A"), g.GetVertexByID("B"))
+	_ , _ = g.AddEdge(g.GetVertexByID("B"), g.GetVertexByID("C"))
+	_ , _ = g.AddEdge(g.GetVertexByID("C"), g.GetVertexByID("A"))
 
 	// Triangle 2
-	g.AddEdge(g.GetVertexByID("D"), g.GetVertexByID("E"))
-	g.AddEdge(g.GetVertexByID("E"), g.GetVertexByID("F"))
-	g.AddEdge(g.GetVertexByID("F"), g.GetVertexByID("D"))
+	_ , _ = g.AddEdge(g.GetVertexByID("D"), g.GetVertexByID("E"))
+	_ , _ = g.AddEdge(g.GetVertexByID("E"), g.GetVertexByID("F"))
+	_ , _ = g.AddEdge(g.GetVertexByID("F"), g.GetVertexByID("D"))
 
 	// Bridge
-	g.AddEdge(g.GetVertexByID("C"), g.GetVertexByID("D"))
+	_ , _ = g.AddEdge(g.GetVertexByID("C"), g.GetVertexByID("D"))
 
-	leiden := NewLeiden(g)
+	leiden := algorithms.NewLeiden(g)
 	partition := leiden.Run()
 
 	assert.NotNil(t, partition)
@@ -55,15 +59,15 @@ func TestLeiden_WeightedGraph(t *testing.T) {
 	}
 
 	// Strong connection 1-2
-	g.AddEdge(g.GetVertexByID("1"), g.GetVertexByID("2"), gograph.WithEdgeWeight(10.0))
+	_ , _ = g.AddEdge(g.GetVertexByID("1"), g.GetVertexByID("2"), gograph.WithEdgeWeight(10.0))
 	// Strong connection 3-4
-	g.AddEdge(g.GetVertexByID("3"), g.GetVertexByID("4"), gograph.WithEdgeWeight(10.0))
+	_ , _ = g.AddEdge(g.GetVertexByID("3"), g.GetVertexByID("4"), gograph.WithEdgeWeight(10.0))
 
 	// Weak connections
-	g.AddEdge(g.GetVertexByID("2"), g.GetVertexByID("3"), gograph.WithEdgeWeight(1.0))
-	g.AddEdge(g.GetVertexByID("1"), g.GetVertexByID("4"), gograph.WithEdgeWeight(1.0))
+	_ , _ = g.AddEdge(g.GetVertexByID("2"), g.GetVertexByID("3"), gograph.WithEdgeWeight(1.0))
+	_ , _ = g.AddEdge(g.GetVertexByID("1"), g.GetVertexByID("4"), gograph.WithEdgeWeight(1.0))
 
-	leiden := NewLeiden(g)
+	leiden := algorithms.NewLeiden(g)
 	partition := leiden.Run()
 
 	assert.NotNil(t, partition)
@@ -80,7 +84,7 @@ func TestLeiden_WeightedGraph(t *testing.T) {
 
 func TestLeiden_EmptyGraph(t *testing.T) {
 	g := gograph.New[string]()
-	leiden := NewLeiden(g)
+	leiden := algorithms.NewLeiden(g)
 	partition := leiden.Run()
 	assert.Nil(t, partition)
 }
@@ -88,7 +92,7 @@ func TestLeiden_EmptyGraph(t *testing.T) {
 func TestLeiden_SingleNode(t *testing.T) {
 	g := gograph.New[string]()
 	g.AddVertexByLabel("A")
-	leiden := NewLeiden(g)
+	leiden := algorithms.NewLeiden(g)
 	partition := leiden.Run()
 	assert.NotNil(t, partition)
 	assert.Equal(t, 1, len(partition))

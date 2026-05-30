@@ -129,7 +129,6 @@ func (l *Leiden[K]) Run() map[K]int {
 			uniqueComms[c] = struct{}{}
 		}
 		if len(uniqueComms) == len(state.nodes) {
-			done = true
 			break
 		}
 
@@ -239,12 +238,9 @@ func (l *Leiden[K]) refinePartition(state *runState, partition []int, nextCommID
 
 	for _, S := range commNodes {
 		S_set := make(map[int]struct{})
-		for _, v := range S {
-			S_set[v] = struct{}{}
-		}
-
 		S_size := 0
 		for _, v := range S {
+			S_set[v] = struct{}{}
 			S_size += state.nodes[v].size
 		}
 
@@ -265,89 +261,95 @@ func (l *Leiden[K]) refinePartition(state *runState, partition []int, nextCommID
 		rand.Shuffle(len(R), func(i, j int) { R[i], R[j] = R[j], R[i] })
 
 		for _, v := range R {
-			currentRefinedComm := refinedPartition[v]
-
-			// Check if v is in a singleton community in refinedPartition
-			isSingleton := true
-			for _, u := range state.nodes {
-				if u.id != v && refinedPartition[u.id] == currentRefinedComm {
-					isSingleton = false
-					break
-				}
-			}
-
-			if isSingleton {
-				vSize := state.nodes[v].size
-
-				// Calculate refined community sizes and internal edges within S
-				refinedCommSize := make(map[int]int)
-				for _, u := range S {
-					refinedCommSize[refinedPartition[u]] += state.nodes[u].size
-				}
-
-				T := make([]int, 0)
-				for c := range refinedCommSize {
-					if c == currentRefinedComm {
-						continue // Don't move to own singleton
-					}
-					// Calculate edges between refined community c and rest of S
-					ecS := 0.0
-					cSize := refinedCommSize[c]
-					for _, u := range S {
-						if refinedPartition[u] == c {
-							for _, e := range state.edges[u] {
-								if _, ok := S_set[e.to]; ok && refinedPartition[e.to] != c {
-									ecS += e.weight
-								}
-							}
-						}
-					}
-
-					if ecS >= l.gamma*float64(cSize*(S_size-cSize)) {
-						T = append(T, c)
-					}
-				}
-
-				if len(T) > 0 {
-					// Calculate probabilities
-					probs := make([]float64, len(T))
-					sumProbs := 0.0
-
-					// Pre-calculate edges from v to each refined community
-					vEdgesToC := make(map[int]float64)
-					for _, e := range state.edges[v] {
-						if _, ok := S_set[e.to]; ok {
-							vEdgesToC[refinedPartition[e.to]] += e.weight
-						}
-					}
-
-					for i, c := range T {
-						delta := l.deltaH(vEdgesToC[c], vSize, refinedCommSize[c])
-						if delta >= 0 {
-							probs[i] = math.Exp(delta / l.theta)
-							sumProbs += probs[i]
-						} else {
-							probs[i] = 0
-						}
-					}
-
-					if sumProbs > 0 {
-						r := rand.Float64() * sumProbs
-						cumSum := 0.0
-						for i, c := range T {
-							cumSum += probs[i]
-							if r <= cumSum {
-								refinedPartition[v] = c
-								break
-							}
-						}
-					}
-				}
-			}
+			l.refineNode(state, refinedPartition, S, S_set, S_size, v)
 		}
 	}
 
 	return refinedPartition, nextCommID
+}
+
+func (l *Leiden[K]) refineNode(state *runState, refinedPartition []int, S []int, S_set map[int]struct{}, S_size int, v int) {
+	currentRefinedComm := refinedPartition[v]
+
+	// Check if v is in a singleton community in refinedPartition
+	isSingleton := true
+	for _, u := range state.nodes {
+		if u.id != v && refinedPartition[u.id] == currentRefinedComm {
+			isSingleton = false
+			break
+		}
+	}
+
+	if !isSingleton {
+		return
+	}
+
+	vSize := state.nodes[v].size
+
+	// Calculate refined community sizes and internal edges within S
+	refinedCommSize := make(map[int]int)
+	for _, u := range S {
+		refinedCommSize[refinedPartition[u]] += state.nodes[u].size
+	}
+
+	T := make([]int, 0)
+	for c := range refinedCommSize {
+		if c == currentRefinedComm {
+			continue // Don't move to own singleton
+		}
+		// Calculate edges between refined community c and rest of S
+		ecS := 0.0
+		cSize := refinedCommSize[c]
+		for _, u := range S {
+			if refinedPartition[u] == c {
+				for _, e := range state.edges[u] {
+					if _, ok := S_set[e.to]; ok && refinedPartition[e.to] != c {
+						ecS += e.weight
+					}
+				}
+			}
+		}
+
+		if ecS >= l.gamma*float64(cSize*(S_size-cSize)) {
+			T = append(T, c)
+		}
+	}
+
+	if len(T) > 0 {
+		// Calculate probabilities
+		probs := make([]float64, len(T))
+		sumProbs := 0.0
+
+		// Pre-calculate edges from v to each refined community
+		vEdgesToC := make(map[int]float64)
+		for _, e := range state.edges[v] {
+			if _, ok := S_set[e.to]; ok {
+				vEdgesToC[refinedPartition[e.to]] += e.weight
+			}
+		}
+
+		for i, c := range T {
+			delta := l.deltaH(vEdgesToC[c], vSize, refinedCommSize[c])
+			if delta >= 0 {
+				probs[i] = math.Exp(delta / l.theta)
+				sumProbs += probs[i]
+			} else {
+				probs[i] = 0
+			}
+		}
+
+		if sumProbs > 0 {
+			r := rand.Float64() * sumProbs
+			cumSum := 0.0
+			for i, c := range T {
+				cumSum += probs[i]
+				if r <= cumSum {
+					refinedPartition[v] = c
+					break
+				}
+			}
+		}
+	}
 }
 
 func (l *Leiden[K]) aggregateGraph(state *runState, refinedPartition []int, partition []int) (runState, []int, map[int]int) {
