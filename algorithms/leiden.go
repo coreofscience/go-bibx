@@ -44,13 +44,13 @@ func NewLeiden[K comparable](graph gograph.Graph[K], opts ...LeidenOption[K]) *L
 	return l
 }
 
-func (l *Leiden[K]) deltaH(evc float64, nodeSize int, commSize int) float64 {
+func (l *Leiden[K]) deltaH(evc float64, nodeSize float64, commSize float64) float64 {
 	return evc - l.gamma*float64(nodeSize*commSize)
 }
 
 type node struct {
 	id   int
-	size int
+	size float64
 }
 
 type edge struct {
@@ -79,8 +79,21 @@ func (l *Leiden[K]) Run() map[K]int {
 	for i, v := range vertices {
 		labelToID[v.Label()] = i
 		idToLabel[i] = v.Label()
-		state.nodes[i] = node{id: i, size: 1}
+		state.nodes[i] = node{id: i, size: 0}
 	}
+
+	totalEdgeWeight := 0.0
+	for _, e := range l.graph.AllEdges() {
+		w := 1.0
+		if l.graph.IsWeighted() {
+			w = e.Weight()
+		}
+		totalEdgeWeight += w
+	}
+
+	// For Reichardt-Bornholdt (Modularity), gamma is scaled by 1/2m (or 1/totalWeight).
+	// Let's compute node "sizes" as their weighted degree.
+	nodeDegrees := make(map[int]float64)
 
 	adj := make(map[int]map[int]float64)
 	for _, e := range l.graph.AllEdges() {
@@ -94,11 +107,24 @@ func (l *Leiden[K]) Run() map[K]int {
 			adj[u] = make(map[int]float64)
 		}
 		adj[u][v] += w
+		nodeDegrees[u] += w
 		if adj[v] == nil {
 			adj[v] = make(map[int]float64)
 		}
 		adj[v][u] += w
+		nodeDegrees[v] += w
 	}
+
+	for i := range vertices {
+		state.nodes[i] = node{id: i, size: nodeDegrees[i]}
+	}
+
+	// Reichardt-Bornholdt model scales gamma by 2m
+	m2 := totalEdgeWeight * 2
+	if m2 == 0 {
+		m2 = 1
+	}
+	l.gamma = l.gamma / m2
 
 	for u, neighbors := range adj {
 		for v, w := range neighbors {
@@ -162,7 +188,7 @@ func (l *Leiden[K]) Run() map[K]int {
 }
 
 func (l *Leiden[K]) moveNodesFast(state *runState, partition []int, nextCommID int) ([]int, int) {
-	commSize := make(map[int]int)
+	commSize := make(map[int]float64)
 	for i, comm := range partition {
 		commSize[comm] += state.nodes[i].size
 	}
@@ -238,7 +264,7 @@ func (l *Leiden[K]) refinePartition(state *runState, partition []int, nextCommID
 
 	for _, S := range commNodes {
 		S_set := make(map[int]struct{})
-		S_size := 0
+		S_size := 0.0
 		for _, v := range S {
 			S_set[v] = struct{}{}
 			S_size += state.nodes[v].size
@@ -268,7 +294,7 @@ func (l *Leiden[K]) refinePartition(state *runState, partition []int, nextCommID
 	return refinedPartition, nextCommID
 }
 
-func (l *Leiden[K]) refineNode(state *runState, refinedPartition []int, S []int, S_set map[int]struct{}, S_size int, v int) {
+func (l *Leiden[K]) refineNode(state *runState, refinedPartition []int, S []int, S_set map[int]struct{}, S_size float64, v int) {
 	currentRefinedComm := refinedPartition[v]
 
 	// Check if v is in a singleton community in refinedPartition
@@ -287,7 +313,7 @@ func (l *Leiden[K]) refineNode(state *runState, refinedPartition []int, S []int,
 	vSize := state.nodes[v].size
 
 	// Calculate refined community sizes and internal edges within S
-	refinedCommSize := make(map[int]int)
+	refinedCommSize := make(map[int]float64)
 	for _, u := range S {
 		refinedCommSize[refinedPartition[u]] += state.nodes[u].size
 	}
