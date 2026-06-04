@@ -4,6 +4,7 @@ import (
 	"math"
 	"math/rand"
 
+	"github.com/coreofscience/go-bibx/internal/collections"
 	"github.com/hmdsefi/gograph"
 )
 
@@ -115,8 +116,8 @@ func (l *Leiden[K]) Run() map[K]int {
 	// Update global partition
 	for k := range globalPartition {
 		refinedCommID := refinedPartition[k]
-		newAggID := aggregateMap[refinedCommID]
-		globalPartition[k] = newAggID
+		newAggregateID := aggregateMap[refinedCommID]
+		globalPartition[k] = newAggregateID
 	}
 
 	// Subsequent iterations on int
@@ -145,8 +146,8 @@ func (l *Leiden[K]) Run() map[K]int {
 
 		for k := range globalPartition {
 			refinedCommID := refinedPartitionInt[globalPartition[k]]
-			newAggID := aggregateMapInt[refinedCommID]
-			globalPartition[k] = newAggID
+			newAggregateID := aggregateMapInt[refinedCommID]
+			globalPartition[k] = newAggregateID
 		}
 
 		intGraph = newStateGraph
@@ -181,18 +182,18 @@ func (l *Leiden[K]) moveNodesFast(partition map[K]int, nextCommID int) (map[K]in
 		commSize[comm] += l.sizes[k]
 	}
 
-	queue := make([]K, 0, len(l.sizes))
-	inQueue := make(map[K]bool)
+	queue := collections.NewUniqueQueue[K]()
 	for k := range l.sizes {
-		queue = append(queue, k)
-		inQueue[k] = true
+		queue.Push(k)
 	}
-	rand.Shuffle(len(queue), func(i, j int) { queue[i], queue[j] = queue[j], queue[i] })
+	queue.Shuffle()
 
-	for len(queue) > 0 {
-		vLabel := queue[0]
-		queue = queue[1:]
-		inQueue[vLabel] = false
+	for !queue.Empty() {
+		vLabel, ok := queue.Pop()
+		if !ok {
+			// What the queue was empty
+			break
+		}
 
 		vSize := l.sizes[vLabel]
 		currentComm := partition[vLabel]
@@ -243,9 +244,8 @@ func (l *Leiden[K]) moveNodesFast(partition map[K]int, nextCommID int) (map[K]in
 					if nLabel == vLabel {
 						continue
 					}
-					if partition[nLabel] != bestComm && !inQueue[nLabel] {
-						queue = append(queue, nLabel)
-						inQueue[nLabel] = true
+					if partition[nLabel] != bestComm {
+						queue.Push(nLabel)
 					}
 				}
 			}
@@ -370,8 +370,8 @@ func (l *Leiden[K]) refineNode(refinedPartition map[K]int, S []K, S_set map[K]st
 	}
 
 	if len(T_list) > 0 {
-		probs := make([]float64, len(T_list))
-		sumProbs := 0.0
+		probabilities := make([]float64, len(T_list))
+		sumProbabilities := 0.0
 
 		vEdgesToC := make(map[int]float64)
 		vVertex := l.graph.GetVertexByID(v)
@@ -395,18 +395,18 @@ func (l *Leiden[K]) refineNode(refinedPartition map[K]int, S []K, S_set map[K]st
 		for i, c := range T_list {
 			delta := l.deltaH(vEdgesToC[c], vSize, refinedCommSize[c])
 			if delta >= 0 {
-				probs[i] = math.Exp(delta / l.theta)
-				sumProbs += probs[i]
+				probabilities[i] = math.Exp(delta / l.theta)
+				sumProbabilities += probabilities[i]
 			} else {
-				probs[i] = 0
+				probabilities[i] = 0
 			}
 		}
 
-		if sumProbs > 0 {
-			randVal := rand.Float64() * sumProbs
+		if sumProbabilities > 0 {
+			randVal := rand.Float64() * sumProbabilities
 			cumSum := 0.0
 			for i, c := range T_list {
-				cumSum += probs[i]
+				cumSum += probabilities[i]
 				if randVal <= cumSum {
 					refinedPartition[v] = c
 					break
@@ -424,48 +424,48 @@ func (l *Leiden[K]) aggregateGraph(refinedPartition map[K]int, partition map[K]i
 	aggregateMap := make(map[int]int)
 
 	for k, c := range refinedPartition {
-		if aggID, ok := aggregateMap[c]; ok {
-			newSizes[aggID] += l.sizes[k]
+		if aggregateID, ok := aggregateMap[c]; ok {
+			newSizes[aggregateID] += l.sizes[k]
 		} else {
-			aggID = len(aggregateMap)
-			aggregateMap[c] = aggID
-			newSizes[aggID] = l.sizes[k]
+			aggregateID = len(aggregateMap)
+			aggregateMap[c] = aggregateID
+			newSizes[aggregateID] = l.sizes[k]
 		}
 	}
 
 	// Add vertices to the new graph with their aggregated sizes as weights
-	for aggID, size := range newSizes {
-		newGraph.AddVertexByLabel(aggID, gograph.WithVertexWeight(size))
+	for aggregateID, size := range newSizes {
+		newGraph.AddVertexByLabel(aggregateID, gograph.WithVertexWeight(size))
 	}
 
 	edgeMap := make(map[int]map[int]float64)
 	for _, uVertex := range l.graph.GetAllVertices() {
 		u := uVertex.Label()
-		aggU := aggregateMap[refinedPartition[u]]
-		if edgeMap[aggU] == nil {
-			edgeMap[aggU] = make(map[int]float64)
+		aggregateU := aggregateMap[refinedPartition[u]]
+		if edgeMap[aggregateU] == nil {
+			edgeMap[aggregateU] = make(map[int]float64)
 		}
 		for _, e := range l.graph.EdgesOf(uVertex) {
 			neighbor := e.OtherVertex(u)
 			v := neighbor.Label()
-			aggV := aggregateMap[refinedPartition[v]]
-			if aggU != aggV {
+			aggregateV := aggregateMap[refinedPartition[v]]
+			if aggregateU != aggregateV {
 				w := 1.0
 				if l.graph.IsWeighted() {
 					w = e.Weight()
 				}
-				edgeMap[aggU][aggV] += w
+				edgeMap[aggregateU][aggregateV] += w
 			}
 		}
 	}
 
 	// Add edges to the new graph
-	for aggU, neighbors := range edgeMap {
-		for aggV, weight := range neighbors {
-			if aggU < aggV {
+	for aggregateU, neighbors := range edgeMap {
+		for aggregateV, weight := range neighbors {
+			if aggregateU < aggregateV {
 				_, _ = newGraph.AddEdge(
-					newGraph.GetVertexByID(aggU),
-					newGraph.GetVertexByID(aggV),
+					newGraph.GetVertexByID(aggregateU),
+					newGraph.GetVertexByID(aggregateV),
 					gograph.WithEdgeWeight(weight),
 				)
 			}
@@ -474,8 +474,8 @@ func (l *Leiden[K]) aggregateGraph(refinedPartition map[K]int, partition map[K]i
 
 	newPartition := make(map[int]int)
 	for k, c := range refinedPartition {
-		aggID := aggregateMap[c]
-		newPartition[aggID] = partition[k]
+		aggregateID := aggregateMap[c]
+		newPartition[aggregateID] = partition[k]
 	}
 
 	return newGraph, newSizes, newPartition, aggregateMap
