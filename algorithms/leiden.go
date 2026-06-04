@@ -155,7 +155,7 @@ func (l *Leiden[K]) Run() map[K]int {
 	intState, intPartition, aggregateMap := l.aggregateGraph(state, refinedPartition, newPartition)
 
 	// Update global partition
-	for k, _ := range globalPartition {
+	for k := range globalPartition {
 		refinedCommID := refinedPartition[k]
 		newAggID := aggregateMap[refinedCommID]
 		globalPartition[k] = newAggID
@@ -178,7 +178,7 @@ func (l *Leiden[K]) Run() map[K]int {
 
 		newState, newPartitionInt, aggregateMapInt := l.aggregateGraphInt(intState, refinedPartitionInt, intPartition)
 
-		for k, _ := range globalPartition {
+		for k := range globalPartition {
 			refinedCommID := refinedPartitionInt[globalPartition[k]]
 			newAggID := aggregateMapInt[refinedCommID]
 			globalPartition[k] = newAggID
