@@ -48,38 +48,25 @@ func (l *Leiden[K]) deltaH(evc float64, nodeSize float64, commSize float64) floa
 	return evc - l.gamma*float64(nodeSize*commSize)
 }
 
-type node struct {
-	id   int
+type node[T comparable] struct {
+	id   T
 	size float64
 }
 
-type edge struct {
-	to     int
+type edge[T comparable] struct {
+	to     T
 	weight float64
 }
 
-type runState struct {
-	nodes []node
-	edges map[int][]edge
+type runState[T comparable] struct {
+	nodes map[T]node[T]
+	edges map[T][]edge[T]
 }
 
 func (l *Leiden[K]) Run() map[K]int {
 	vertices := l.graph.GetAllVertices()
 	if len(vertices) == 0 {
 		return nil
-	}
-
-	labelToID := make(map[K]int)
-	idToLabel := make(map[int]K)
-	state := runState{
-		nodes: make([]node, len(vertices)),
-		edges: make(map[int][]edge),
-	}
-
-	for i, v := range vertices {
-		labelToID[v.Label()] = i
-		idToLabel[i] = v.Label()
-		state.nodes[i] = node{id: i, size: 0}
 	}
 
 	totalEdgeWeight := 0.0
@@ -91,35 +78,39 @@ func (l *Leiden[K]) Run() map[K]int {
 		totalEdgeWeight += w
 	}
 
-	// For Reichardt-Bornholdt (Modularity), gamma is scaled by 1/2m (or 1/totalWeight).
-	// Let's compute node "sizes" as their weighted degree.
-	nodeDegrees := make(map[int]float64)
+	nodeDegrees := make(map[K]float64)
 
-	adj := make(map[int]map[int]float64)
+	state := runState[K]{
+		nodes: make(map[K]node[K]),
+		edges: make(map[K][]edge[K]),
+	}
+
+	adj := make(map[K]map[K]float64)
 	for _, e := range l.graph.AllEdges() {
-		u := labelToID[e.Source().Label()]
-		v := labelToID[e.Destination().Label()]
+		u := e.Source().Label()
+		v := e.Destination().Label()
 		w := float64(1)
 		if l.graph.IsWeighted() {
 			w = e.Weight()
 		}
 		if adj[u] == nil {
-			adj[u] = make(map[int]float64)
+			adj[u] = make(map[K]float64)
 		}
 		adj[u][v] += w
 		nodeDegrees[u] += w
+
 		if adj[v] == nil {
-			adj[v] = make(map[int]float64)
+			adj[v] = make(map[K]float64)
 		}
 		adj[v][u] += w
 		nodeDegrees[v] += w
 	}
 
-	for i := range vertices {
-		state.nodes[i] = node{id: i, size: nodeDegrees[i]}
+	for _, v := range vertices {
+		label := v.Label()
+		state.nodes[label] = node[K]{id: label, size: nodeDegrees[label]}
 	}
 
-	// Reichardt-Bornholdt model scales gamma by 2m
 	m2 := totalEdgeWeight * 2
 	if m2 == 0 {
 		m2 = 1
@@ -129,75 +120,106 @@ func (l *Leiden[K]) Run() map[K]int {
 	for u, neighbors := range adj {
 		for v, w := range neighbors {
 			if u != v {
-				state.edges[u] = append(state.edges[u], edge{to: v, weight: w})
+				state.edges[u] = append(state.edges[u], edge[K]{to: v, weight: w})
 			}
 		}
 	}
 
-	partition := make([]int, len(state.nodes))
-	for i := range partition {
-		partition[i] = i
+	// We will track the assignment of the original K vertices to aggregate int nodes
+	// For the first iteration, partition is map[K]int
+	partition := make(map[K]int)
+	globalPartition := make(map[K]int)
+
+	nextCommID := 0
+	for _, v := range vertices {
+		label := v.Label()
+		partition[label] = nextCommID
+		globalPartition[label] = nextCommID
+		nextCommID++
 	}
 
-	globalPartition := make([]int, len(state.nodes))
-	for i := range globalPartition {
-		globalPartition[i] = i
+	// Execute first iteration on K
+	newPartition, nextCommID := l.moveNodesFast(state, partition, nextCommID)
+
+	uniqueComms := make(map[int]struct{})
+	for _, c := range newPartition {
+		uniqueComms[c] = struct{}{}
+	}
+	if len(uniqueComms) == len(state.nodes) {
+		return l.normalizeResult(globalPartition)
 	}
 
-	nextCommID := len(state.nodes)
+	refinedPartition, nextCommID := l.refinePartition(state, newPartition, nextCommID)
 
+	// Create int-based aggregate graph
+	intState, intPartition, aggregateMap := l.aggregateGraph(state, refinedPartition, newPartition)
+
+	// Update global partition
+	for k, _ := range globalPartition {
+		refinedCommID := refinedPartition[k]
+		newAggID := aggregateMap[refinedCommID]
+		globalPartition[k] = newAggID
+	}
+
+	// Subsequent iterations on int
 	done := false
 	for !done {
-		partition, nextCommID = l.moveNodesFast(&state, partition, nextCommID)
+		intPartition, nextCommID = l.moveNodesFastInt(intState, intPartition, nextCommID)
 
 		uniqueComms := make(map[int]struct{})
-		for _, c := range partition {
+		for _, c := range intPartition {
 			uniqueComms[c] = struct{}{}
 		}
-		if len(uniqueComms) == len(state.nodes) {
+		if len(uniqueComms) == len(intState.nodes) {
 			break
 		}
 
-		refinedPartition, _ := l.refinePartition(&state, partition, nextCommID)
+		refinedPartitionInt, _ := l.refinePartitionInt(intState, intPartition, nextCommID)
 
-		newState, newPartition, aggregateMap := l.aggregateGraph(&state, refinedPartition, partition)
+		newState, newPartitionInt, aggregateMapInt := l.aggregateGraphInt(intState, refinedPartitionInt, intPartition)
 
-		for i, currentAggID := range globalPartition {
-			refinedCommID := refinedPartition[currentAggID]
-			newAggID := aggregateMap[refinedCommID]
-			globalPartition[i] = newAggID
+		for k, _ := range globalPartition {
+			refinedCommID := refinedPartitionInt[globalPartition[k]]
+			newAggID := aggregateMapInt[refinedCommID]
+			globalPartition[k] = newAggID
 		}
 
-		state = newState
-		partition = newPartition
+		intState = newState
+		intPartition = newPartitionInt
 	}
 
-	// Normalize community IDs to start from 0
+	return l.normalizeResult(globalPartition)
+}
+
+func (l *Leiden[K]) normalizeResult(globalPartition map[K]int) map[K]int {
 	finalCommMap := make(map[int]int)
 	normalizedCommCounter := 0
 	result := make(map[K]int)
-	for i, finalComm := range globalPartition {
+	for k, finalComm := range globalPartition {
 		if _, ok := finalCommMap[finalComm]; !ok {
 			finalCommMap[finalComm] = normalizedCommCounter
 			normalizedCommCounter++
 		}
-		result[idToLabel[i]] = finalCommMap[finalComm]
+		result[k] = finalCommMap[finalComm]
 	}
-
 	return result
 }
 
-func (l *Leiden[K]) moveNodesFast(state *runState, partition []int, nextCommID int) ([]int, int) {
+// ---------------------------------------------------------
+// Gen 1: Iterations on map[K]int
+// ---------------------------------------------------------
+
+func (l *Leiden[K]) moveNodesFast(state runState[K], partition map[K]int, nextCommID int) (map[K]int, int) {
 	commSize := make(map[int]float64)
-	for i, comm := range partition {
-		commSize[comm] += state.nodes[i].size
+	for k, comm := range partition {
+		commSize[comm] += state.nodes[k].size
 	}
 
-	queue := make([]int, len(state.nodes))
-	inQueue := make([]bool, len(state.nodes))
-	for i := range state.nodes {
-		queue[i] = i
-		inQueue[i] = true
+	queue := make([]K, 0, len(state.nodes))
+	inQueue := make(map[K]bool)
+	for k := range state.nodes {
+		queue = append(queue, k)
+		inQueue[k] = true
 	}
 	rand.Shuffle(len(queue), func(i, j int) { queue[i], queue[j] = queue[j], queue[i] })
 
@@ -250,27 +272,27 @@ func (l *Leiden[K]) moveNodesFast(state *runState, partition []int, nextCommID i
 	return partition, nextCommID
 }
 
-func (l *Leiden[K]) refinePartition(state *runState, partition []int, nextCommID int) ([]int, int) {
-	refinedPartition := make([]int, len(state.nodes))
-	for i := range refinedPartition {
-		refinedPartition[i] = nextCommID
+func (l *Leiden[K]) refinePartition(state runState[K], partition map[K]int, nextCommID int) (map[K]int, int) {
+	refinedPartition := make(map[K]int)
+	for k := range state.nodes {
+		refinedPartition[k] = nextCommID
 		nextCommID++
 	}
 
-	commNodes := make(map[int][]int)
-	for i, c := range partition {
-		commNodes[c] = append(commNodes[c], i)
+	commNodes := make(map[int][]K)
+	for k, c := range partition {
+		commNodes[c] = append(commNodes[c], k)
 	}
 
 	for _, S := range commNodes {
-		S_set := make(map[int]struct{})
+		S_set := make(map[K]struct{})
 		S_size := 0.0
 		for _, v := range S {
 			S_set[v] = struct{}{}
 			S_size += state.nodes[v].size
 		}
 
-		R := make([]int, 0)
+		R := make([]K, 0)
 		for _, v := range S {
 			vSize := state.nodes[v].size
 			evS := 0.0
@@ -294,13 +316,12 @@ func (l *Leiden[K]) refinePartition(state *runState, partition []int, nextCommID
 	return refinedPartition, nextCommID
 }
 
-func (l *Leiden[K]) refineNode(state *runState, refinedPartition []int, S []int, S_set map[int]struct{}, S_size float64, v int) {
+func (l *Leiden[K]) refineNode(state runState[K], refinedPartition map[K]int, S []K, S_set map[K]struct{}, S_size float64, v K) {
 	currentRefinedComm := refinedPartition[v]
 
-	// Check if v is in a singleton community in refinedPartition
 	isSingleton := true
-	for _, u := range state.nodes {
-		if u.id != v && refinedPartition[u.id] == currentRefinedComm {
+	for k := range state.nodes {
+		if k != v && refinedPartition[k] == currentRefinedComm {
 			isSingleton = false
 			break
 		}
@@ -312,7 +333,6 @@ func (l *Leiden[K]) refineNode(state *runState, refinedPartition []int, S []int,
 
 	vSize := state.nodes[v].size
 
-	// Calculate refined community sizes and internal edges within S
 	refinedCommSize := make(map[int]float64)
 	for _, u := range S {
 		refinedCommSize[refinedPartition[u]] += state.nodes[u].size
@@ -321,9 +341,8 @@ func (l *Leiden[K]) refineNode(state *runState, refinedPartition []int, S []int,
 	T := make([]int, 0)
 	for c := range refinedCommSize {
 		if c == currentRefinedComm {
-			continue // Don't move to own singleton
+			continue
 		}
-		// Calculate edges between refined community c and rest of S
 		ecS := 0.0
 		cSize := refinedCommSize[c]
 		for _, u := range S {
@@ -342,11 +361,9 @@ func (l *Leiden[K]) refineNode(state *runState, refinedPartition []int, S []int,
 	}
 
 	if len(T) > 0 {
-		// Calculate probabilities
 		probs := make([]float64, len(T))
 		sumProbs := 0.0
 
-		// Pre-calculate edges from v to each refined community
 		vEdgesToC := make(map[int]float64)
 		for _, e := range state.edges[v] {
 			if _, ok := S_set[e.to]; ok {
@@ -378,27 +395,26 @@ func (l *Leiden[K]) refineNode(state *runState, refinedPartition []int, S []int,
 	}
 }
 
-func (l *Leiden[K]) aggregateGraph(state *runState, refinedPartition []int, partition []int) (runState, []int, map[int]int) {
-	newState := runState{
-		nodes: make([]node, 0),
-		edges: make(map[int][]edge),
+func (l *Leiden[K]) aggregateGraph(state runState[K], refinedPartition map[K]int, partition map[K]int) (runState[int], map[int]int, map[int]int) {
+	newState := runState[int]{
+		nodes: make(map[int]node[int]),
+		edges: make(map[int][]edge[int]),
 	}
 
-	// map from refined community ID to new aggregate node ID
 	aggregateMap := make(map[int]int)
 
-	// Create nodes
-	for i, c := range refinedPartition {
+	for k, c := range refinedPartition {
 		if aggID, ok := aggregateMap[c]; ok {
-			newState.nodes[aggID].size += state.nodes[i].size
+			n := newState.nodes[aggID]
+			n.size += state.nodes[k].size
+			newState.nodes[aggID] = n
 		} else {
 			aggID = len(newState.nodes)
 			aggregateMap[c] = aggID
-			newState.nodes = append(newState.nodes, node{id: aggID, size: state.nodes[i].size})
+			newState.nodes[aggID] = node[int]{id: aggID, size: state.nodes[k].size}
 		}
 	}
 
-	// Create edges
 	edgeMap := make(map[int]map[int]float64)
 	for u, neighbors := range state.edges {
 		aggU := aggregateMap[refinedPartition[u]]
@@ -415,16 +431,253 @@ func (l *Leiden[K]) aggregateGraph(state *runState, refinedPartition []int, part
 
 	for u, neighbors := range edgeMap {
 		for v, w := range neighbors {
-			newState.edges[u] = append(newState.edges[u], edge{to: v, weight: w})
+			newState.edges[u] = append(newState.edges[u], edge[int]{to: v, weight: w})
 		}
 	}
 
-	// The new partition P assigns the new aggregate nodes to the communities in the original `partition`.
-	// A community in `refinedPartition` is always a subset of a community in `partition`.
-	newPartition := make([]int, len(newState.nodes))
-	for i, c := range refinedPartition {
+	newPartition := make(map[int]int)
+	for k, c := range refinedPartition {
 		aggID := aggregateMap[c]
-		newPartition[aggID] = partition[i]
+		newPartition[aggID] = partition[k]
+	}
+
+	return newState, newPartition, aggregateMap
+}
+
+// ---------------------------------------------------------
+// Gen 2+: Iterations on map[int]int
+// ---------------------------------------------------------
+
+func (l *Leiden[K]) moveNodesFastInt(state runState[int], partition map[int]int, nextCommID int) (map[int]int, int) {
+	commSize := make(map[int]float64)
+	for k, comm := range partition {
+		commSize[comm] += state.nodes[k].size
+	}
+
+	queue := make([]int, 0, len(state.nodes))
+	inQueue := make(map[int]bool)
+	for k := range state.nodes {
+		queue = append(queue, k)
+		inQueue[k] = true
+	}
+	rand.Shuffle(len(queue), func(i, j int) { queue[i], queue[j] = queue[j], queue[i] })
+
+	for len(queue) > 0 {
+		v := queue[0]
+		queue = queue[1:]
+		inQueue[v] = false
+
+		vSize := state.nodes[v].size
+		currentComm := partition[v]
+
+		commWeight := make(map[int]float64)
+		for _, e := range state.edges[v] {
+			commWeight[partition[e.to]] += e.weight
+		}
+
+		commSize[currentComm] -= vSize
+
+		bestComm := currentComm
+		maxDelta := 0.0
+
+		for c, w := range commWeight {
+			delta := l.deltaH(w, vSize, commSize[c])
+			if delta > maxDelta {
+				maxDelta = delta
+				bestComm = c
+			}
+		}
+
+		if 0 > maxDelta {
+			bestComm = nextCommID
+			nextCommID++
+		}
+
+		if bestComm != currentComm {
+			partition[v] = bestComm
+			commSize[bestComm] += vSize
+
+			for _, e := range state.edges[v] {
+				if partition[e.to] != bestComm && !inQueue[e.to] {
+					queue = append(queue, e.to)
+					inQueue[e.to] = true
+				}
+			}
+		} else {
+			commSize[currentComm] += vSize
+		}
+	}
+
+	return partition, nextCommID
+}
+
+func (l *Leiden[K]) refinePartitionInt(state runState[int], partition map[int]int, nextCommID int) (map[int]int, int) {
+	refinedPartition := make(map[int]int)
+	for k := range state.nodes {
+		refinedPartition[k] = nextCommID
+		nextCommID++
+	}
+
+	commNodes := make(map[int][]int)
+	for k, c := range partition {
+		commNodes[c] = append(commNodes[c], k)
+	}
+
+	for _, S := range commNodes {
+		S_set := make(map[int]struct{})
+		S_size := 0.0
+		for _, v := range S {
+			S_set[v] = struct{}{}
+			S_size += state.nodes[v].size
+		}
+
+		R := make([]int, 0)
+		for _, v := range S {
+			vSize := state.nodes[v].size
+			evS := 0.0
+			for _, e := range state.edges[v] {
+				if _, ok := S_set[e.to]; ok {
+					evS += e.weight
+				}
+			}
+			if evS >= l.gamma*float64(vSize*(S_size-vSize)) {
+				R = append(R, v)
+			}
+		}
+
+		rand.Shuffle(len(R), func(i, j int) { R[i], R[j] = R[j], R[i] })
+
+		for _, v := range R {
+			l.refineNodeInt(state, refinedPartition, S, S_set, S_size, v)
+		}
+	}
+
+	return refinedPartition, nextCommID
+}
+
+func (l *Leiden[K]) refineNodeInt(state runState[int], refinedPartition map[int]int, S []int, S_set map[int]struct{}, S_size float64, v int) {
+	currentRefinedComm := refinedPartition[v]
+
+	isSingleton := true
+	for k := range state.nodes {
+		if k != v && refinedPartition[k] == currentRefinedComm {
+			isSingleton = false
+			break
+		}
+	}
+
+	if !isSingleton {
+		return
+	}
+
+	vSize := state.nodes[v].size
+
+	refinedCommSize := make(map[int]float64)
+	for _, u := range S {
+		refinedCommSize[refinedPartition[u]] += state.nodes[u].size
+	}
+
+	T := make([]int, 0)
+	for c := range refinedCommSize {
+		if c == currentRefinedComm {
+			continue
+		}
+		ecS := 0.0
+		cSize := refinedCommSize[c]
+		for _, u := range S {
+			if refinedPartition[u] == c {
+				for _, e := range state.edges[u] {
+					if _, ok := S_set[e.to]; ok && refinedPartition[e.to] != c {
+						ecS += e.weight
+					}
+				}
+			}
+		}
+
+		if ecS >= l.gamma*float64(cSize*(S_size-cSize)) {
+			T = append(T, c)
+		}
+	}
+
+	if len(T) > 0 {
+		probs := make([]float64, len(T))
+		sumProbs := 0.0
+
+		vEdgesToC := make(map[int]float64)
+		for _, e := range state.edges[v] {
+			if _, ok := S_set[e.to]; ok {
+				vEdgesToC[refinedPartition[e.to]] += e.weight
+			}
+		}
+
+		for i, c := range T {
+			delta := l.deltaH(vEdgesToC[c], vSize, refinedCommSize[c])
+			if delta >= 0 {
+				probs[i] = math.Exp(delta / l.theta)
+				sumProbs += probs[i]
+			} else {
+				probs[i] = 0
+			}
+		}
+
+		if sumProbs > 0 {
+			r := rand.Float64() * sumProbs
+			cumSum := 0.0
+			for i, c := range T {
+				cumSum += probs[i]
+				if r <= cumSum {
+					refinedPartition[v] = c
+					break
+				}
+			}
+		}
+	}
+}
+
+func (l *Leiden[K]) aggregateGraphInt(state runState[int], refinedPartition map[int]int, partition map[int]int) (runState[int], map[int]int, map[int]int) {
+	newState := runState[int]{
+		nodes: make(map[int]node[int]),
+		edges: make(map[int][]edge[int]),
+	}
+
+	aggregateMap := make(map[int]int)
+
+	for k, c := range refinedPartition {
+		if aggID, ok := aggregateMap[c]; ok {
+			n := newState.nodes[aggID]
+			n.size += state.nodes[k].size
+			newState.nodes[aggID] = n
+		} else {
+			aggID = len(newState.nodes)
+			aggregateMap[c] = aggID
+			newState.nodes[aggID] = node[int]{id: aggID, size: state.nodes[k].size}
+		}
+	}
+
+	edgeMap := make(map[int]map[int]float64)
+	for u, neighbors := range state.edges {
+		aggU := aggregateMap[refinedPartition[u]]
+		if edgeMap[aggU] == nil {
+			edgeMap[aggU] = make(map[int]float64)
+		}
+		for _, e := range neighbors {
+			aggV := aggregateMap[refinedPartition[e.to]]
+			if aggU != aggV {
+				edgeMap[aggU][aggV] += e.weight
+			}
+		}
+	}
+
+	for u, neighbors := range edgeMap {
+		for v, w := range neighbors {
+			newState.edges[u] = append(newState.edges[u], edge[int]{to: v, weight: w})
+		}
+	}
+
+	newPartition := make(map[int]int)
+	for k, c := range refinedPartition {
+		aggID := aggregateMap[c]
+		newPartition[aggID] = partition[k]
 	}
 
 	return newState, newPartition, aggregateMap
