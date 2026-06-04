@@ -111,7 +111,7 @@ func (l *Leiden[K]) Run() map[K]int {
 		state.nodes[label] = node[K]{id: label, size: nodeDegrees[label]}
 	}
 
-	m2 := totalEdgeWeight * 2
+	m2 := totalEdgeWeight
 	if m2 == 0 {
 		m2 = 1
 	}
