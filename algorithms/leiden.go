@@ -16,6 +16,7 @@ type Leiden[K comparable] struct {
 	graph gograph.Graph[K]
 	gamma float64
 	theta float64
+	sizes map[K]float64
 }
 
 type LeidenOption[K comparable] func(*Leiden[K])
@@ -44,15 +45,8 @@ func NewLeiden[K comparable](graph gograph.Graph[K], opts ...LeidenOption[K]) *L
 	return l
 }
 
-type leidenRunner[T comparable] struct {
-	graph gograph.Graph[T]
-	gamma float64
-	theta float64
-	sizes map[T]float64
-}
-
-func (r *leidenRunner[T]) deltaH(evc float64, nodeSize float64, commSize float64) float64 {
-	return evc - r.gamma*float64(nodeSize*commSize)
+func (l *Leiden[K]) deltaH(evc float64, nodeSize float64, commSize float64) float64 {
+	return evc - l.gamma*float64(nodeSize*commSize)
 }
 
 func (l *Leiden[K]) Run() map[K]int {
@@ -87,6 +81,7 @@ func (l *Leiden[K]) Run() map[K]int {
 		m2 = 1
 	}
 	l.gamma = l.gamma / m2
+	l.sizes = nodeDegrees
 
 	// We will track the assignment of the original K vertices to aggregate int nodes
 	// For the first iteration, partition is map[K]int
@@ -101,29 +96,21 @@ func (l *Leiden[K]) Run() map[K]int {
 		nextCommID++
 	}
 
-	// Create the initial runner
-	runner := &leidenRunner[K]{
-		graph: l.graph,
-		gamma: l.gamma,
-		theta: l.theta,
-		sizes: nodeDegrees,
-	}
-
 	// Execute first iteration on K
-	newPartition, nextCommID := runner.moveNodesFast(partition, nextCommID)
+	newPartition, nextCommID := l.moveNodesFast(partition, nextCommID)
 
 	uniqueComms := make(map[int]struct{})
 	for _, c := range newPartition {
 		uniqueComms[c] = struct{}{}
 	}
-	if len(uniqueComms) == len(runner.sizes) {
+	if len(uniqueComms) == len(l.sizes) {
 		return l.normalizeResult(globalPartition)
 	}
 
-	refinedPartition, nextCommID := runner.refinePartition(newPartition, nextCommID)
+	refinedPartition, nextCommID := l.refinePartition(newPartition, nextCommID)
 
 	// Create int-based aggregate graph
-	intGraph, intSizes, intPartition, aggregateMap := runner.aggregateGraph(refinedPartition, newPartition)
+	intGraph, intSizes, intPartition, aggregateMap := l.aggregateGraph(refinedPartition, newPartition)
 
 	// Update global partition
 	for k := range globalPartition {
@@ -135,14 +122,14 @@ func (l *Leiden[K]) Run() map[K]int {
 	// Subsequent iterations on int
 	done := false
 	for !done {
-		intRunner := &leidenRunner[int]{
+		intLeiden := &Leiden[int]{
 			graph: intGraph,
 			gamma: l.gamma,
 			theta: l.theta,
 			sizes: intSizes,
 		}
 
-		intPartition, nextCommID = intRunner.moveNodesFast(intPartition, nextCommID)
+		intPartition, nextCommID = intLeiden.moveNodesFast(intPartition, nextCommID)
 
 		uniqueComms := make(map[int]struct{})
 		for _, c := range intPartition {
@@ -152,9 +139,9 @@ func (l *Leiden[K]) Run() map[K]int {
 			break
 		}
 
-		refinedPartitionInt, _ := intRunner.refinePartition(intPartition, nextCommID)
+		refinedPartitionInt, _ := intLeiden.refinePartition(intPartition, nextCommID)
 
-		newStateGraph, newStateSizes, newPartitionInt, aggregateMapInt := intRunner.aggregateGraph(refinedPartitionInt, intPartition)
+		newStateGraph, newStateSizes, newPartitionInt, aggregateMapInt := intLeiden.aggregateGraph(refinedPartitionInt, intPartition)
 
 		for k := range globalPartition {
 			refinedCommID := refinedPartitionInt[globalPartition[k]]
@@ -185,18 +172,18 @@ func (l *Leiden[K]) normalizeResult(globalPartition map[K]int) map[K]int {
 }
 
 // ---------------------------------------------------------
-// leidenRunner Encapsulates iterations on Graph[T]
+// Leiden methods for managing partition steps
 // ---------------------------------------------------------
 
-func (r *leidenRunner[T]) moveNodesFast(partition map[T]int, nextCommID int) (map[T]int, int) {
+func (l *Leiden[K]) moveNodesFast(partition map[K]int, nextCommID int) (map[K]int, int) {
 	commSize := make(map[int]float64)
 	for k, comm := range partition {
-		commSize[comm] += r.sizes[k]
+		commSize[comm] += l.sizes[k]
 	}
 
-	queue := make([]T, 0, len(r.sizes))
-	inQueue := make(map[T]bool)
-	for k := range r.sizes {
+	queue := make([]K, 0, len(l.sizes))
+	inQueue := make(map[K]bool)
+	for k := range l.sizes {
 		queue = append(queue, k)
 		inQueue[k] = true
 	}
@@ -207,20 +194,20 @@ func (r *leidenRunner[T]) moveNodesFast(partition map[T]int, nextCommID int) (ma
 		queue = queue[1:]
 		inQueue[vLabel] = false
 
-		vSize := r.sizes[vLabel]
+		vSize := l.sizes[vLabel]
 		currentComm := partition[vLabel]
 
 		commWeight := make(map[int]float64)
-		vVertex := r.graph.GetVertexByID(vLabel)
+		vVertex := l.graph.GetVertexByID(vLabel)
 		if vVertex != nil {
-			for _, e := range r.graph.EdgesOf(vVertex) {
+			for _, e := range l.graph.EdgesOf(vVertex) {
 				neighbor := e.OtherVertex(vLabel)
 				nLabel := neighbor.Label()
 				if nLabel == vLabel {
 					continue
 				}
 				w := 1.0
-				if r.graph.IsWeighted() {
+				if l.graph.IsWeighted() {
 					w = e.Weight()
 				}
 				commWeight[partition[nLabel]] += w
@@ -233,7 +220,7 @@ func (r *leidenRunner[T]) moveNodesFast(partition map[T]int, nextCommID int) (ma
 		maxDelta := 0.0
 
 		for c, w := range commWeight {
-			delta := r.deltaH(w, vSize, commSize[c])
+			delta := l.deltaH(w, vSize, commSize[c])
 			if delta > maxDelta {
 				maxDelta = delta
 				bestComm = c
@@ -250,7 +237,7 @@ func (r *leidenRunner[T]) moveNodesFast(partition map[T]int, nextCommID int) (ma
 			commSize[bestComm] += vSize
 
 			if vVertex != nil {
-				for _, e := range r.graph.EdgesOf(vVertex) {
+				for _, e := range l.graph.EdgesOf(vVertex) {
 					neighbor := e.OtherVertex(vLabel)
 					nLabel := neighbor.Label()
 					if nLabel == vLabel {
@@ -270,33 +257,33 @@ func (r *leidenRunner[T]) moveNodesFast(partition map[T]int, nextCommID int) (ma
 	return partition, nextCommID
 }
 
-func (r *leidenRunner[T]) refinePartition(partition map[T]int, nextCommID int) (map[T]int, int) {
-	refinedPartition := make(map[T]int)
-	for k := range r.sizes {
+func (l *Leiden[K]) refinePartition(partition map[K]int, nextCommID int) (map[K]int, int) {
+	refinedPartition := make(map[K]int)
+	for k := range l.sizes {
 		refinedPartition[k] = nextCommID
 		nextCommID++
 	}
 
-	commNodes := make(map[int][]T)
+	commNodes := make(map[int][]K)
 	for k, c := range partition {
 		commNodes[c] = append(commNodes[c], k)
 	}
 
 	for _, S := range commNodes {
-		S_set := make(map[T]struct{})
+		S_set := make(map[K]struct{})
 		S_size := 0.0
 		for _, v := range S {
 			S_set[v] = struct{}{}
-			S_size += r.sizes[v]
+			S_size += l.sizes[v]
 		}
 
-		R := make([]T, 0)
+		R := make([]K, 0)
 		for _, vLabel := range S {
-			vSize := r.sizes[vLabel]
+			vSize := l.sizes[vLabel]
 			evS := 0.0
-			vVertex := r.graph.GetVertexByID(vLabel)
+			vVertex := l.graph.GetVertexByID(vLabel)
 			if vVertex != nil {
-				for _, e := range r.graph.EdgesOf(vVertex) {
+				for _, e := range l.graph.EdgesOf(vVertex) {
 					neighbor := e.OtherVertex(vLabel)
 					nLabel := neighbor.Label()
 					if nLabel == vLabel {
@@ -304,14 +291,14 @@ func (r *leidenRunner[T]) refinePartition(partition map[T]int, nextCommID int) (
 					}
 					if _, ok := S_set[nLabel]; ok {
 						w := 1.0
-						if r.graph.IsWeighted() {
+						if l.graph.IsWeighted() {
 							w = e.Weight()
 						}
 						evS += w
 					}
 				}
 			}
-			if evS >= r.gamma*float64(vSize*(S_size-vSize)) {
+			if evS >= l.gamma*float64(vSize*(S_size-vSize)) {
 				R = append(R, vLabel)
 			}
 		}
@@ -319,18 +306,18 @@ func (r *leidenRunner[T]) refinePartition(partition map[T]int, nextCommID int) (
 		rand.Shuffle(len(R), func(i, j int) { R[i], R[j] = R[j], R[i] })
 
 		for _, v := range R {
-			r.refineNode(refinedPartition, S, S_set, S_size, v)
+			l.refineNode(refinedPartition, S, S_set, S_size, v)
 		}
 	}
 
 	return refinedPartition, nextCommID
 }
 
-func (r *leidenRunner[T]) refineNode(refinedPartition map[T]int, S []T, S_set map[T]struct{}, S_size float64, v T) {
+func (l *Leiden[K]) refineNode(refinedPartition map[K]int, S []K, S_set map[K]struct{}, S_size float64, v K) {
 	currentRefinedComm := refinedPartition[v]
 
 	isSingleton := true
-	for k := range r.sizes {
+	for k := range l.sizes {
 		if k != v && refinedPartition[k] == currentRefinedComm {
 			isSingleton = false
 			break
@@ -341,11 +328,11 @@ func (r *leidenRunner[T]) refineNode(refinedPartition map[T]int, S []T, S_set ma
 		return
 	}
 
-	vSize := r.sizes[v]
+	vSize := l.sizes[v]
 
 	refinedCommSize := make(map[int]float64)
 	for _, u := range S {
-		refinedCommSize[refinedPartition[u]] += r.sizes[u]
+		refinedCommSize[refinedPartition[u]] += l.sizes[u]
 	}
 
 	T_list := make([]int, 0)
@@ -357,9 +344,9 @@ func (r *leidenRunner[T]) refineNode(refinedPartition map[T]int, S []T, S_set ma
 		cSize := refinedCommSize[c]
 		for _, u := range S {
 			if refinedPartition[u] == c {
-				uVertex := r.graph.GetVertexByID(u)
+				uVertex := l.graph.GetVertexByID(u)
 				if uVertex != nil {
-					for _, e := range r.graph.EdgesOf(uVertex) {
+					for _, e := range l.graph.EdgesOf(uVertex) {
 						neighbor := e.OtherVertex(u)
 						nLabel := neighbor.Label()
 						if nLabel == u {
@@ -367,7 +354,7 @@ func (r *leidenRunner[T]) refineNode(refinedPartition map[T]int, S []T, S_set ma
 						}
 						if _, ok := S_set[nLabel]; ok && refinedPartition[nLabel] != c {
 							w := 1.0
-							if r.graph.IsWeighted() {
+							if l.graph.IsWeighted() {
 								w = e.Weight()
 							}
 							ecS += w
@@ -377,7 +364,7 @@ func (r *leidenRunner[T]) refineNode(refinedPartition map[T]int, S []T, S_set ma
 			}
 		}
 
-		if ecS >= r.gamma*float64(cSize*(S_size-cSize)) {
+		if ecS >= l.gamma*float64(cSize*(S_size-cSize)) {
 			T_list = append(T_list, c)
 		}
 	}
@@ -387,9 +374,9 @@ func (r *leidenRunner[T]) refineNode(refinedPartition map[T]int, S []T, S_set ma
 		sumProbs := 0.0
 
 		vEdgesToC := make(map[int]float64)
-		vVertex := r.graph.GetVertexByID(v)
+		vVertex := l.graph.GetVertexByID(v)
 		if vVertex != nil {
-			for _, e := range r.graph.EdgesOf(vVertex) {
+			for _, e := range l.graph.EdgesOf(vVertex) {
 				neighbor := e.OtherVertex(v)
 				nLabel := neighbor.Label()
 				if nLabel == v {
@@ -397,7 +384,7 @@ func (r *leidenRunner[T]) refineNode(refinedPartition map[T]int, S []T, S_set ma
 				}
 				if _, ok := S_set[nLabel]; ok {
 					w := 1.0
-					if r.graph.IsWeighted() {
+					if l.graph.IsWeighted() {
 						w = e.Weight()
 					}
 					vEdgesToC[refinedPartition[nLabel]] += w
@@ -406,9 +393,9 @@ func (r *leidenRunner[T]) refineNode(refinedPartition map[T]int, S []T, S_set ma
 		}
 
 		for i, c := range T_list {
-			delta := r.deltaH(vEdgesToC[c], vSize, refinedCommSize[c])
+			delta := l.deltaH(vEdgesToC[c], vSize, refinedCommSize[c])
 			if delta >= 0 {
-				probs[i] = math.Exp(delta / r.theta)
+				probs[i] = math.Exp(delta / l.theta)
 				sumProbs += probs[i]
 			} else {
 				probs[i] = 0
@@ -429,7 +416,7 @@ func (r *leidenRunner[T]) refineNode(refinedPartition map[T]int, S []T, S_set ma
 	}
 }
 
-func (r *leidenRunner[T]) aggregateGraph(refinedPartition map[T]int, partition map[T]int) (gograph.Graph[int], map[int]float64, map[int]int, map[int]int) {
+func (l *Leiden[K]) aggregateGraph(refinedPartition map[K]int, partition map[K]int) (gograph.Graph[int], map[int]float64, map[int]int, map[int]int) {
 	newGraph := gograph.New[int](
 		gograph.Weighted(),
 	)
@@ -438,11 +425,11 @@ func (r *leidenRunner[T]) aggregateGraph(refinedPartition map[T]int, partition m
 
 	for k, c := range refinedPartition {
 		if aggID, ok := aggregateMap[c]; ok {
-			newSizes[aggID] += r.sizes[k]
+			newSizes[aggID] += l.sizes[k]
 		} else {
 			aggID = len(aggregateMap)
 			aggregateMap[c] = aggID
-			newSizes[aggID] = r.sizes[k]
+			newSizes[aggID] = l.sizes[k]
 		}
 	}
 
@@ -452,19 +439,19 @@ func (r *leidenRunner[T]) aggregateGraph(refinedPartition map[T]int, partition m
 	}
 
 	edgeMap := make(map[int]map[int]float64)
-	for _, uVertex := range r.graph.GetAllVertices() {
+	for _, uVertex := range l.graph.GetAllVertices() {
 		u := uVertex.Label()
 		aggU := aggregateMap[refinedPartition[u]]
 		if edgeMap[aggU] == nil {
 			edgeMap[aggU] = make(map[int]float64)
 		}
-		for _, e := range r.graph.EdgesOf(uVertex) {
+		for _, e := range l.graph.EdgesOf(uVertex) {
 			neighbor := e.OtherVertex(u)
 			v := neighbor.Label()
 			aggV := aggregateMap[refinedPartition[v]]
 			if aggU != aggV {
 				w := 1.0
-				if r.graph.IsWeighted() {
+				if l.graph.IsWeighted() {
 					w = e.Weight()
 				}
 				edgeMap[aggU][aggV] += w
