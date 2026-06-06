@@ -56,25 +56,17 @@ func (l *Leiden[K]) Run() map[K]int {
 		return nil
 	}
 
+	isWeighted := l.graph.IsWeighted()
 	totalEdgeWeight := 0.0
+	nodeDegrees := make(map[K]float64)
 	for _, e := range l.graph.AllEdges() {
 		w := 1.0
-		if l.graph.IsWeighted() {
+		if isWeighted {
 			w = e.Weight()
 		}
 		totalEdgeWeight += w
-	}
-
-	nodeDegrees := make(map[K]float64)
-	for _, e := range l.graph.AllEdges() {
-		u := e.Source().Label()
-		v := e.Destination().Label()
-		w := 1.0
-		if l.graph.IsWeighted() {
-			w = e.Weight()
-		}
-		nodeDegrees[u] += w
-		nodeDegrees[v] += w
+		nodeDegrees[e.Source().Label()] += w
+		nodeDegrees[e.Destination().Label()] += w
 	}
 
 	m2 := totalEdgeWeight * 2
@@ -188,6 +180,9 @@ func (l *Leiden[K]) moveNodesFast(partition map[K]int, nextCommID int) (map[K]in
 	}
 	queue.Shuffle()
 
+	isWeighted := l.graph.IsWeighted()
+	commWeight := make(map[int]float64)
+
 	for !queue.Empty() {
 		vLabel, ok := queue.Pop()
 		if !ok {
@@ -198,7 +193,7 @@ func (l *Leiden[K]) moveNodesFast(partition map[K]int, nextCommID int) (map[K]in
 		vSize := l.sizes[vLabel]
 		currentComm := partition[vLabel]
 
-		commWeight := make(map[int]float64)
+		clear(commWeight)
 		vVertex := l.graph.GetVertexByID(vLabel)
 		if vVertex != nil {
 			for _, e := range l.graph.EdgesOf(vVertex) {
@@ -208,7 +203,7 @@ func (l *Leiden[K]) moveNodesFast(partition map[K]int, nextCommID int) (map[K]in
 					continue
 				}
 				w := 1.0
-				if l.graph.IsWeighted() {
+				if isWeighted {
 					w = e.Weight()
 				}
 				commWeight[partition[nLabel]] += w
@@ -259,8 +254,10 @@ func (l *Leiden[K]) moveNodesFast(partition map[K]int, nextCommID int) (map[K]in
 
 func (l *Leiden[K]) refinePartition(partition map[K]int, nextCommID int) (map[K]int, int) {
 	refinedPartition := make(map[K]int)
+	refinedCommNodeCount := make(map[int]int)
 	for k := range l.sizes {
 		refinedPartition[k] = nextCommID
+		refinedCommNodeCount[nextCommID] = 1
 		nextCommID++
 	}
 
@@ -268,6 +265,9 @@ func (l *Leiden[K]) refinePartition(partition map[K]int, nextCommID int) (map[K]
 	for k, c := range partition {
 		commNodes[c] = append(commNodes[c], k)
 	}
+
+	isWeighted := l.graph.IsWeighted()
+	vEdgesToC := make(map[int]float64)
 
 	for _, S := range commNodes {
 		S_set := make(map[K]struct{})
@@ -277,27 +277,39 @@ func (l *Leiden[K]) refinePartition(partition map[K]int, nextCommID int) (map[K]
 			S_size += l.sizes[v]
 		}
 
-		R := make([]K, 0)
-		for _, vLabel := range S {
-			vSize := l.sizes[vLabel]
+		refinedCommSize := make(map[int]float64)
+		commEdgesToS := make(map[int]float64)
+
+		for _, u := range S {
+			c_u := refinedPartition[u]
+			refinedCommSize[c_u] = l.sizes[u]
+
 			evS := 0.0
-			vVertex := l.graph.GetVertexByID(vLabel)
-			if vVertex != nil {
-				for _, e := range l.graph.EdgesOf(vVertex) {
-					neighbor := e.OtherVertex(vLabel)
+			uVertex := l.graph.GetVertexByID(u)
+			if uVertex != nil {
+				for _, e := range l.graph.EdgesOf(uVertex) {
+					neighbor := e.OtherVertex(u)
 					nLabel := neighbor.Label()
-					if nLabel == vLabel {
+					if nLabel == u {
 						continue
 					}
 					if _, ok := S_set[nLabel]; ok {
 						w := 1.0
-						if l.graph.IsWeighted() {
+						if isWeighted {
 							w = e.Weight()
 						}
 						evS += w
 					}
 				}
 			}
+			commEdgesToS[c_u] = evS
+		}
+
+		R := make([]K, 0)
+		for _, vLabel := range S {
+			c_v := refinedPartition[vLabel]
+			evS := commEdgesToS[c_v]
+			vSize := l.sizes[vLabel]
 			if evS >= l.gamma*float64(vSize*(S_size-vSize)) {
 				R = append(R, vLabel)
 			}
@@ -306,64 +318,49 @@ func (l *Leiden[K]) refinePartition(partition map[K]int, nextCommID int) (map[K]
 		rand.Shuffle(len(R), func(i, j int) { R[i], R[j] = R[j], R[i] })
 
 		for _, v := range R {
-			l.refineNode(refinedPartition, S, S_set, S_size, v)
+			l.refineNode(
+				refinedPartition,
+				S,
+				S_set,
+				S_size,
+				v,
+				refinedCommNodeCount,
+				refinedCommSize,
+				commEdgesToS,
+				vEdgesToC,
+			)
 		}
 	}
 
 	return refinedPartition, nextCommID
 }
 
-func (l *Leiden[K]) refineNode(refinedPartition map[K]int, S []K, S_set map[K]struct{}, S_size float64, v K) {
+func (l *Leiden[K]) refineNode(
+	refinedPartition map[K]int,
+	S []K,
+	S_set map[K]struct{},
+	S_size float64,
+	v K,
+	refinedCommNodeCount map[int]int,
+	refinedCommSize map[int]float64,
+	commEdgesToS map[int]float64,
+	vEdgesToC map[int]float64,
+) {
 	currentRefinedComm := refinedPartition[v]
 
-	isSingleton := true
-	for k := range l.sizes {
-		if k != v && refinedPartition[k] == currentRefinedComm {
-			isSingleton = false
-			break
-		}
-	}
-
+	isSingleton := refinedCommNodeCount[currentRefinedComm] == 1
 	if !isSingleton {
 		return
 	}
 
 	vSize := l.sizes[v]
 
-	refinedCommSize := make(map[int]float64)
-	for _, u := range S {
-		refinedCommSize[refinedPartition[u]] += l.sizes[u]
-	}
-
 	T_list := make([]int, 0)
-	for c := range refinedCommSize {
+	for c, cSize := range refinedCommSize {
 		if c == currentRefinedComm {
 			continue
 		}
-		ecS := 0.0
-		cSize := refinedCommSize[c]
-		for _, u := range S {
-			if refinedPartition[u] == c {
-				uVertex := l.graph.GetVertexByID(u)
-				if uVertex != nil {
-					for _, e := range l.graph.EdgesOf(uVertex) {
-						neighbor := e.OtherVertex(u)
-						nLabel := neighbor.Label()
-						if nLabel == u {
-							continue
-						}
-						if _, ok := S_set[nLabel]; ok && refinedPartition[nLabel] != c {
-							w := 1.0
-							if l.graph.IsWeighted() {
-								w = e.Weight()
-							}
-							ecS += w
-						}
-					}
-				}
-			}
-		}
-
+		ecS := commEdgesToS[c]
 		if ecS >= l.gamma*float64(cSize*(S_size-cSize)) {
 			T_list = append(T_list, c)
 		}
@@ -373,8 +370,9 @@ func (l *Leiden[K]) refineNode(refinedPartition map[K]int, S []K, S_set map[K]st
 		probabilities := make([]float64, len(T_list))
 		sumProbabilities := 0.0
 
-		vEdgesToC := make(map[int]float64)
+		clear(vEdgesToC)
 		vVertex := l.graph.GetVertexByID(v)
+		isWeighted := l.graph.IsWeighted()
 		if vVertex != nil {
 			for _, e := range l.graph.EdgesOf(vVertex) {
 				neighbor := e.OtherVertex(v)
@@ -384,7 +382,7 @@ func (l *Leiden[K]) refineNode(refinedPartition map[K]int, S []K, S_set map[K]st
 				}
 				if _, ok := S_set[nLabel]; ok {
 					w := 1.0
-					if l.graph.IsWeighted() {
+					if isWeighted {
 						w = e.Weight()
 					}
 					vEdgesToC[refinedPartition[nLabel]] += w
@@ -409,6 +407,17 @@ func (l *Leiden[K]) refineNode(refinedPartition map[K]int, S []K, S_set map[K]st
 				cumSum += probabilities[i]
 				if randVal <= cumSum {
 					refinedPartition[v] = c
+
+					refinedCommNodeCount[currentRefinedComm]--
+					refinedCommNodeCount[c]++
+
+					refinedCommSize[c] += vSize
+					delete(refinedCommSize, currentRefinedComm)
+
+					weight_v_c := vEdgesToC[c]
+					commEdgesToS[c] = commEdgesToS[c] + commEdgesToS[currentRefinedComm] - 2*weight_v_c
+					delete(commEdgesToS, currentRefinedComm)
+
 					break
 				}
 			}
@@ -438,37 +447,36 @@ func (l *Leiden[K]) aggregateGraph(refinedPartition map[K]int, partition map[K]i
 		newGraph.AddVertexByLabel(aggregateID, gograph.WithVertexWeight(size))
 	}
 
+	isWeighted := l.graph.IsWeighted()
 	edgeMap := make(map[int]map[int]float64)
-	for _, uVertex := range l.graph.GetAllVertices() {
-		u := uVertex.Label()
+	for _, e := range l.graph.AllEdges() {
+		u := e.Source().Label()
+		v := e.Destination().Label()
 		aggregateU := aggregateMap[refinedPartition[u]]
-		if edgeMap[aggregateU] == nil {
-			edgeMap[aggregateU] = make(map[int]float64)
-		}
-		for _, e := range l.graph.EdgesOf(uVertex) {
-			neighbor := e.OtherVertex(u)
-			v := neighbor.Label()
-			aggregateV := aggregateMap[refinedPartition[v]]
-			if aggregateU != aggregateV {
-				w := 1.0
-				if l.graph.IsWeighted() {
-					w = e.Weight()
-				}
-				edgeMap[aggregateU][aggregateV] += w
+		aggregateV := aggregateMap[refinedPartition[v]]
+		if aggregateU != aggregateV {
+			w := 1.0
+			if isWeighted {
+				w = e.Weight()
 			}
+			if aggregateU > aggregateV {
+				aggregateU, aggregateV = aggregateV, aggregateU
+			}
+			if edgeMap[aggregateU] == nil {
+				edgeMap[aggregateU] = make(map[int]float64)
+			}
+			edgeMap[aggregateU][aggregateV] += w
 		}
 	}
 
 	// Add edges to the new graph
 	for aggregateU, neighbors := range edgeMap {
 		for aggregateV, weight := range neighbors {
-			if aggregateU < aggregateV {
-				_, _ = newGraph.AddEdge(
-					newGraph.GetVertexByID(aggregateU),
-					newGraph.GetVertexByID(aggregateV),
-					gograph.WithEdgeWeight(weight),
-				)
-			}
+			_, _ = newGraph.AddEdge(
+				newGraph.GetVertexByID(aggregateU),
+				newGraph.GetVertexByID(aggregateV),
+				gograph.WithEdgeWeight(weight),
+			)
 		}
 	}
 
