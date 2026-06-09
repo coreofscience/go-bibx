@@ -75,7 +75,7 @@ func (a *Article) Merge(other *Article) *Article {
 	merged := &Article{
 		Label:      utils.KeepLongestString(a.Label, other.Label),
 		IDs:        a.IDs.Union(other.IDs),
-		Authors:    keepLongestSlice(a.Authors, other.Authors),
+		Authors:    utils.KeepLongestSlice(a.Authors, other.Authors),
 		Year:       utils.Keep(a.Year, other.Year),
 		Title:      utils.Keep(a.Title, other.Title),
 		Journal:    utils.Keep(a.Journal, other.Journal),
@@ -86,7 +86,7 @@ func (a *Article) Merge(other *Article) *Article {
 		Permalink:  utils.Keep(a.Permalink, other.Permalink),
 		TimesCited: utils.Keep(a.TimesCited, other.TimesCited),
 		Keywords:   a.Keywords.Union(other.Keywords),
-		References: keepLongestSlice(a.References, other.References),
+		References: utils.KeepLongestSlice(a.References, other.References),
 		Rich:       a.Rich || other.Rich,
 	}
 	return merged
@@ -241,11 +241,4 @@ func (a *Article) SetSimpleLabel() *Article {
 		a.Label = *simpleLabel
 	}
 	return a
-}
-
-func keepLongestSlice[T any](a, b []T) []T {
-	if len(a) >= len(b) {
-		return a
-	}
-	return b
 }

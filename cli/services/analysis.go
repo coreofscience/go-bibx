@@ -49,12 +49,12 @@ func NewOpenAlexAnalysisServiceFromConfig(config *OpenAlexAnalysisServiceConfig)
 		return nil, fmt.Errorf("failed to create embedding client: %w", err)
 	}
 	ttr := texter.NewDefaultArticleTexter()
-	return &OpenAlexAnalysisService{
-		openalexClient:  openalexClient,
-		analysisRepo:    analysisRepo,
-		embeddingClient: embeddingClient,
-		texter:          ttr,
-	}, nil
+	return NewOpenAlexAnalysisService(
+		openalexClient,
+		analysisRepo,
+		embeddingClient,
+		ttr,
+	), nil
 }
 
 func (s *OpenAlexAnalysisService) Store(
