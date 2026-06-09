@@ -1,12 +1,10 @@
 package algorithms_test
 
 import (
-	"github.com/coreofscience/go-bibx/algorithms"
-)
-
-import (
+	"math/rand"
 	"testing"
 
+	"github.com/coreofscience/go-bibx/algorithms"
 	"github.com/hmdsefi/gograph"
 	"github.com/stretchr/testify/assert"
 )
@@ -97,4 +95,29 @@ func TestLeiden_SingleNode(t *testing.T) {
 	assert.NotNil(t, partition)
 	assert.Equal(t, 1, len(partition))
 	assert.Equal(t, 0, partition["A"])
+}
+
+func BenchmarkLeiden(b *testing.B) {
+	g := gograph.New[int]()
+	numNodes := 250
+	numEdges := 1500
+
+	for i := 0; i < numNodes; i++ {
+		g.AddVertexByLabel(i)
+	}
+
+	r := rand.New(rand.NewSource(42))
+	for i := 0; i < numEdges; i++ {
+		u := r.Intn(numNodes)
+		v := r.Intn(numNodes)
+		if u != v {
+			_, _ = g.AddEdge(g.GetVertexByID(u), g.GetVertexByID(v))
+		}
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		leiden := algorithms.NewLeiden(g)
+		_ = leiden.Run()
+	}
 }
