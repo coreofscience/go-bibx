@@ -30,6 +30,15 @@ func New() *cli.Command {
 				Aliases: []string{"l"},
 				Usage:   "number of initial results to fetch",
 				Value:   200,
+				Validator: func(value int) error {
+					if value < 0 {
+						return fmt.Errorf("limit must be greater than or equal to 0")
+					}
+					if value > 1000 {
+						return fmt.Errorf("limit must be less than or equal to 1000")
+					}
+					return nil
+				},
 			},
 		},
 		Arguments: []cli.Argument{
@@ -60,7 +69,10 @@ func New() *cli.Command {
 			analysisServiceConfig := &services.OpenAlexAnalysisServiceConfig{
 				AnalysisPath: analysisPath,
 			}
-			analysisService := services.NewOpenAlexAnalysisServiceFromConfig(analysisServiceConfig)
+			analysisService, err := services.NewOpenAlexAnalysisServiceFromConfig(analysisServiceConfig)
+			if err != nil {
+				return fmt.Errorf("failed to create analysis service: %w", err)
+			}
 			searchServiceConfig := &services.SemanticSearchServiceConfig{
 				AnalysisPath: analysisPath,
 				SearchPath:   searchPath,
@@ -75,9 +87,6 @@ func New() *cli.Command {
 				return errors.New("query argument is required")
 			}
 			limit := c.Int("limit")
-			if limit <= 0 {
-				return errors.New("limit must be greater than 0")
-			}
 
 			slog.InfoContext(ctx, "starting inquiry", "query", query, "limit", limit)
 			if err := analysisService.Store(ctx, query, limit); err != nil {

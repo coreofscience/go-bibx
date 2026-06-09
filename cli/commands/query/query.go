@@ -71,7 +71,10 @@ func New() *cli.Command {
 			analysisServiceConfig := &services.OpenAlexAnalysisServiceConfig{
 				AnalysisPath: analysisPath,
 			}
-			service := services.NewOpenAlexAnalysisServiceFromConfig(analysisServiceConfig)
+			service, err := services.NewOpenAlexAnalysisServiceFromConfig(analysisServiceConfig)
+			if err != nil {
+				return fmt.Errorf("failed to create analysis service: %w", err)
+			}
 			renderer, err := renderers.NewResultRendererWithFormat(c.String("format"))
 			if err != nil {
 				return fmt.Errorf("failed to create renderer: %w", err)

@@ -99,7 +99,11 @@ func (s *SemanticSearchService) Store(ctx context.Context) error {
 	return nil
 }
 
-func (s *SemanticSearchService) Search(ctx context.Context, query string, limit int) (*models.Analysis, error) {
+func (s *SemanticSearchService) Search(
+	ctx context.Context,
+	query string,
+	limit int,
+) (*models.Analysis, error) {
 	vec, err := s.embeddingsClient.Embed(ctx, s.texter.CleanText(query))
 	if err != nil {
 		return nil, fmt.Errorf("failed to embed query: %w", err)
