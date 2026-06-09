@@ -4,25 +4,36 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 
 	"github.com/coreofscience/go-bibx/algorithms"
+	"github.com/coreofscience/go-bibx/cli/clients/embeddings"
 	"github.com/coreofscience/go-bibx/cli/clients/openalex"
 	"github.com/coreofscience/go-bibx/cli/repos"
+	"github.com/coreofscience/go-bibx/internal/texter"
+	"github.com/coreofscience/go-bibx/internal/utils"
+	"github.com/coreofscience/go-bibx/internal/vector"
 	"github.com/coreofscience/go-bibx/models"
 )
 
 type OpenAlexAnalysisService struct {
-	openalexClient openalex.Client
-	analysisRepo   repos.AnalysisRepo
+	openalexClient  openalex.Client
+	analysisRepo    repos.AnalysisRepo
+	embeddingClient embeddings.Client
+	texter          texter.ArticleTexter
 }
 
 func NewOpenAlexAnalysisService(
 	openalexClient openalex.Client,
 	analysisRepo repos.AnalysisRepo,
+	embeddingClient embeddings.Client,
+	ttr texter.ArticleTexter,
 ) *OpenAlexAnalysisService {
 	return &OpenAlexAnalysisService{
-		openalexClient: openalexClient,
-		analysisRepo:   analysisRepo,
+		openalexClient:  openalexClient,
+		analysisRepo:    analysisRepo,
+		embeddingClient: embeddingClient,
+		texter:          ttr,
 	}
 }
 
@@ -30,13 +41,20 @@ type OpenAlexAnalysisServiceConfig struct {
 	AnalysisPath string
 }
 
-func NewOpenAlexAnalysisServiceFromConfig(config *OpenAlexAnalysisServiceConfig) *OpenAlexAnalysisService {
+func NewOpenAlexAnalysisServiceFromConfig(config *OpenAlexAnalysisServiceConfig) (*OpenAlexAnalysisService, error) {
 	openalexClient := openalex.NewRestyClient()
 	analysisRepo := repos.NewFileAnalysisRepo(config.AnalysisPath)
-	return &OpenAlexAnalysisService{
-		openalexClient: openalexClient,
-		analysisRepo:   analysisRepo,
+	embeddingClient, err := embeddings.NewOllamaClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create embedding client: %w", err)
 	}
+	ttr := texter.NewDefaultArticleTexter()
+	return NewOpenAlexAnalysisService(
+		openalexClient,
+		analysisRepo,
+		embeddingClient,
+		ttr,
+	), nil
 }
 
 func (s *OpenAlexAnalysisService) Store(
@@ -44,6 +62,7 @@ func (s *OpenAlexAnalysisService) Store(
 	query string,
 	limit int,
 ) error {
+	slog.InfoContext(ctx, "fetching initial articles")
 	works, err := s.openalexClient.ListRecentArticles(ctx, query, limit)
 	if err != nil {
 		return fmt.Errorf("failed to list recent articles: %w", err)
@@ -52,6 +71,8 @@ func (s *OpenAlexAnalysisService) Store(
 	for i, w := range works {
 		articles[i] = openalex.WorkToArticle(w)
 	}
+
+	slog.InfoContext(ctx, "creating and cleaning collection")
 	collection, err := models.NewCollection(articles)
 	if err != nil {
 		return fmt.Errorf("failed to create collection: %w", err)
@@ -60,6 +81,7 @@ func (s *OpenAlexAnalysisService) Store(
 	if err != nil {
 		return fmt.Errorf("failed to clean collection: %w", err)
 	}
+	slog.InfoContext(ctx, "enriching collection")
 	collection, err = s.enrich(ctx, collection)
 	if err != nil {
 		return fmt.Errorf("failed to enrich collection: %w", err)
@@ -69,6 +91,8 @@ func (s *OpenAlexAnalysisService) Store(
 	if err != nil {
 		return fmt.Errorf("failed to create citation graph: %w", err)
 	}
+
+	slog.InfoContext(ctx, "applying sap algorithm")
 	sap, err := algorithms.NewSapAlgorithm(graph)
 	if err != nil {
 		return fmt.Errorf("failed to create sap algorithm: %w", err)
@@ -78,14 +102,27 @@ func (s *OpenAlexAnalysisService) Store(
 		return fmt.Errorf("failed to run sap algorithm: %w", err)
 	}
 
+	slog.InfoContext(ctx, "building text embeddings")
+	texts := make([]string, collection.Len())
+	collectionArticles := slices.Collect(collection.All())
+	for _, article := range collectionArticles {
+		texts = append(texts, s.texter.ExtractText(article))
+	}
+	vectors, err := s.embeddingClient.EmbedMany(ctx, texts)
+	if err != nil {
+		return fmt.Errorf("failed to embed articles: %w", err)
+	}
+
 	nodes := make([]*models.Node, 0, collection.Len())
-	for article := range collection.All() {
+	embeddingsByKey := make(map[string][]float32, collection.Len())
+	for article, embedding := range utils.Zip(collectionArticles, vectors) {
 		articleKey := article.Key()
 		if articleKey == nil {
 			slog.WarnContext(ctx, "article without key, skipping", "label", article.Label)
 			continue
 		}
 		key := *articleKey
+		embeddingsByKey[key] = embedding
 		nodes = append(nodes, &models.Node{
 			ID:        key,
 			Article:   article,
@@ -93,19 +130,32 @@ func (s *OpenAlexAnalysisService) Store(
 			Rootness:  result.Rootness[key],
 			Trunkness: result.Trunkness[key],
 			Leafness:  result.Leafness[key],
+			Embedding: embedding,
 		})
 	}
 	links := make([]*models.Link, 0, collection.Len())
 	for _, edge := range graph.AllEdges() {
+		sourceKey := edge.Source().Label()
+		targetKey := edge.Destination().Label()
+		sourceEmbedding, hasSourceEmbed := embeddingsByKey[sourceKey]
+		targetEmbedding, hasTargetEmbed := embeddingsByKey[targetKey]
+		// If we have no source or target embedding, consider them unrelated
+		weight := float32(2)
+		if hasSourceEmbed && hasTargetEmbed {
+			weight = vector.CosineDistance(sourceEmbedding, targetEmbedding)
+		}
 		links = append(links, &models.Link{
 			Source: edge.Source().Label(),
 			Target: edge.Destination().Label(),
+			Weight: float64(weight),
 		})
 	}
 	analysis := &models.Analysis{
 		Nodes: nodes,
 		Links: links,
 	}
+
+	slog.InfoContext(ctx, "storing analysis")
 	err = s.analysisRepo.Store(ctx, analysis)
 	if err != nil {
 		return fmt.Errorf("failed to store analysis: %w", err)
@@ -127,6 +177,46 @@ func (s *OpenAlexAnalysisService) Query(
 		return nil, fmt.Errorf("failed to query analysis: %w", err)
 	}
 	return results, nil
+}
+
+func (s *OpenAlexAnalysisService) Search(
+	ctx context.Context,
+	query string,
+	limit int,
+) (*models.Analysis, error) {
+	vec, err := s.embeddingClient.Embed(ctx, s.texter.CleanText(query))
+	if err != nil {
+		return nil, fmt.Errorf("failed to embed query: %w", err)
+	}
+	analysis, err := s.analysisRepo.Load(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load analysis: %w", err)
+	}
+	citationGraph, err := analysis.CitationGraph()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get citation graph: %w", err)
+	}
+	pseudoStainer, err := algorithms.NewPseudoSteiner(citationGraph)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create pseudo stainer: %w", err)
+	}
+	searchResults, err := analysis.Search(vec, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search analysis: %w", err)
+	}
+	terminals := make([]string, 0, len(searchResults))
+	for _, result := range searchResults {
+		terminals = append(terminals, result.ID)
+	}
+	relationGraph, err := pseudoStainer.Run(terminals)
+	if err != nil {
+		return nil, fmt.Errorf("failed to run pseudo stainer: %w", err)
+	}
+	ids := make([]string, 0, relationGraph.Order())
+	for _, vertex := range relationGraph.GetAllVertices() {
+		ids = append(ids, vertex.Label())
+	}
+	return analysis.Keep(ids), nil
 }
 
 func (s *OpenAlexAnalysisService) enrich(

@@ -11,6 +11,7 @@ import (
 
 	"github.com/coreofscience/go-bibx/internal/collections"
 	"github.com/coreofscience/go-bibx/internal/utils"
+	"github.com/coreofscience/go-bibx/internal/vector"
 	"github.com/hmdsefi/gograph"
 )
 
@@ -28,12 +29,13 @@ var (
 )
 
 type Node struct {
-	ID        string   `json:"id"`
-	Category  Category `json:"category"`
-	Rootness  float64  `json:"rootness"`
-	Trunkness float64  `json:"trunkness"`
-	Leafness  float64  `json:"leafness"`
-	Article   *Article `json:"article"`
+	ID        string    `json:"id"`
+	Category  Category  `json:"category"`
+	Rootness  float64   `json:"rootness"`
+	Trunkness float64   `json:"trunkness"`
+	Leafness  float64   `json:"leafness"`
+	Embedding []float32 `json:"embedding"`
+	Article   *Article  `json:"article"`
 }
 
 type NodeMetadata struct {
@@ -144,8 +146,9 @@ type Result struct {
 }
 
 type Link struct {
-	Source string `json:"source"`
-	Target string `json:"target"`
+	Source string  `json:"source"`
+	Target string  `json:"target"`
+	Weight float64 `json:"weight"`
 }
 
 type Analysis struct {
@@ -154,11 +157,19 @@ type Analysis struct {
 }
 
 func (a *Analysis) CitationGraph() (gograph.Graph[string], error) {
-	graph := gograph.New[string](gograph.Directed(), gograph.Acyclic())
+	graph := gograph.New[string](
+		gograph.Directed(),
+		gograph.Acyclic(),
+		gograph.Weighted(),
+	)
+	for _, node := range a.Nodes {
+		graph.AddVertexByLabel(node.ID)
+	}
 	for _, link := range a.Links {
 		_, err := graph.AddEdge(
 			gograph.NewVertex(link.Source),
 			gograph.NewVertex(link.Target),
+			gograph.WithEdgeWeight(link.Weight),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to add edge: %w", err)
@@ -222,4 +233,41 @@ func (a *Analysis) Query(category string, top int) ([]*Result, error) {
 		results = append(results, node)
 	}
 	return results, nil
+}
+
+func (a *Analysis) Search(vec []float32, limit int) ([]*Node, error) {
+	if len(a.Nodes) == 0 {
+		return nil, nil
+	}
+	if len(vec) != len(a.Nodes[0].Embedding) {
+		return nil, fmt.Errorf(
+			"invalid vector length: expected %d, got %d",
+			len(a.Nodes[0].Embedding),
+			len(vec),
+		)
+	}
+	type result struct {
+		node  *Node
+		score float32
+	}
+	results := make([]result, 0, len(a.Nodes))
+	for _, node := range a.Nodes {
+		score := vector.CosineDistance(node.Embedding, vec)
+		if score == 0 {
+			continue
+		}
+		results = append(results, result{
+			node:  node,
+			score: score,
+		})
+	}
+	slices.SortFunc(results, func(a, b result) int {
+		return cmp.Compare(a.score, b.score)
+	})
+	limit = min(limit, len(results))
+	topResults := make([]*Node, 0, limit)
+	for _, result := range results[:limit] {
+		topResults = append(topResults, result.node)
+	}
+	return topResults, nil
 }

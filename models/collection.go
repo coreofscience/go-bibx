@@ -1,7 +1,6 @@
 package models
 
 import (
-	"encoding/json"
 	"fmt"
 	"iter"
 
@@ -73,22 +72,6 @@ func (c *Collection) All() iter.Seq[*Article] {
 	}
 }
 
-// Merge merges another collection into the current collection.
-func (c *Collection) Merge(other *Collection) (*Collection, error) {
-	if c == nil {
-		return other, nil
-	}
-	if other == nil {
-		return c, nil
-	}
-	mergedArticles := append(c.articles, other.articles...)
-	mergedArticles, err := mergedArticles.Deduplicate()
-	if err != nil {
-		return nil, fmt.Errorf("failed to deduplicate merged articles: %w", err)
-	}
-	return &Collection{articles: mergedArticles}, nil
-}
-
 func (c *Collection) Keep(labels ...string) (*Collection, error) {
 	toKeep := collections.NewSet(labels...)
 	newArticles := make([]*Article, 0, len(c.articles))
@@ -100,25 +83,6 @@ func (c *Collection) Keep(labels ...string) (*Collection, error) {
 		newReferences := make([]*Article, 0, len(newArticle.References))
 		for _, ref := range newArticle.References {
 			newReferences = append(newReferences, ref.KeepReferences(labels...))
-		}
-		newArticle.References = newReferences
-		newArticles = append(newArticles, newArticle)
-	}
-	return NewCollection(newArticles)
-}
-
-// Purge removes articles from the collection by their IDs.
-func (c *Collection) Purge(ids ...string) (*Collection, error) {
-	toRemove := collections.NewSet(ids...)
-	newArticles := make([]*Article, 0, len(c.articles))
-	for _, article := range c.articles {
-		if article.IDs.Intersect(toRemove).Len() > 0 {
-			continue
-		}
-		newArticle := article.PurgeReferences(ids...)
-		newReferences := make([]*Article, 0, len(newArticle.References))
-		for _, ref := range newArticle.References {
-			newReferences = append(newReferences, ref.PurgeReferences(ids...))
 		}
 		newArticle.References = newReferences
 		newArticles = append(newArticles, newArticle)
@@ -177,13 +141,4 @@ func (c *Collection) Clean() (*Collection, error) {
 		toKeep = append(toKeep, vertex.Label())
 	}
 	return c.Keep(toKeep...)
-}
-
-// MarshalJSON implements the json.Marshaler interface for Collection.
-func (c *Collection) MarshalJSON() ([]byte, error) {
-	bytes, err := json.Marshal(c.articles)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal Collection: %w", err)
-	}
-	return bytes, nil
 }

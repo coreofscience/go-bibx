@@ -46,6 +46,12 @@ func New() *cli.Command {
 				Aliases: []string{"l"},
 				Usage:   "number of results to return",
 				Value:   5,
+				Validator: func(value int) error {
+					if value < 1 {
+						return fmt.Errorf("limit must be greater than 0")
+					}
+					return nil
+				},
 			},
 			&cli.StringFlag{
 				Name:    "format",
@@ -71,7 +77,10 @@ func New() *cli.Command {
 			analysisServiceConfig := &services.OpenAlexAnalysisServiceConfig{
 				AnalysisPath: analysisPath,
 			}
-			service := services.NewOpenAlexAnalysisServiceFromConfig(analysisServiceConfig)
+			service, err := services.NewOpenAlexAnalysisServiceFromConfig(analysisServiceConfig)
+			if err != nil {
+				return fmt.Errorf("failed to create analysis service: %w", err)
+			}
 			renderer, err := renderers.NewResultRendererWithFormat(c.String("format"))
 			if err != nil {
 				return fmt.Errorf("failed to create renderer: %w", err)
