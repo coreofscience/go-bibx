@@ -33,6 +33,12 @@ func New() *cli.Command {
 				Aliases: []string{"l"},
 				Usage:   "number of nodes to start the graph algorithm with",
 				Value:   10,
+				Validator: func(value int) error {
+					if value < 0 {
+						return fmt.Errorf("limit must be greater than or equal to 0")
+					}
+					return nil
+				},
 			},
 			&cli.StringFlag{
 				Name:    "format",
@@ -76,17 +82,13 @@ func New() *cli.Command {
 			if !ok {
 				return fmt.Errorf("analysis path not set")
 			}
-			searchPath, ok := utils.GetSearchPath(ctx)
-			if !ok {
-				return fmt.Errorf("search path not set")
-			}
-			searchConfig := &services.SemanticSearchServiceConfig{
-				AnalysisPath: analysisPath,
-				SearchPath:   searchPath,
-			}
-			searchService, err := services.NewSemanticSearchServiceFromConfig(searchConfig)
+			analysisService, err := services.NewOpenAlexAnalysisServiceFromConfig(
+				&services.OpenAlexAnalysisServiceConfig{
+					AnalysisPath: analysisPath,
+				},
+			)
 			if err != nil {
-				return fmt.Errorf("failed to create search service: %w", err)
+				return fmt.Errorf("failed to create analysis service: %w", err)
 			}
 			renderer, err := renderers.NewAnalysisRendererWithFormat(c.String("format"))
 			if err != nil {
@@ -96,9 +98,12 @@ func New() *cli.Command {
 			if query == "" {
 				return errors.New("query is required")
 			}
-			analysis, err := searchService.Search(ctx, query, int(c.Int("limit")))
+			analysis, err := analysisService.Search(ctx, query, c.Int("limit"))
 			if err != nil {
 				return fmt.Errorf("failed to perform search: %w", err)
+			}
+			if err := renderer.RenderAnalysis(os.Stdout, analysis); err != nil {
+				return fmt.Errorf("failed to render results: %w", err)
 			}
 			if c.Bool("view") {
 				mux := viewer.New(analysis)
@@ -107,9 +112,6 @@ func New() *cli.Command {
 				if err := http.ListenAndServe(fmt.Sprintf(":%d", port), mux); err != nil {
 					return fmt.Errorf("failed to start server: %w", err)
 				}
-			}
-			if err := renderer.RenderAnalysis(os.Stdout, analysis); err != nil {
-				return fmt.Errorf("failed to render results: %w", err)
 			}
 			return nil
 		},

@@ -62,6 +62,7 @@ func (s *OpenAlexAnalysisService) Store(
 	query string,
 	limit int,
 ) error {
+	slog.InfoContext(ctx, "fetching initial articles")
 	works, err := s.openalexClient.ListRecentArticles(ctx, query, limit)
 	if err != nil {
 		return fmt.Errorf("failed to list recent articles: %w", err)
@@ -70,6 +71,8 @@ func (s *OpenAlexAnalysisService) Store(
 	for i, w := range works {
 		articles[i] = openalex.WorkToArticle(w)
 	}
+
+	slog.InfoContext(ctx, "creating and cleaning collection")
 	collection, err := models.NewCollection(articles)
 	if err != nil {
 		return fmt.Errorf("failed to create collection: %w", err)
@@ -78,6 +81,7 @@ func (s *OpenAlexAnalysisService) Store(
 	if err != nil {
 		return fmt.Errorf("failed to clean collection: %w", err)
 	}
+	slog.InfoContext(ctx, "enriching collection")
 	collection, err = s.enrich(ctx, collection)
 	if err != nil {
 		return fmt.Errorf("failed to enrich collection: %w", err)
@@ -87,6 +91,8 @@ func (s *OpenAlexAnalysisService) Store(
 	if err != nil {
 		return fmt.Errorf("failed to create citation graph: %w", err)
 	}
+
+	slog.InfoContext(ctx, "applying sap algorithm")
 	sap, err := algorithms.NewSapAlgorithm(graph)
 	if err != nil {
 		return fmt.Errorf("failed to create sap algorithm: %w", err)
@@ -96,6 +102,7 @@ func (s *OpenAlexAnalysisService) Store(
 		return fmt.Errorf("failed to run sap algorithm: %w", err)
 	}
 
+	slog.InfoContext(ctx, "building text embeddings")
 	texts := make([]string, collection.Len())
 	collectionArticles := slices.Collect(collection.All())
 	for _, article := range collectionArticles {
@@ -147,6 +154,8 @@ func (s *OpenAlexAnalysisService) Store(
 		Nodes: nodes,
 		Links: links,
 	}
+
+	slog.InfoContext(ctx, "storing analysis")
 	err = s.analysisRepo.Store(ctx, analysis)
 	if err != nil {
 		return fmt.Errorf("failed to store analysis: %w", err)

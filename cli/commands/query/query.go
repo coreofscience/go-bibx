@@ -46,6 +46,12 @@ func New() *cli.Command {
 				Aliases: []string{"l"},
 				Usage:   "number of results to return",
 				Value:   5,
+				Validator: func(value int) error {
+					if value < 1 {
+						return fmt.Errorf("limit must be greater than 0")
+					}
+					return nil
+				},
 			},
 			&cli.StringFlag{
 				Name:    "format",

@@ -55,16 +55,9 @@ func New() *cli.Command {
 			if !ok {
 				return fmt.Errorf("analysis path not set")
 			}
-			searchPath, ok := utils.GetSearchPath(ctx)
-			if !ok {
-				return fmt.Errorf("search path not set")
-			}
 			force := c.Bool("force")
 			if _, err := os.Stat(analysisPath); err == nil && !force {
 				return fmt.Errorf("file already exists: %s", analysisPath)
-			}
-			if _, err := os.Stat(searchPath); err == nil && !force {
-				return fmt.Errorf("file already exists: %s", searchPath)
 			}
 			analysisServiceConfig := &services.OpenAlexAnalysisServiceConfig{
 				AnalysisPath: analysisPath,
@@ -73,31 +66,15 @@ func New() *cli.Command {
 			if err != nil {
 				return fmt.Errorf("failed to create analysis service: %w", err)
 			}
-			searchServiceConfig := &services.SemanticSearchServiceConfig{
-				AnalysisPath: analysisPath,
-				SearchPath:   searchPath,
-			}
-			searchService, err := services.NewSemanticSearchServiceFromConfig(searchServiceConfig)
-			if err != nil {
-				return fmt.Errorf("failed to create search service: %w", err)
-			}
-
 			query := c.StringArg("query")
 			if query == "" {
 				return errors.New("query argument is required")
 			}
 			limit := c.Int("limit")
-
 			slog.InfoContext(ctx, "starting inquiry", "query", query, "limit", limit)
 			if err := analysisService.Store(ctx, query, limit); err != nil {
 				return fmt.Errorf("failed to store analysis: %w", err)
 			}
-
-			slog.InfoContext(ctx, "building semantic search index")
-			if err := searchService.Store(ctx); err != nil {
-				return fmt.Errorf("failed to store search results: %w", err)
-			}
-
 			return nil
 		},
 	}

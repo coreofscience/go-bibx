@@ -262,7 +262,7 @@ func (a *Analysis) Search(vec []float32, limit int) ([]*Node, error) {
 		})
 	}
 	slices.SortFunc(results, func(a, b result) int {
-		return cmp.Compare(b.score, a.score)
+		return cmp.Compare(a.score, b.score)
 	})
 	limit = min(limit, len(results))
 	topResults := make([]*Node, 0, limit)
