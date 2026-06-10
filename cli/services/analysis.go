@@ -10,6 +10,7 @@ import (
 	"github.com/coreofscience/go-bibx/cli/clients/embeddings"
 	"github.com/coreofscience/go-bibx/cli/clients/openalex"
 	"github.com/coreofscience/go-bibx/cli/repos"
+	"github.com/coreofscience/go-bibx/internal/graphs"
 	"github.com/coreofscience/go-bibx/internal/texter"
 	"github.com/coreofscience/go-bibx/internal/utils"
 	"github.com/coreofscience/go-bibx/internal/vector"
@@ -153,6 +154,21 @@ func (s *OpenAlexAnalysisService) Store(
 	analysis := &models.Analysis{
 		Nodes: nodes,
 		Links: links,
+	}
+
+	slog.InfoContext(ctx, "applying leiden algorithm")
+	citationGraph, err := analysis.CitationGraph()
+	if err != nil {
+		return fmt.Errorf("failed to get citation graph: %w", err)
+	}
+	undirectedGraph, err := graphs.Undirected(citationGraph)
+	if err != nil {
+		return fmt.Errorf("failed to make graph undirected: %w", err)
+	}
+	invertedGraph := graphs.InvertWeight(undirectedGraph)
+	communities := algorithms.NewLeiden(invertedGraph).Run()
+	for _, node := range analysis.Nodes {
+		node.Community = communities[node.ID]
 	}
 
 	slog.InfoContext(ctx, "storing analysis")
