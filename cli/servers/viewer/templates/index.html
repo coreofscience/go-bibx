@@ -253,34 +253,7 @@
         #selection-content {
             display: flex;
             flex-direction: column;
-            gap: 1rem;
-        }
-
-        .category-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-        }
-
-        .category-group h3 {
-            text-transform: uppercase;
-            color: #666;
-            border-left: 4px solid #ccc;
-            padding-left: 8px;
-            margin: 0;
-        }
-
-        .category-root h3 {
-            border-left-color: var(--color-root);
-        }
-        .category-trunk h3 {
-            border-left-color: var(--color-trunk);
-        }
-        .category-leaf h3 {
-            border-left-color: var(--color-leaf);
-        }
-        .category-none h3 {
-            border-left-color: var(--color-none);
+            gap: 0.5rem;
         }
 
         .node-card {
@@ -289,6 +262,23 @@
             border-radius: 6px;
             font-size: 0.85rem;
             transition: transform 0.1s;
+            border-left: 4px solid var(--color-none);
+        }
+
+        .node-card.category-root {
+            border-left-color: var(--color-root);
+        }
+
+        .node-card.category-trunk {
+            border-left-color: var(--color-trunk);
+        }
+
+        .node-card.category-leaf {
+            border-left-color: var(--color-leaf);
+        }
+
+        .node-card.category-none {
+            border-left-color: var(--color-none);
         }
 
         .node-card strong.article-title {
@@ -469,69 +459,50 @@
                     return;
                 }
 
-                const categories = ["root", "trunk", "leaf", "none"];
-
-                categories.forEach((cat) => {
-                    const catNodes = nodes.filter((d) => d.category === cat);
-                    if (catNodes.length === 0) return;
-
-                    catNodes.sort((a, b) => {
-                        const scoreA = a[cat + "ness"] || 0;
-                        const scoreB = b[cat + "ness"] || 0;
-                        return scoreB - scoreA;
-                    });
-
-                    const group = content
+                nodes.forEach((d) => {
+                    const card = content
                         .append("div")
-                        .attr("class", `category-group category-${cat}`);
+                        .attr("class", `node-card category-${d.category || 'none'}`);
 
-                    group.append("h3").text(cat);
+                    const art = d.article || {};
 
-                    catNodes.forEach((d) => {
-                        const card = group
-                            .append("div")
-                            .attr("class", "node-card");
+                    // Title or ID
+                    card.append("strong")
+                        .attr("class", "article-title")
+                        .text(art.title || d.id);
 
-                        const art = d.article || {};
+                    // Authors and Year
+                    let meta = "";
+                    if (art.authors && art.authors.length > 0) {
+                        meta += art.authors.join(", ");
+                    }
+                    if (art.year) {
+                        meta += meta ? ` (${art.year})` : art.year;
+                    }
+                    if (meta) {
+                        card.append("div")
+                            .attr("class", "article-meta")
+                            .text(meta);
+                    }
 
-                        // Title or ID
-                        card.append("strong")
-                            .attr("class", "article-title")
-                            .text(art.title || d.id);
+                    // Journal
+                    if (art.journal) {
+                        card.append("div")
+                            .attr("class", "article-journal")
+                            .text(art.journal);
+                    }
 
-                        // Authors and Year
-                        let meta = "";
-                        if (art.authors && art.authors.length > 0) {
-                            meta += art.authors.join(", ");
-                        }
-                        if (art.year) {
-                            meta += meta ? ` (${art.year})` : art.year;
-                        }
-                        if (meta) {
-                            card.append("div")
-                                .attr("class", "article-meta")
-                                .text(meta);
-                        }
-
-                        // Journal
-                        if (art.journal) {
-                            card.append("div")
-                                .attr("class", "article-journal")
-                                .text(art.journal);
-                        }
-
-                        // Link (DOI or Permalink)
-                        const link =
-                            art.permalink ||
-                            (art.doi ? `https://doi.org/${art.doi}` : null);
-                        if (link) {
-                            card.append("a")
-                                .attr("href", link)
-                                .attr("target", "_blank")
-                                .attr("class", "article-link")
-                                .text("View Article ↗");
-                        }
-                    });
+                    // Link (DOI or Permalink)
+                    const link =
+                        art.permalink ||
+                        (art.doi ? `https://doi.org/${art.doi}` : null);
+                    if (link) {
+                        card.append("a")
+                            .attr("href", link)
+                            .attr("target", "_blank")
+                            .attr("class", "article-link")
+                            .text("View Article ↗");
+                    }
                 });
             }
 
