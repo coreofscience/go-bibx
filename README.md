@@ -1,13 +1,13 @@
 # go-bibx
 
 `go-bibx` is a high-performance command-line tool designed for researchers to
-perform deep, graph-based bibliographic analysis. Maintained by the [Core of
-Science](https://coreofscience.org/) organization, it serves as a Go
+perform deep, graph-based bibliographic analysis. Maintained by the
+[Core of Science](https://coreofscience.org/) organization, it serves as a Go
 implementation of the **Tree of Science (ToS)** methodology.
 
-The project is built to be both a standalone tool for quick academic inquiry
-and a robust component for larger data pipelines, offering high
-interoperability through its binary distribution.
+The project is built to be both a standalone tool for quick academic inquiry and
+a robust component for larger data pipelines, offering high interoperability
+through its binary distribution.
 
 ## The Tree of Science & SAP Algorithm
 
@@ -19,8 +19,8 @@ metaphor, it categorizes articles into:
 - **Roots**: Foundational, seminal works that established the field.
 - **Trunk**: Core papers that provide the structural backbone and consolidate
   the topic.
-- **Leaves**: Recent, specialized developments representing the current
-  frontier of research.
+- **Leaves**: Recent, specialized developments representing the current frontier
+  of research.
 
 ## Features
 
@@ -33,14 +33,33 @@ metaphor, it categorizes articles into:
   related to a query by leveraging both semantic relevance and their deep
   relationships within the citation graph.
 - **Queries**: Query your collection by relevance in three main categories:
-  - *Rootness*: how seminal the article is.
-  - *Trunkness*: how important is this article within the structure of the
+  - _Rootness_: how seminal the article is.
+  - _Trunkness_: how important is this article within the structure of the
     topic.
-  - *Leafness*: how complete and recent the article is.
+  - _Leafness_: how complete and recent the article is.
+- **Community Detection**: Leverage the Leiden algorithm for robust community
+  structure analysis within citation networks.
 - **Interoperable**: Designed as a standalone CLI that fits perfectly into
   automated workflows.
 
 ## Installation
+
+### Via `go install`
+
+If you have Go installed, you can easily install the latest version of
+`go-bibx`:
+
+```bash
+go install github.com/coreofscience/go-bibx/cmd/bibx@latest
+```
+
+### Pre-built Binaries
+
+You can download pre-built binaries for your operating system and architecture
+from the [GitHub Releases](https://github.com/coreofscience/go-bibx/releases)
+page.
+
+### Build from Source
 
 Ensure you have Go installed, then clone the repository and build the project:
 
@@ -80,7 +99,8 @@ Visualize the generated collection in your browser:
 ./bibx view --file .bibx/collection.json.gz --port 8080
 ```
 
-Open [http://localhost:8080](http://localhost:8080) to explore the interactive graph.
+Open [http://localhost:8080](http://localhost:8080) to explore the interactive
+graph.
 
 ### 3. Search
 
@@ -92,7 +112,8 @@ Perform a semantic search to find relevant articles:
 
 ### 4. Query
 
-Query your collection by relevance in three main categories (e.g., root, trunk, leaf):
+Query your collection by relevance in three main categories (e.g., root, trunk,
+leaf):
 
 ```bash
 ./bibx query --category root --top 10 --format reference
