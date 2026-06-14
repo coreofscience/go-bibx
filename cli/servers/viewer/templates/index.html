@@ -227,6 +227,7 @@
             flex-grow: 1;
             height: 100%;
             background: #fff;
+            position: relative;
         }
 
         #sidebar {
@@ -252,34 +253,7 @@
         #selection-content {
             display: flex;
             flex-direction: column;
-            gap: 1rem;
-        }
-
-        .category-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-        }
-
-        .category-group h3 {
-            text-transform: uppercase;
-            color: #666;
-            border-left: 4px solid #ccc;
-            padding-left: 8px;
-            margin: 0;
-        }
-
-        .category-root h3 {
-            border-left-color: var(--color-root);
-        }
-        .category-trunk h3 {
-            border-left-color: var(--color-trunk);
-        }
-        .category-leaf h3 {
-            border-left-color: var(--color-leaf);
-        }
-        .category-none h3 {
-            border-left-color: var(--color-none);
+            gap: 0.5rem;
         }
 
         .node-card {
@@ -288,6 +262,23 @@
             border-radius: 6px;
             font-size: 0.85rem;
             transition: transform 0.1s;
+            border-left: 4px solid var(--color-none);
+        }
+
+        .node-card.category-root {
+            border-left-color: var(--color-root);
+        }
+
+        .node-card.category-trunk {
+            border-left-color: var(--color-trunk);
+        }
+
+        .node-card.category-leaf {
+            border-left-color: var(--color-leaf);
+        }
+
+        .node-card.category-none {
+            border-left-color: var(--color-none);
         }
 
         .node-card strong.article-title {
@@ -338,7 +329,8 @@
             cursor: pointer;
             transition:
                 stroke 0.2s,
-                stroke-width 0.2s;
+                stroke-width 0.2s,
+                opacity 0.3s;
         }
 
         circle:hover {
@@ -351,6 +343,76 @@
             stroke-width: 3px;
             paint-order: stroke;
             filter: brightness(0.8);
+        }
+
+        line {
+            transition: stroke-opacity 0.3s;
+        }
+
+        #community-selector-container {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 30px;
+            padding: 6px 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 1000;
+            pointer-events: auto;
+            transition: all 0.3s ease;
+        }
+
+        #community-selector-container:hover {
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+        }
+
+        .community-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #495057;
+            padding: 0 8px;
+            border-right: 1px solid #dee2e6;
+            margin-right: 4px;
+            user-select: none;
+        }
+
+        .community-pill {
+            background: #f1f3f5;
+            color: #495057;
+            border: 1px solid #e9ecef;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .community-pill:hover {
+            background: #e9ecef;
+            border-color: #ced4da;
+            transform: translateY(-1px);
+        }
+
+        .community-pill.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.25);
+        }
+
+        .community-pill.active:hover {
+            background: #0056b3;
+            border-color: #0056b3;
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
@@ -369,6 +431,7 @@
         d3.json("/collection.json.gz").then((data) => {
             const selectedNodes = new Set();
             const STORAGE_KEY = "bibx-selected-nodes";
+            let selectedCommunity = null;
 
             function saveSelection() {
                 const ids = Array.from(selectedNodes).map((d) => d.id);
@@ -379,78 +442,67 @@
                 const content = d3.select("#selection-content");
                 content.html("");
 
-                if (selectedNodes.size === 0) {
+                let nodes = Array.from(selectedNodes);
+                if (selectedCommunity !== null) {
+                    nodes = nodes.filter((d) => d.community === selectedCommunity);
+                }
+
+                if (nodes.length === 0) {
                     content
                         .append("p")
                         .attr("class", "placeholder")
-                        .text("Click a node to see details.");
+                        .text(
+                            selectedNodes.size > 0
+                                ? "No selected nodes in this community."
+                                : "Click a node to see details."
+                        );
                     return;
                 }
 
-                const nodes = Array.from(selectedNodes);
-                const categories = ["root", "trunk", "leaf", "none"];
-
-                categories.forEach((cat) => {
-                    const catNodes = nodes.filter((d) => d.category === cat);
-                    if (catNodes.length === 0) return;
-
-                    catNodes.sort((a, b) => {
-                        const scoreA = a[cat + "ness"] || 0;
-                        const scoreB = b[cat + "ness"] || 0;
-                        return scoreB - scoreA;
-                    });
-
-                    const group = content
+                nodes.forEach((d) => {
+                    const card = content
                         .append("div")
-                        .attr("class", `category-group category-${cat}`);
+                        .attr("class", `node-card category-${d.category || 'none'}`);
 
-                    group.append("h3").text(cat);
+                    const art = d.article || {};
 
-                    catNodes.forEach((d) => {
-                        const card = group
-                            .append("div")
-                            .attr("class", "node-card");
+                    // Title or ID
+                    card.append("strong")
+                        .attr("class", "article-title")
+                        .text(art.title || d.id);
 
-                        const art = d.article || {};
+                    // Authors and Year
+                    let meta = "";
+                    if (art.authors && art.authors.length > 0) {
+                        meta += art.authors.join(", ");
+                    }
+                    if (art.year) {
+                        meta += meta ? ` (${art.year})` : art.year;
+                    }
+                    if (meta) {
+                        card.append("div")
+                            .attr("class", "article-meta")
+                            .text(meta);
+                    }
 
-                        // Title or ID
-                        card.append("strong")
-                            .attr("class", "article-title")
-                            .text(art.title || d.id);
+                    // Journal
+                    if (art.journal) {
+                        card.append("div")
+                            .attr("class", "article-journal")
+                            .text(art.journal);
+                    }
 
-                        // Authors and Year
-                        let meta = "";
-                        if (art.authors && art.authors.length > 0) {
-                            meta += art.authors.join(", ");
-                        }
-                        if (art.year) {
-                            meta += meta ? ` (${art.year})` : art.year;
-                        }
-                        if (meta) {
-                            card.append("div")
-                                .attr("class", "article-meta")
-                                .text(meta);
-                        }
-
-                        // Journal
-                        if (art.journal) {
-                            card.append("div")
-                                .attr("class", "article-journal")
-                                .text(art.journal);
-                        }
-
-                        // Link (DOI or Permalink)
-                        const link =
-                            art.permalink ||
-                            (art.doi ? `https://doi.org/${art.doi}` : null);
-                        if (link) {
-                            card.append("a")
-                                .attr("href", link)
-                                .attr("target", "_blank")
-                                .attr("class", "article-link")
-                                .text("View Article ↗");
-                        }
-                    });
+                    // Link (DOI or Permalink)
+                    const link =
+                        art.permalink ||
+                        (art.doi ? `https://doi.org/${art.doi}` : null);
+                    if (link) {
+                        card.append("a")
+                            .attr("href", link)
+                            .attr("target", "_blank")
+                            .attr("class", "article-link")
+                            .text("View Article ↗");
+                    }
                 });
             }
 
@@ -717,6 +769,84 @@
             };
 
             node.call(drag(simulation));
+
+            // Communities selector logic
+            const communities = Array.from(
+                new Set(
+                    data.nodes
+                        .map((d) => d.community)
+                        .filter((c) => c !== undefined && c !== null)
+                )
+            ).sort((a, b) => a - b);
+
+            function updateCommunityFilter() {
+                // Update node visual styles and interactivity
+                node.style("opacity", (d) => {
+                    if (selectedCommunity === null) return 1;
+                    return d.community === selectedCommunity ? 1 : 0.15;
+                }).style("pointer-events", (d) => {
+                    if (selectedCommunity === null) return "auto";
+                    return d.community === selectedCommunity ? "auto" : "none";
+                });
+
+                // Update link visual styles
+                link.style("stroke-opacity", (d) => {
+                    if (selectedCommunity === null) return 0.6;
+                    const srcComm = d.source.community;
+                    const tgtComm = d.target.community;
+                    return srcComm === selectedCommunity && tgtComm === selectedCommunity
+                        ? 0.6
+                        : 0.05;
+                });
+
+                // Update sidebar list
+                updateSidebar();
+            }
+
+            if (communities.length > 1) {
+                const selectorContainer = d3
+                    .select("#container")
+                    .append("div")
+                    .attr("id", "community-selector-container");
+
+                selectorContainer
+                    .append("span")
+                    .attr("class", "community-label")
+                    .text("Communities:");
+
+                // Add "All" pill
+                const allPill = selectorContainer
+                    .append("div")
+                    .attr("class", "community-pill active")
+                    .text("All")
+                    .on("click", function () {
+                        selectedCommunity = null;
+                        d3.selectAll(".community-pill").classed("active", false);
+                        d3.select(this).classed("active", true);
+                        updateCommunityFilter();
+                    });
+
+                // Add a pill for each community
+                communities.forEach((c) => {
+                    selectorContainer
+                        .append("div")
+                        .attr("class", "community-pill")
+                        .text(`Community ${c}`)
+                        .on("click", function () {
+                            if (selectedCommunity === c) {
+                                // Toggle off
+                                selectedCommunity = null;
+                                d3.selectAll(".community-pill").classed("active", false);
+                                allPill.classed("active", true);
+                            } else {
+                                selectedCommunity = c;
+                                d3.selectAll(".community-pill").classed("active", false);
+                                d3.select(this).classed("active", true);
+                            }
+                            updateCommunityFilter();
+                        });
+                });
+            }
 
             let resizeTimeout;
             window.addEventListener("resize", () => {
