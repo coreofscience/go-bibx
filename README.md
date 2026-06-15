@@ -1,5 +1,8 @@
 # go-bibx
 
+[![Go](https://github.com/coreofscience/go-bibx/actions/workflows/go.yml/badge.svg)](https://github.com/coreofscience/go-bibx/actions/workflows/go.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/coreofscience/go-bibx.svg)](https://pkg.go.dev/github.com/coreofscience/go-bibx)
+
 `go-bibx` is a high-performance command-line tool designed for researchers to
 perform deep, graph-based bibliographic analysis. Maintained by the
 [Core of Science](https://coreofscience.org/) organization, it serves as a Go
