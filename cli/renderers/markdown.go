@@ -37,7 +37,7 @@ func NewMarkdownRenderer(format string) (*MarkdownRenderer, error) {
 // RenderResults implements the [Renderer] interface
 func (e *MarkdownRenderer) RenderResults(w io.Writer, results []*models.Result) error {
 	for _, result := range results {
-		if err := e.render(w, result.Article, e.format); err != nil {
+		if err := e.Render(w, result.Article, e.format); err != nil {
 			return err
 		}
 	}
@@ -47,14 +47,14 @@ func (e *MarkdownRenderer) RenderResults(w io.Writer, results []*models.Result) 
 // RenderAnalysis implements [Renderer].
 func (e *MarkdownRenderer) RenderAnalysis(w io.Writer, analysis *models.Analysis) error {
 	for _, node := range analysis.Nodes {
-		if err := e.render(w, node.Article, e.format); err != nil {
+		if err := e.Render(w, node.Article, e.format); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (e *MarkdownRenderer) render(w io.Writer, item any, format string) error {
+func (e *MarkdownRenderer) Render(w io.Writer, item any, format string) error {
 	if err := e.template.ExecuteTemplate(
 		w,
 		fmt.Sprintf("%s.md", format),
