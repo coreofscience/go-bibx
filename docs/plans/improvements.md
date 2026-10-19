@@ -301,6 +301,7 @@ by suggested remediations.
 
 * **Location:** `internal/formats/gzipjson.go:40-65`
 * **Severity:** Medium
+* **Status:** Resolved
 * **Problem:**
   `os.Create(fileName)` creates or immediately truncates the target file. If
   writing or compression fails (disk full, process cancelled via SIGINT,
@@ -517,7 +518,7 @@ Current test coverage across the repository:
 | **P1** | Handle zero norms & clamping in `vector.CosineDistance` | `internal/vector/vector.go` | Quick | ✅ Resolved |
 | **P1** | Break self-loops without deleting whole articles | `internal/graphs/transformation.go` | Moderate | ❌ Won't Fix (As Designed) |
 | **P1** | Clean up scaffold template `AGENTS.md` private paths | `cli/repos/templates/AGENTS.md` | Quick | ✅ Resolved |
-| **P2** | Add atomic writing to `StoreGzipJSON` | `internal/formats/gzipjson.go` | Moderate | Pending |
+| **P2** | Add atomic writing to `StoreGzipJSON` | `internal/formats/gzipjson.go` | Moderate | ✅ Resolved |
 | **P2** | Add graceful HTTP server shutdown & signal handling | `main.go`, `view.go`, `search.go` | Moderate | Pending |
 | **P2** | Fix CLI flag & output discrepancies in `README.md` | `README.md` | Quick | Pending |
 | **P2** | Fix dangling dot in `reference.md` template | `cli/renderers/templates/reference.md` | Quick | Pending |
