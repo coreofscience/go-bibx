@@ -233,6 +233,7 @@ by suggested remediations.
 
 * **Location:** `internal/graphs/transformation.go:174-194`
 * **Severity:** Medium
+* **Status:** Won't Fix (As Designed)
 * **Problem:**
   Academic metadata occasionally contains self-citations ($A \to A$). In `RemoveCycles`:
   ```go
@@ -247,9 +248,11 @@ by suggested remediations.
   `Purge` deletes the **entire vertex** from the graph. If an article cites
   itself, all its legitimate citations and its presence in the collection are
   deleted.
-* **Suggested Fix:**
-  Remove the self-loop edge from the graph rather than purging the vertex and
-  article record.
+* **Resolution:**
+  Closed as designed. Removing only the self-loop edge from the graph would create
+  an inconsistency between the citation graph and the article's actual reference
+  metadata. Furthermore, `RemoveCycles` uniformly uses vertex deletion (Feedback
+  Vertex Set) for both multi-node cycles and self-loops to guarantee a clean DAG.
 
 ---
 
@@ -510,7 +513,7 @@ Current test coverage across the repository:
 | **P1** | Replace `break` with `continue` / counter in Steiner search | `algorithms/steiner.go` | Moderate | ✅ Resolved |
 | **P1** | Exclude existing terminals in Steiner search | `algorithms/steiner.go` | Moderate | ✅ Resolved |
 | **P1** | Handle zero norms & clamping in `vector.CosineDistance` | `internal/vector/vector.go` | Quick | Pending |
-| **P1** | Break self-loops without deleting whole articles | `internal/graphs/transformation.go` | Moderate | Pending |
+| **P1** | Break self-loops without deleting whole articles | `internal/graphs/transformation.go` | Moderate | ❌ Won't Fix (As Designed) |
 | **P1** | Clean up scaffold template `AGENTS.md` private paths | `cli/repos/templates/AGENTS.md` | Quick | Pending |
 | **P2** | Add atomic writing to `StoreGzipJSON` | `internal/formats/gzipjson.go` | Moderate | Pending |
 | **P2** | Add graceful HTTP server shutdown & signal handling | `main.go`, `view.go`, `search.go` | Moderate | Pending |
