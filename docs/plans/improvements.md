@@ -206,6 +206,7 @@ by suggested remediations.
 
 * **Location:** `internal/vector/vector.go:9-22`
 * **Severity:** Medium
+* **Status:** Resolved
 * **Problem:**
   ```go
   return 1 - (dotProduct / (sqrt(normA) * sqrt(normB)))
@@ -512,7 +513,7 @@ Current test coverage across the repository:
 | **P0** | Fix UnionFind rank increment bug (`u.rank[rootB]++`) | `internal/union/union.go` | Quick | ✅ Resolved |
 | **P1** | Replace `break` with `continue` / counter in Steiner search | `algorithms/steiner.go` | Moderate | ✅ Resolved |
 | **P1** | Exclude existing terminals in Steiner search | `algorithms/steiner.go` | Moderate | ✅ Resolved |
-| **P1** | Handle zero norms & clamping in `vector.CosineDistance` | `internal/vector/vector.go` | Quick | Pending |
+| **P1** | Handle zero norms & clamping in `vector.CosineDistance` | `internal/vector/vector.go` | Quick | ✅ Resolved |
 | **P1** | Break self-loops without deleting whole articles | `internal/graphs/transformation.go` | Moderate | ❌ Won't Fix (As Designed) |
 | **P1** | Clean up scaffold template `AGENTS.md` private paths | `cli/repos/templates/AGENTS.md` | Quick | Pending |
 | **P2** | Add atomic writing to `StoreGzipJSON` | `internal/formats/gzipjson.go` | Moderate | Pending |
