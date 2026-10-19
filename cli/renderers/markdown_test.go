@@ -126,4 +126,3 @@ func TestMarkdownRenderer_ReferenceFormat(t *testing.T) {
 	assert.NotContains(t, outputNoDOI, "\n.\n")
 	assert.Contains(t, outputNoDOI, ", 2024.")
 }
-
