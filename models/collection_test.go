@@ -105,4 +105,3 @@ func TestCollection_Keep_NilKey(t *testing.T) {
 	require.NotNil(t, kept)
 	assert.Equal(t, 1, kept.Len())
 }
-

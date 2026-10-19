@@ -150,4 +150,3 @@ func TestOpenAlexAnalysisService_Store_EmbeddingTextsAllocation(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, searchResults)
 }
-
