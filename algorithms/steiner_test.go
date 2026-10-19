@@ -229,6 +229,46 @@ func TestPseudoSteiner(t *testing.T) {
 		assert.Equal(t, uint32(3), newGraph.Order())
 		assert.Equal(t, uint32(2), newGraph.Size())
 	})
+
+	t.Run("duplicate terminals in input are handled cleanly", func(t *testing.T) {
+		g := gograph.New[string](gograph.Directed(), gograph.Acyclic())
+		vA := gograph.NewVertex("A")
+		vB := gograph.NewVertex("B")
+		_, _ = g.AddEdge(vA, vB)
+
+		pseudoSteiner, err := algorithms.NewPseudoSteiner(g)
+		require.NoError(t, err)
+		assert.NotNil(t, pseudoSteiner)
+
+		newGraph, err := pseudoSteiner.Run([]string{"A", "A", "B", "B"})
+		require.NoError(t, err)
+		assert.NotNil(t, newGraph)
+		assert.Equal(t, uint32(2), newGraph.Order())
+	})
+
+	t.Run("existing terminals are excluded as bridging candidates to avoid infinite loop", func(t *testing.T) {
+		g := gograph.New[string](gograph.Directed(), gograph.Acyclic())
+
+		vT1 := gograph.NewVertex("T1")
+		vT2 := gograph.NewVertex("T2")
+		vT3 := gograph.NewVertex("T3")
+
+		// T1 -> T3 and T2 -> T3
+		// T3 is a common descendant of T1 and T2, but T3 is already a terminal!
+		_, _ = g.AddEdge(vT1, vT3)
+		_, _ = g.AddEdge(vT2, vT3)
+
+		pseudoSteiner, err := algorithms.NewPseudoSteiner(g)
+		require.NoError(t, err)
+		assert.NotNil(t, pseudoSteiner)
+
+		// Terminals include T1, T2, T3
+		newGraph, err := pseudoSteiner.Run([]string{"T1", "T2", "T3"})
+		require.NoError(t, err)
+		assert.NotNil(t, newGraph)
+		// Should contain exactly the 3 terminals without infinite recursion
+		assert.Equal(t, uint32(3), newGraph.Order())
+	})
 }
 
 func TestReverseSlices(t *testing.T) {

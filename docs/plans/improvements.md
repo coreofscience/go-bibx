@@ -189,6 +189,7 @@ by suggested remediations.
 
 * **Location:** `algorithms/steiner.go:122-135` & `algorithms/steiner.go:252-328`
 * **Severity:** Medium
+* **Status:** Resolved
 * **Problem:**
   `findBestDescendant` and `findBestAncestor` do not exclude vertices that are
   already existing terminals. If the algorithm selects an existing terminal as
@@ -507,7 +508,7 @@ Current test coverage across the repository:
 | **P0** | Fix nil pointer dereference in `Collection.Keep` | `models/collection.go` | Quick | ✅ Resolved |
 | **P0** | Fix UnionFind rank increment bug (`u.rank[rootB]++`) | `internal/union/union.go` | Quick | ✅ Resolved |
 | **P1** | Replace `break` with `continue` / counter in Steiner search | `algorithms/steiner.go` | Moderate | ✅ Resolved |
-| **P1** | Exclude existing terminals in Steiner search | `algorithms/steiner.go` | Moderate | Pending |
+| **P1** | Exclude existing terminals in Steiner search | `algorithms/steiner.go` | Moderate | ✅ Resolved |
 | **P1** | Handle zero norms & clamping in `vector.CosineDistance` | `internal/vector/vector.go` | Quick | Pending |
 | **P1** | Break self-loops without deleting whole articles | `internal/graphs/transformation.go` | Moderate | Pending |
 | **P1** | Clean up scaffold template `AGENTS.md` private paths | `cli/repos/templates/AGENTS.md` | Quick | Pending |

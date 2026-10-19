@@ -8,13 +8,14 @@ import (
 	"math"
 	"slices"
 
+	"github.com/coreofscience/go-bibx/internal/collections"
 	"github.com/coreofscience/go-bibx/internal/graphs"
 	"github.com/hmdsefi/gograph"
 	"github.com/hmdsefi/gograph/traverse"
 )
 
 // PseudoSteiner is a struct that represents a pseudo-steiner algorithm.
-type PseudoSteiner[K comparable] struct {
+type PseudoSteiner[K cmp.Ordered] struct {
 	graph                 gograph.Graph[K]
 	topologicalOrder      []*gograph.Vertex[K]
 	topologicalIndex      map[K]int
@@ -24,17 +25,17 @@ type PseudoSteiner[K comparable] struct {
 	maxEffortExceeded     int
 }
 
-type PseudoSteinerOption[K comparable] func(*PseudoSteiner[K])
+type PseudoSteinerOption[K cmp.Ordered] func(*PseudoSteiner[K])
 
 // WithMaxEffort sets the maximum effort for the pseudo-steier algorithm.
-func WithMaxEffort[K comparable](maxEffort float64) PseudoSteinerOption[K] {
+func WithMaxEffort[K cmp.Ordered](maxEffort float64) PseudoSteinerOption[K] {
 	return func(q *PseudoSteiner[K]) {
 		q.maxEffort = maxEffort
 	}
 }
 
 // WithMaxEffortExceeded sets the maximum number of consecutive candidates exceeding maxEffort before aborting search for a pair.
-func WithMaxEffortExceeded[K comparable](maxEffortExceeded int) PseudoSteinerOption[K] {
+func WithMaxEffortExceeded[K cmp.Ordered](maxEffortExceeded int) PseudoSteinerOption[K] {
 	return func(q *PseudoSteiner[K]) {
 		q.maxEffortExceeded = maxEffortExceeded
 	}
@@ -44,7 +45,7 @@ func WithMaxEffortExceeded[K comparable](maxEffortExceeded int) PseudoSteinerOpt
 //
 // It takes linear or amortized O(V + E) time to prepare the pseudo-steiner
 // structure.
-func NewPseudoSteiner[K comparable](graph gograph.Graph[K], opts ...PseudoSteinerOption[K]) (*PseudoSteiner[K], error) {
+func NewPseudoSteiner[K cmp.Ordered](graph gograph.Graph[K], opts ...PseudoSteinerOption[K]) (*PseudoSteiner[K], error) {
 	topologicalIterator, err := traverse.NewTopologicalIterator(graph)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create topological iterator: %w", err)
@@ -91,6 +92,9 @@ func (q *PseudoSteiner[K]) Run(terminals []K) (gograph.Graph[K], error) {
 
 	// Sort the terminals by their topological index.
 	q.sortTopological(terminals)
+	terminals = slices.Compact(terminals)
+
+	terminalSet := collections.NewSet(terminals...)
 
 	// Create a new weighted graph with all the terminals as vertices and their
 	// distances as weights.
@@ -128,7 +132,7 @@ func (q *PseudoSteiner[K]) Run(terminals []K) (gograph.Graph[K], error) {
 	slog.Debug("graph is disconnected, need to bridge", "components", len(components))
 
 	// First, try to find a best descendant.
-	bestDescendant := q.findBestDescendant(components)
+	bestDescendant := q.findBestDescendant(components, terminalSet)
 	if bestDescendant != nil {
 		slog.Debug("found a best descendant", "descendant", *bestDescendant)
 		newTerminals := append(terminals, *bestDescendant)
@@ -136,7 +140,7 @@ func (q *PseudoSteiner[K]) Run(terminals []K) (gograph.Graph[K], error) {
 	}
 
 	// If no best descendant, try to find a best ancestor.
-	bestAncestor := q.findBestAncestor(components)
+	bestAncestor := q.findBestAncestor(components, terminalSet)
 	if bestAncestor != nil {
 		slog.Debug("found a best ancestor", "ancestor", *bestAncestor)
 		newTerminals := append(terminals, *bestAncestor)
@@ -258,7 +262,7 @@ func (q *PseudoSteiner[K]) materialize(mst gograph.Graph[K]) gograph.Graph[K] {
 	return graph
 }
 
-func (q *PseudoSteiner[K]) findBestDescendant(toBridge [][]K) *K {
+func (q *PseudoSteiner[K]) findBestDescendant(toBridge [][]K, terminalSet *collections.Set[K]) *K {
 	bestCost := math.Inf(1)
 
 	// Iterate over all pairs of components to bridge.
@@ -271,6 +275,9 @@ func (q *PseudoSteiner[K]) findBestDescendant(toBridge [][]K) *K {
 			consecutiveExceeded := 0
 			for _, w := range q.topologicalOrder[earliestDescendant+1:] {
 				labelW := w.Label()
+				if terminalSet.Contains(labelW) {
+					continue
+				}
 				distA, _ := q.shortestPath(a, labelW)
 				distB, _ := q.shortestPath(b, labelW)
 				if math.IsInf(distA, 1) || math.IsInf(distB, 1) {
@@ -303,7 +310,7 @@ func (q *PseudoSteiner[K]) findBestDescendant(toBridge [][]K) *K {
 	return candidate
 }
 
-func (q *PseudoSteiner[K]) findBestAncestor(toBridge [][]K) *K {
+func (q *PseudoSteiner[K]) findBestAncestor(toBridge [][]K, terminalSet *collections.Set[K]) *K {
 	bestCost := math.Inf(1)
 
 	// Iterate over all pairs of components to bridge.
@@ -317,6 +324,9 @@ func (q *PseudoSteiner[K]) findBestAncestor(toBridge [][]K) *K {
 			for i := oldestAncestor - 1; i >= 0; i-- {
 				w := q.topologicalOrder[i]
 				labelW := w.Label()
+				if terminalSet.Contains(labelW) {
+					continue
+				}
 				distA, _ := q.shortestPath(labelW, a)
 				distB, _ := q.shortestPath(labelW, b)
 				if math.IsInf(distA, 1) || math.IsInf(distB, 1) {
