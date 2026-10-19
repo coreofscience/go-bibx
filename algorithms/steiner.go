@@ -21,6 +21,7 @@ type PseudoSteiner[K comparable] struct {
 	shortestDistanceCache map[K]map[K]float64
 	shortestPathCache     map[K]map[K][]K
 	maxEffort             float64
+	maxEffortExceeded     int
 }
 
 type PseudoSteinerOption[K comparable] func(*PseudoSteiner[K])
@@ -29,6 +30,13 @@ type PseudoSteinerOption[K comparable] func(*PseudoSteiner[K])
 func WithMaxEffort[K comparable](maxEffort float64) PseudoSteinerOption[K] {
 	return func(q *PseudoSteiner[K]) {
 		q.maxEffort = maxEffort
+	}
+}
+
+// WithMaxEffortExceeded sets the maximum number of consecutive candidates exceeding maxEffort before aborting search for a pair.
+func WithMaxEffortExceeded[K comparable](maxEffortExceeded int) PseudoSteinerOption[K] {
+	return func(q *PseudoSteiner[K]) {
+		q.maxEffortExceeded = maxEffortExceeded
 	}
 }
 
@@ -60,6 +68,7 @@ func NewPseudoSteiner[K comparable](graph gograph.Graph[K], opts ...PseudoSteine
 		shortestDistanceCache: make(map[K]map[K]float64),
 		shortestPathCache:     make(map[K]map[K][]K),
 		maxEffort:             1.5,
+		maxEffortExceeded:     3,
 	}
 	for _, opt := range opts {
 		opt(pseudoSteiner)
@@ -259,6 +268,7 @@ func (q *PseudoSteiner[K]) findBestDescendant(toBridge [][]K) *K {
 			indexA := q.topologicalIndex[a]
 			indexB := q.topologicalIndex[b]
 			earliestDescendant := max(indexA, indexB)
+			consecutiveExceeded := 0
 			for _, w := range q.topologicalOrder[earliestDescendant+1:] {
 				labelW := w.Label()
 				distA, _ := q.shortestPath(a, labelW)
@@ -269,11 +279,17 @@ func (q *PseudoSteiner[K]) findBestDescendant(toBridge [][]K) *K {
 				cost := distA + distB
 				if cost > q.maxEffort {
 					slog.Debug("descendant cost exceeds max effort", "cost", cost, "maxEffort", q.maxEffort)
-					break
+					consecutiveExceeded++
+					if q.maxEffortExceeded > 0 && consecutiveExceeded >= q.maxEffortExceeded {
+						break
+					}
+					continue
 				}
+				consecutiveExceeded = 0
 				if cost < bestCost {
 					bestCost = cost
-					candidate = &labelW
+					cand := labelW
+					candidate = &cand
 				}
 			}
 		}
@@ -297,6 +313,7 @@ func (q *PseudoSteiner[K]) findBestAncestor(toBridge [][]K) *K {
 			indexA := q.topologicalIndex[a]
 			indexB := q.topologicalIndex[b]
 			oldestAncestor := min(indexA, indexB)
+			consecutiveExceeded := 0
 			for i := oldestAncestor - 1; i >= 0; i-- {
 				w := q.topologicalOrder[i]
 				labelW := w.Label()
@@ -308,12 +325,17 @@ func (q *PseudoSteiner[K]) findBestAncestor(toBridge [][]K) *K {
 				cost := distA + distB
 				if cost > q.maxEffort {
 					slog.Debug("ancestor cost exceeds max effort", "cost", cost, "maxEffort", q.maxEffort)
-					break
+					consecutiveExceeded++
+					if q.maxEffortExceeded > 0 && consecutiveExceeded >= q.maxEffortExceeded {
+						break
+					}
+					continue
 				}
+				consecutiveExceeded = 0
 				if cost < bestCost {
 					bestCost = cost
-					label := w.Label()
-					candidate = &label
+					cand := labelW
+					candidate = &cand
 				}
 			}
 		}

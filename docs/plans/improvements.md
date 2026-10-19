@@ -159,6 +159,7 @@ by suggested remediations.
 
 * **Location:** `algorithms/steiner.go:270-273` & `algorithms/steiner.go:309-312`
 * **Severity:** High
+* **Status:** Resolved
 * **Problem:**
   Inside `findBestDescendant` and `findBestAncestor`:
   ```go
@@ -505,7 +506,7 @@ Current test coverage across the repository:
 | **P0** | Remove `score == 0` skip in semantic search | `models/analysis.go` | Quick | ✅ Resolved |
 | **P0** | Fix nil pointer dereference in `Collection.Keep` | `models/collection.go` | Quick | ✅ Resolved |
 | **P0** | Fix UnionFind rank increment bug (`u.rank[rootB]++`) | `internal/union/union.go` | Quick | ✅ Resolved |
-| **P1** | Replace `break` with `continue` / counter in Steiner search | `algorithms/steiner.go` | Moderate | Pending |
+| **P1** | Replace `break` with `continue` / counter in Steiner search | `algorithms/steiner.go` | Moderate | ✅ Resolved |
 | **P1** | Exclude existing terminals in Steiner search | `algorithms/steiner.go` | Moderate | Pending |
 | **P1** | Handle zero norms & clamping in `vector.CosineDistance` | `internal/vector/vector.go` | Quick | Pending |
 | **P1** | Break self-loops without deleting whole articles | `internal/graphs/transformation.go` | Moderate | Pending |
