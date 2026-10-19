@@ -86,3 +86,44 @@ func TestMarkdownRenderer_MarkdownFormat(t *testing.T) {
 	err = renderer.Render(&buf, article, "markdown")
 	assert.NoError(t, err)
 }
+
+func TestMarkdownRenderer_ReferenceFormat(t *testing.T) {
+	year := 2024
+	doi := "10.1234/test"
+	articleWithDOI := &models.Article{
+		Rich:    true,
+		Authors: []string{"Smith, J."},
+		Title:   new("A Study on Citations"),
+		Journal: new("Nature"),
+		Year:    &year,
+		DOI:     &doi,
+	}
+
+	renderer, err := renderers.NewMarkdownRenderer("reference")
+	require.NoError(t, err)
+
+	var buf bytes.Buffer
+	err = renderer.Render(&buf, articleWithDOI, "reference")
+	require.NoError(t, err)
+
+	output := buf.String()
+	assert.NotContains(t, output, "\n.\n")
+	assert.Contains(t, output, "doi: 10.1234/test.")
+
+	// Test without DOI
+	articleWithoutDOI := &models.Article{
+		Rich:    true,
+		Authors: []string{"Doe, A."},
+		Title:   new("Another Study"),
+		Journal: new("Science"),
+		Year:    &year,
+	}
+	buf.Reset()
+	err = renderer.Render(&buf, articleWithoutDOI, "reference")
+	require.NoError(t, err)
+
+	outputNoDOI := buf.String()
+	assert.NotContains(t, outputNoDOI, "\n.\n")
+	assert.Contains(t, outputNoDOI, ", 2024.")
+}
+

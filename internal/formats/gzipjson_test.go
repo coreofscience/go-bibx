@@ -139,4 +139,3 @@ func TestStoreGzipJSON_AtomicFailurePreservesOriginal(t *testing.T) {
 	assert.Len(t, entries, 1)
 	assert.Equal(t, "atomic_test.json.gz", entries[0].Name())
 }
-

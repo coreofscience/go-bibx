@@ -263,6 +263,7 @@ by suggested remediations.
 
 * **Location:** `cli/commands/search/search.go:112`, `cli/commands/view/view.go:40`, `cmd/bibx/main.go:38`
 * **Severity:** Medium
+* **Status:** Resolved
 * **Problem:**
   `http.ListenAndServe(fmt.Sprintf(":%d", port), mux)` is used directly without
   binding to the command `ctx`. In `main.go`, `cmd.Run(context.Background(),
@@ -282,6 +283,7 @@ by suggested remediations.
 
 * **Location:** `cli/servers/viewer/server.go:19-25`
 * **Severity:** Low
+* **Status:** Resolved
 * **Problem:**
   ```go
   w.WriteHeader(http.StatusOK)
@@ -317,6 +319,7 @@ by suggested remediations.
 
 * **Location:** `cli/repos/scaffold.go:76-78`
 * **Severity:** Low
+* **Status:** Resolved
 * **Problem:**
   In the defer block closing `srcFile`:
   ```go
@@ -436,6 +439,7 @@ by suggested remediations.
 ### 3.6 Dangling Period in Markdown Reference Template
 
 * **Location:** `cli/renderers/templates/reference.md:7-8`
+* **Status:** Resolved
 * **Description:**
   ```markdown
   {{- if .DOI }}. doi: {{ .DOI }}{{ end -}}
@@ -451,6 +455,7 @@ by suggested remediations.
 ### 4.1 CLI Documentation Discrepancies in `README.md`
 
 * **Location:** `README.md:94-123`
+* **Status:** Resolved
 * **Issues:**
   1. **File paths:** README states `inquire` generates
      `.bibx/collection.json.gz` and `.bibx/search.json.gz`. In reality, it
@@ -519,8 +524,8 @@ Current test coverage across the repository:
 | **P1** | Break self-loops without deleting whole articles | `internal/graphs/transformation.go` | Moderate | ❌ Won't Fix (As Designed) |
 | **P1** | Clean up scaffold template `AGENTS.md` private paths | `cli/repos/templates/AGENTS.md` | Quick | ✅ Resolved |
 | **P2** | Add atomic writing to `StoreGzipJSON` | `internal/formats/gzipjson.go` | Moderate | ✅ Resolved |
-| **P2** | Add graceful HTTP server shutdown & signal handling | `main.go`, `view.go`, `search.go` | Moderate | Pending |
-| **P2** | Fix CLI flag & output discrepancies in `README.md` | `README.md` | Quick | Pending |
-| **P2** | Fix dangling dot in `reference.md` template | `cli/renderers/templates/reference.md` | Quick | Pending |
+| **P2** | Add graceful HTTP server shutdown & signal handling | `main.go`, `view.go`, `search.go` | Moderate | ✅ Resolved |
+| **P2** | Fix CLI flag & output discrepancies in `README.md` | `README.md` | Quick | ✅ Resolved |
+| **P2** | Fix dangling dot in `reference.md` template | `cli/renderers/templates/reference.md` | Quick | ✅ Resolved |
 | **P3** | Add unit tests for `models/analysis.go`, `vector`, `utils`, `services` | `*_test.go` | Significant | Pending |
 | **P3** | Add `-race` flag to GitHub Actions workflow | `.github/workflows/go.yml` | Quick | Pending |

@@ -91,15 +91,14 @@ file:
 ./bibx inquire "bibliometric analysis" --limit 100 --force
 ```
 
-This will create a collection file at `.bibx/collection.json.gz` and a search
-graph at `.bibx/search.json.gz`.
+This will create an analysis file at `.bibx/analysis.json.gz`.
 
 ### 2. View the collection
 
 Visualize the generated collection in your browser:
 
 ```bash
-./bibx view --file .bibx/collection.json.gz --port 8080
+./bibx view --port 8080
 ```
 
 Open [http://localhost:8080](http://localhost:8080) to explore the interactive
@@ -119,7 +118,7 @@ Query your collection by relevance in three main categories (e.g., root, trunk,
 leaf):
 
 ```bash
-./bibx query --category root --top 10 --format reference
+./bibx query --category root --limit 10 --format reference
 ```
 
 ## Development

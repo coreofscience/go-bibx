@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/coreofscience/go-bibx/cli/commands"
 	"github.com/coreofscience/go-bibx/internal/utils"
@@ -35,7 +38,12 @@ func main() {
 		Commands: commands.New(),
 	}
 	utils.SetDefaultLogger(false)
-	if err := cmd.Run(context.Background(), os.Args); err != nil {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	if err := cmd.Run(ctx, os.Args); err != nil {
+		if errors.Is(err, context.Canceled) {
+			return
+		}
 		slog.Error("command failed", "error", err)
 		os.Exit(1)
 	}
