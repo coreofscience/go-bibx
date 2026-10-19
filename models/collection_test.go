@@ -83,3 +83,26 @@ func TestCollection_Len(t *testing.T) {
 		})
 	}
 }
+
+func TestCollection_Keep_NilKey(t *testing.T) {
+	articles := models.Articles{
+		{
+			Label: "with-id",
+			IDs:   collections.NewSet("id1"),
+		},
+		{
+			Label: "without-id",
+			IDs:   collections.NewSet[string](),
+		},
+	}
+
+	c, err := models.NewCollection(articles)
+	require.NoError(t, err)
+
+	// Keep should not panic when encountering an article with nil Key()
+	kept, err := c.Keep("id1")
+	require.NoError(t, err)
+	require.NotNil(t, kept)
+	assert.Equal(t, 1, kept.Len())
+}
+

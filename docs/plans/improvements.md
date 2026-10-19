@@ -46,6 +46,7 @@ by suggested remediations.
 
 * **Location:** `cli/services/analysis.go:107-120`
 * **Severity:** Critical
+* **Status:** Resolved
 * **Problem:** 
   In `OpenAlexAnalysisService.Store`:
   ```go
@@ -80,6 +81,7 @@ by suggested remediations.
 
 * **Location:** `models/analysis.go:259-262`
 * **Severity:** High
+* **Status:** Resolved
 * **Problem:**
   In `Analysis.Search`:
   ```go
@@ -104,6 +106,7 @@ by suggested remediations.
 
 * **Location:** `models/collection.go:78-81`
 * **Severity:** High
+* **Status:** Resolved
 * **Problem:**
   ```go
   for _, article := range c.articles {
@@ -130,6 +133,7 @@ by suggested remediations.
 
 * **Location:** `internal/union/union.go:49-51`
 * **Severity:** Medium
+* **Status:** Resolved
 * **Problem:**
   In `UnionFind.Union`:
   ```go
@@ -495,20 +499,20 @@ Current test coverage across the repository:
 
 ## Recommended Prioritized Roadmap
 
-| Priority | Task | Affected Files | Effort |
-| :--- | :--- | :--- | :--- |
-| **P0** | Fix `make([]string, 0, len)` allocation in embedding service | `cli/services/analysis.go` | Quick |
-| **P0** | Remove `score == 0` skip in semantic search | `models/analysis.go` | Quick |
-| **P0** | Fix nil pointer dereference in `Collection.Keep` | `models/collection.go` | Quick |
-| **P0** | Fix UnionFind rank increment bug (`u.rank[rootB]++`) | `internal/union/union.go` | Quick |
-| **P1** | Replace `break` with `continue` / counter in Steiner search | `algorithms/steiner.go` | Moderate |
-| **P1** | Exclude existing terminals in Steiner search | `algorithms/steiner.go` | Moderate |
-| **P1** | Handle zero norms & clamping in `vector.CosineDistance` | `internal/vector/vector.go` | Quick |
-| **P1** | Break self-loops without deleting whole articles | `internal/graphs/transformation.go` | Moderate |
-| **P1** | Clean up scaffold template `AGENTS.md` private paths | `cli/repos/templates/AGENTS.md` | Quick |
-| **P2** | Add atomic writing to `StoreGzipJSON` | `internal/formats/gzipjson.go` | Moderate |
-| **P2** | Add graceful HTTP server shutdown & signal handling | `main.go`, `view.go`, `search.go` | Moderate |
-| **P2** | Fix CLI flag & output discrepancies in `README.md` | `README.md` | Quick |
-| **P2** | Fix dangling dot in `reference.md` template | `cli/renderers/templates/reference.md` | Quick |
-| **P3** | Add unit tests for `models/analysis.go`, `vector`, `utils`, `services` | `*_test.go` | Significant |
-| **P3** | Add `-race` flag to GitHub Actions workflow | `.github/workflows/go.yml` | Quick |
+| Priority | Task | Affected Files | Effort | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **P0** | Fix `make([]string, 0, len)` allocation in embedding service | `cli/services/analysis.go` | Quick | ✅ Resolved |
+| **P0** | Remove `score == 0` skip in semantic search | `models/analysis.go` | Quick | ✅ Resolved |
+| **P0** | Fix nil pointer dereference in `Collection.Keep` | `models/collection.go` | Quick | ✅ Resolved |
+| **P0** | Fix UnionFind rank increment bug (`u.rank[rootB]++`) | `internal/union/union.go` | Quick | ✅ Resolved |
+| **P1** | Replace `break` with `continue` / counter in Steiner search | `algorithms/steiner.go` | Moderate | Pending |
+| **P1** | Exclude existing terminals in Steiner search | `algorithms/steiner.go` | Moderate | Pending |
+| **P1** | Handle zero norms & clamping in `vector.CosineDistance` | `internal/vector/vector.go` | Quick | Pending |
+| **P1** | Break self-loops without deleting whole articles | `internal/graphs/transformation.go` | Moderate | Pending |
+| **P1** | Clean up scaffold template `AGENTS.md` private paths | `cli/repos/templates/AGENTS.md` | Quick | Pending |
+| **P2** | Add atomic writing to `StoreGzipJSON` | `internal/formats/gzipjson.go` | Moderate | Pending |
+| **P2** | Add graceful HTTP server shutdown & signal handling | `main.go`, `view.go`, `search.go` | Moderate | Pending |
+| **P2** | Fix CLI flag & output discrepancies in `README.md` | `README.md` | Quick | Pending |
+| **P2** | Fix dangling dot in `reference.md` template | `cli/renderers/templates/reference.md` | Quick | Pending |
+| **P3** | Add unit tests for `models/analysis.go`, `vector`, `utils`, `services` | `*_test.go` | Significant | Pending |
+| **P3** | Add `-race` flag to GitHub Actions workflow | `.github/workflows/go.yml` | Quick | Pending |

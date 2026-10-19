@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"math"
 	"regexp"
 	"slices"
 	"strings"
@@ -257,7 +258,7 @@ func (a *Analysis) Search(vec []float32, limit int) ([]*Node, error) {
 	results := make([]result, 0, len(a.Nodes))
 	for _, node := range a.Nodes {
 		score := vector.CosineDistance(node.Embedding, vec)
-		if score == 0 {
+		if math.IsNaN(float64(score)) {
 			continue
 		}
 		results = append(results, result{
