@@ -333,6 +333,7 @@ by suggested remediations.
 
 * **Location:** `cli/repos/templates/AGENTS.md:16, 46-48`
 * **Severity:** Medium
+* **Status:** Resolved
 * **Problem:**
   The embedded `AGENTS.md` scaffolded into user workspaces contains hardcoded local file links:
   - `[bibx-inquire SKILL.md](file:///home/oscar/Code/experiments/bpm/.agents/skills/bibx-inquire/SKILL.md)`
@@ -515,7 +516,7 @@ Current test coverage across the repository:
 | **P1** | Exclude existing terminals in Steiner search | `algorithms/steiner.go` | Moderate | ✅ Resolved |
 | **P1** | Handle zero norms & clamping in `vector.CosineDistance` | `internal/vector/vector.go` | Quick | ✅ Resolved |
 | **P1** | Break self-loops without deleting whole articles | `internal/graphs/transformation.go` | Moderate | ❌ Won't Fix (As Designed) |
-| **P1** | Clean up scaffold template `AGENTS.md` private paths | `cli/repos/templates/AGENTS.md` | Quick | Pending |
+| **P1** | Clean up scaffold template `AGENTS.md` private paths | `cli/repos/templates/AGENTS.md` | Quick | ✅ Resolved |
 | **P2** | Add atomic writing to `StoreGzipJSON` | `internal/formats/gzipjson.go` | Moderate | Pending |
 | **P2** | Add graceful HTTP server shutdown & signal handling | `main.go`, `view.go`, `search.go` | Moderate | Pending |
 | **P2** | Fix CLI flag & output discrepancies in `README.md` | `README.md` | Quick | Pending |

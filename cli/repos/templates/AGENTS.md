@@ -13,7 +13,7 @@ parallel/specialized tasks.
 ### 1. Primary Agent
 
 The lead coordinator agent designed for pair programming, planning, and task
-execution. Antigravity initiates the implementation plans, coordinates
+execution. The primary agent initiates the implementation plans, coordinates
 subagents, and applies skills directly to construct or query collections.
 
 ### 2. Research Subagent (`research`)
@@ -43,9 +43,9 @@ command-line usage of the `bibx` tool.
 
 | Skill Name | Description | Command | Link to Skill |
 | :--- | :--- | :--- | :--- |
-| **`bibx-inquire`** | Searches research topics, fetches OpenAlex API bibliographic data, and builds semantic graphs. | `bibx inquire "<query>"` | [bibx-inquire SKILL.md](file:///home/oscar/Code/experiments/bpm/.agents/skills/bibx-inquire/SKILL.md) |
-| **`bibx-query`** | Queries and filters local collections based on Tree of Science categories (roots, trunk, leaves). | `bibx query --category <cat>` | [bibx-query SKILL.md](file:///home/oscar/Code/experiments/bpm/.agents/skills/bibx-query/SKILL.md) |
-| **`bibx-search`** | Performs semantic search on a collection and starts a browser-based visualization server. | `bibx search "<query>"` | [bibx-search SKILL.md](file:///home/oscar/Code/experiments/bpm/.agents/skills/bibx-search/SKILL.md) |
+| **`bibx-inquire`** | Searches research topics, fetches OpenAlex API bibliographic data, and builds semantic graphs. | `bibx inquire "<query>"` | [bibx-inquire SKILL.md](.agents/skills/bibx-inquire/SKILL.md) |
+| **`bibx-query`** | Queries and filters local collections based on Tree of Science categories (roots, trunk, leaves). | `bibx query --category <cat>` | [bibx-query SKILL.md](.agents/skills/bibx-query/SKILL.md) |
+| **`bibx-search`** | Performs semantic search on a collection and starts a browser-based visualization server. | `bibx search "<query>"` | [bibx-search SKILL.md](.agents/skills/bibx-search/SKILL.md) |
 
 ---
 
