@@ -139,3 +139,24 @@ func TestStoreGzipJSON_AtomicFailurePreservesOriginal(t *testing.T) {
 	assert.Len(t, entries, 1)
 	assert.Equal(t, "atomic_test.json.gz", entries[0].Name())
 }
+
+func TestStoreGzipJSON_PreservesPermissions(t *testing.T) {
+	tempDir := t.TempDir()
+	fileName := filepath.Join(tempDir, "perms_test.json.gz")
+
+	originalData := TestData{Name: "Original", Age: 42}
+	err := formats.StoreGzipJSON(fileName, originalData)
+	require.NoError(t, err)
+
+	expectedPerm := os.FileMode(0664)
+	err = os.Chmod(fileName, expectedPerm)
+	require.NoError(t, err)
+
+	updatedData := TestData{Name: "Updated", Age: 43}
+	err = formats.StoreGzipJSON(fileName, updatedData)
+	require.NoError(t, err)
+
+	info, err := os.Stat(fileName)
+	require.NoError(t, err)
+	assert.Equal(t, expectedPerm, info.Mode().Perm())
+}

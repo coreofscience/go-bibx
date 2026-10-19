@@ -40,9 +40,13 @@ func main() {
 	utils.SetDefaultLogger(false)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	go func() {
+		<-ctx.Done()
+		stop()
+	}()
 	if err := cmd.Run(ctx, os.Args); err != nil {
 		if errors.Is(err, context.Canceled) {
-			return
+			os.Exit(130)
 		}
 		slog.Error("command failed", "error", err)
 		os.Exit(1)

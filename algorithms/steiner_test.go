@@ -286,3 +286,23 @@ func TestReverseSlicesPreservingOriginalOrdering(t *testing.T) {
 	assert.Equal(t, []int{1, 2, 3, 4, 5}, a)
 	assert.Equal(t, []int{3, 2, 1}, b)
 }
+
+type nonOrderedLabel struct {
+	ID   int
+	Data [2]string
+}
+
+func TestPseudoSteiner_ComparableNonOrderedLabel(t *testing.T) {
+	g := gograph.New[nonOrderedLabel](gograph.Directed(), gograph.Acyclic())
+	vA := gograph.NewVertex(nonOrderedLabel{ID: 1, Data: [2]string{"a", "1"}})
+	vB := gograph.NewVertex(nonOrderedLabel{ID: 2, Data: [2]string{"b", "2"}})
+	_, _ = g.AddEdge(vA, vB)
+
+	ps, err := algorithms.NewPseudoSteiner(g)
+	require.NoError(t, err)
+	assert.NotNil(t, ps)
+
+	res, err := ps.Run([]nonOrderedLabel{vA.Label(), vB.Label()})
+	require.NoError(t, err)
+	assert.Equal(t, uint32(2), res.Order())
+}
