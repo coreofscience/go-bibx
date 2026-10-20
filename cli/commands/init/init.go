@@ -11,6 +11,7 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+// New returns the init subcommand which initializes project structure and scaffolds templates.
 func New() *cli.Command {
 	return &cli.Command{
 		Name:  "init",

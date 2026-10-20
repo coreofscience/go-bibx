@@ -14,16 +14,19 @@ const (
 	maxTextsPerRequest = 100
 )
 
+// Client defines methods for generating text embeddings and syncing models.
 type Client interface {
 	Sync(ctx context.Context) error
 	Embed(ctx context.Context, text string) ([]float32, error)
 	EmbedMany(ctx context.Context, texts []string) ([][]float32, error)
 }
 
+// OllamaClient implements [Client] using a local Ollama instance.
 type OllamaClient struct {
 	client *api.Client
 }
 
+// NewOllamaClient creates a new [OllamaClient] connected to the local Ollama instance.
 func NewOllamaClient() (*OllamaClient, error) {
 	client, err := api.ClientFromEnvironment()
 	if err != nil {

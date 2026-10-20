@@ -13,6 +13,9 @@ const (
 	defaultTheta = 0.01
 )
 
+// Leiden implements the Leiden community detection algorithm on a graph.
+// It detects communities by optimizing modularity (or the CPM quality function)
+// with node movement, refinement, and aggregation phases.
 type Leiden[K comparable] struct {
 	graph gograph.Graph[K]
 	gamma float64
@@ -20,20 +23,26 @@ type Leiden[K comparable] struct {
 	sizes map[K]float64
 }
 
+// LeidenOption defines a functional option for configuring a [Leiden] algorithm instance.
 type LeidenOption[K comparable] func(*Leiden[K])
 
+// WithGamma sets the resolution parameter gamma for the Leiden algorithm.
+// Higher values lead to smaller communities, while lower values lead to larger communities.
 func WithGamma[K comparable](gamma float64) LeidenOption[K] {
 	return func(l *Leiden[K]) {
 		l.gamma = gamma
 	}
 }
 
+// WithTheta sets the randomness parameter theta used during the community refinement phase.
+// It controls how likely a node is to join a sub-optimal community during refinement.
 func WithTheta[K comparable](theta float64) LeidenOption[K] {
 	return func(l *Leiden[K]) {
 		l.theta = theta
 	}
 }
 
+// NewLeiden creates a new instance of the [Leiden] algorithm for the given graph and options.
 func NewLeiden[K comparable](graph gograph.Graph[K], opts ...LeidenOption[K]) *Leiden[K] {
 	l := &Leiden[K]{
 		graph: graph,
@@ -50,6 +59,7 @@ func (l *Leiden[K]) deltaH(evc float64, nodeSize float64, commSize float64) floa
 	return evc - l.gamma*float64(nodeSize*commSize)
 }
 
+// Run executes the Leiden algorithm and returns a mapping from vertex labels to community IDs.
 func (l *Leiden[K]) Run() map[K]int {
 	vertices := l.graph.GetAllVertices()
 	if len(vertices) == 0 {

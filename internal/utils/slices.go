@@ -24,6 +24,7 @@ func Chunks[T any](slice []T, chunkSize int) [][]T {
 	return chunked
 }
 
+// Limit sorts the slice using compare and returns at most n elements.
 func Limit[T any](slice []T, n int, compare func(a, b T) int) []T {
 	slices.SortFunc(slice, compare)
 	if n <= 0 {

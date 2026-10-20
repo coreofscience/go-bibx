@@ -7,13 +7,16 @@ import (
 	"github.com/coreofscience/go-bibx/models"
 )
 
+// ArticleTexter defines methods for extracting and cleaning text representations of an [models.Article].
 type ArticleTexter interface {
 	ExtractText(a *models.Article) string
 	CleanText(s string) string
 }
 
+// DefaultArticleTexter provides a standard implementation of [ArticleTexter].
 type DefaultArticleTexter struct{}
 
+// NewDefaultArticleTexter creates a new [DefaultArticleTexter] instance.
 func NewDefaultArticleTexter() *DefaultArticleTexter {
 	return &DefaultArticleTexter{}
 }

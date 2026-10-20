@@ -24,6 +24,7 @@ type PseudoSteiner[K comparable] struct {
 	maxEffortExceeded     int
 }
 
+// PseudoSteinerOption configures a [PseudoSteiner] algorithm instance.
 type PseudoSteinerOption[K comparable] func(*PseudoSteiner[K])
 
 // WithMaxEffort sets the maximum effort for the pseudo-steier algorithm.

@@ -19,6 +19,7 @@ var (
 	categories = collections.NewSet("root", "trunk", "leaf")
 )
 
+// New returns the query subcommand which retrieves top articles by category score.
 func New() *cli.Command {
 	supportedFormats := strings.Join(formats.Items(), ", ")
 	supportedCategories := strings.Join(categories.Items(), ", ")

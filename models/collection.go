@@ -72,6 +72,7 @@ func (c *Collection) All() iter.Seq[*Article] {
 	}
 }
 
+// Keep filters the collection, returning a new [Collection] containing only articles whose keys match the provided labels.
 func (c *Collection) Keep(labels ...string) (*Collection, error) {
 	toKeep := collections.NewSet(labels...)
 	newArticles := make([]*Article, 0, len(c.articles))

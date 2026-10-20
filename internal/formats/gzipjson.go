@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 )
 
+// LoadGzipJSON reads and decodes a gzip-compressed JSON file into v.
 func LoadGzipJSON(fileName string, v any) (err error) {
 	file, err := os.Open(fileName)
 	if err != nil {
@@ -37,6 +38,7 @@ func LoadGzipJSON(fileName string, v any) (err error) {
 	return nil
 }
 
+// StoreGzipJSON encodes v as JSON and writes it to fileName with gzip compression atomically.
 func StoreGzipJSON(fileName string, v any) error {
 	dir := filepath.Dir(fileName)
 	if err := os.MkdirAll(dir, 0755); err != nil {

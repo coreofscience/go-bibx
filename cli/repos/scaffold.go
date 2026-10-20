@@ -14,20 +14,24 @@ import (
 //go:embed all:templates
 var templatesFS embed.FS
 
+// ScaffoldRepo defines methods for scaffolding project files and directories.
 type ScaffoldRepo interface {
 	Scaffold() error
 }
 
+// TemplateScaffoldRepo implements [ScaffoldRepo] by copying embedded templates to disk.
 type TemplateScaffoldRepo struct {
 	rootDir string
 }
 
+// NewTemplateScaffoldRepo creates a new [TemplateScaffoldRepo] targeting rootDir.
 func NewTemplateScaffoldRepo(rootDir string) *TemplateScaffoldRepo {
 	return &TemplateScaffoldRepo{
 		rootDir: rootDir,
 	}
 }
 
+// Scaffold unpacks the embedded templates into the target root directory.
 func (r *TemplateScaffoldRepo) Scaffold() error {
 	err := fs.WalkDir(templatesFS, "templates", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {

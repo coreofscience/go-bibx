@@ -17,6 +17,8 @@ import (
 	"github.com/coreofscience/go-bibx/models"
 )
 
+// OpenAlexAnalysisService coordinates literature fetching from OpenAlex,
+// running SAP and Leiden algorithms, generating embeddings, and managing analysis storage.
 type OpenAlexAnalysisService struct {
 	openalexClient  openalex.Client
 	analysisRepo    repos.AnalysisRepo
@@ -24,6 +26,7 @@ type OpenAlexAnalysisService struct {
 	texter          texter.ArticleTexter
 }
 
+// NewOpenAlexAnalysisService creates a new [OpenAlexAnalysisService] with the specified dependencies.
 func NewOpenAlexAnalysisService(
 	openalexClient openalex.Client,
 	analysisRepo repos.AnalysisRepo,
@@ -38,10 +41,12 @@ func NewOpenAlexAnalysisService(
 	}
 }
 
+// OpenAlexAnalysisServiceConfig holds configuration options for [OpenAlexAnalysisService].
 type OpenAlexAnalysisServiceConfig struct {
 	AnalysisPath string
 }
 
+// NewOpenAlexAnalysisServiceFromConfig creates a new [OpenAlexAnalysisService] initialized with default dependencies and the provided config.
 func NewOpenAlexAnalysisServiceFromConfig(config *OpenAlexAnalysisServiceConfig) (*OpenAlexAnalysisService, error) {
 	openalexClient := openalex.NewRestyClient()
 	analysisRepo := repos.NewFileAnalysisRepo(config.AnalysisPath)
@@ -58,6 +63,7 @@ func NewOpenAlexAnalysisServiceFromConfig(config *OpenAlexAnalysisServiceConfig)
 	), nil
 }
 
+// Store coordinates fetching literature, running community detection and SAP algorithms, generating embeddings, and storing the resulting analysis.
 func (s *OpenAlexAnalysisService) Store(
 	ctx context.Context,
 	query string,
@@ -179,6 +185,7 @@ func (s *OpenAlexAnalysisService) Store(
 	return nil
 }
 
+// Query retrieves top articles by Tree of Science category from the analysis repository.
 func (s *OpenAlexAnalysisService) Query(
 	ctx context.Context,
 	category string,
@@ -195,6 +202,7 @@ func (s *OpenAlexAnalysisService) Query(
 	return results, nil
 }
 
+// Search executes a semantic graph search using query embeddings and pseudo-Steiner graph reduction.
 func (s *OpenAlexAnalysisService) Search(
 	ctx context.Context,
 	query string,

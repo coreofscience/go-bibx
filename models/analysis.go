@@ -16,12 +16,16 @@ import (
 	"github.com/hmdsefi/gograph"
 )
 
+// Category represents the Tree of Science classification category of an analysis node.
 type Category string
 
 const (
-	CategoryRoot  Category = "root"
+	// CategoryRoot represents foundational, seminal articles.
+	CategoryRoot Category = "root"
+	// CategoryTrunk represents core structural articles connecting the field.
 	CategoryTrunk Category = "trunk"
-	CategoryLeaf  Category = "leaf"
+	// CategoryLeaf represents recent and specialized articles at the frontier.
+	CategoryLeaf Category = "leaf"
 )
 
 var (
@@ -29,6 +33,8 @@ var (
 	spaceReg           = regexp.MustCompile(`[\s_-]+`)
 )
 
+// Node represents an article entity within an analysis, containing its metadata,
+// Tree of Science category and scores, community assignment, and embedding vector.
 type Node struct {
 	ID        string    `json:"id"`
 	Category  Category  `json:"category"`
@@ -40,6 +46,8 @@ type Node struct {
 	Article   *Article  `json:"article"`
 }
 
+// NodeMetadata represents the YAML-serializable metadata of a [Node], commonly
+// used for generating frontmatter in markdown exports.
 type NodeMetadata struct {
 	ID         string              `yaml:"id"`
 	Label      string              `yaml:"label"`
@@ -62,6 +70,7 @@ type NodeMetadata struct {
 	IDs        []string            `yaml:"ids,omitempty"`
 }
 
+// Metadata extracts and constructs the [NodeMetadata] for this node.
 func (n *Node) Metadata() *NodeMetadata {
 	if n == nil {
 		return nil
@@ -104,6 +113,7 @@ func (n *Node) Metadata() *NodeMetadata {
 	}
 }
 
+// Filename generates a sanitized, slugified filename with a content hash suffix for exporting the node as markdown.
 func (n *Node) Filename() string {
 	id := n.ID
 	hashBytes := sha256.Sum256([]byte(id))
@@ -145,22 +155,27 @@ func (n *Node) Filename() string {
 	return fmt.Sprintf("%s-%s.md", slug, hashStr)
 }
 
+// Result represents a scored search or query result pointing to an [Article].
 type Result struct {
 	Score   float64  `json:"score"`
 	Article *Article `json:"article"`
 }
 
+// Link represents a directed, weighted citation edge between two nodes in an [Analysis].
 type Link struct {
 	Source string  `json:"source"`
 	Target string  `json:"target"`
 	Weight float64 `json:"weight"`
 }
 
+// Analysis represents the complete bibliographic analysis dataset, containing
+// all analyzed nodes and citation links.
 type Analysis struct {
 	Nodes []*Node `json:"nodes"`
 	Links []*Link `json:"links"`
 }
 
+// CitationGraph constructs and returns a directed, acyclic, weighted citation graph from the analysis links and nodes.
 func (a *Analysis) CitationGraph() (gograph.Graph[string], error) {
 	graph := gograph.New[string](
 		gograph.Directed(),
@@ -183,6 +198,7 @@ func (a *Analysis) CitationGraph() (gograph.Graph[string], error) {
 	return graph, nil
 }
 
+// Keep filters the analysis, returning a new [Analysis] containing only nodes with the specified IDs and links between them.
 func (a *Analysis) Keep(ids []string) *Analysis {
 	toKeep := collections.NewSet(ids...)
 	nodes := make([]*Node, 0, len(a.Nodes))
@@ -203,6 +219,7 @@ func (a *Analysis) Keep(ids []string) *Analysis {
 	}
 }
 
+// Query returns the top scored results for the given Tree of Science category ("root", "trunk", or "leaf"), up to top items.
 func (a *Analysis) Query(category string, top int) ([]*Result, error) {
 	results := make([]*Result, 0, top)
 	scored := make([]*Result, 0, len(a.Nodes))
@@ -240,6 +257,7 @@ func (a *Analysis) Query(category string, top int) ([]*Result, error) {
 	return results, nil
 }
 
+// Search performs a vector similarity search using cosine distance against node embeddings and returns up to limit closest nodes.
 func (a *Analysis) Search(vec []float32, limit int) ([]*Node, error) {
 	if len(a.Nodes) == 0 {
 		return nil, nil
