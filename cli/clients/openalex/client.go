@@ -19,8 +19,11 @@ import (
 )
 
 const (
-	MaxWorksPerPage       = 200
-	MaxIDsPerRequest      = 50
+	// MaxWorksPerPage is the maximum number of works that can be fetched per OpenAlex API page request.
+	MaxWorksPerPage = 200
+	// MaxIDsPerRequest is the maximum number of entity IDs that can be filtered per request.
+	MaxIDsPerRequest = 50
+	// MaxConcurrentRequests is the maximum number of concurrent requests sent to OpenAlex.
 	MaxConcurrentRequests = 4
 )
 

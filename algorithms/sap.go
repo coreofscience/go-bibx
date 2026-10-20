@@ -11,6 +11,9 @@ import (
 	"github.com/hmdsefi/gograph"
 )
 
+// Sap represents the Tree of Science SAP algorithm for citation network analysis.
+// It calculates rootness, trunkness, and leafness scores to classify articles into
+// roots, trunk, and leaves.
 type Sap struct {
 	graph         gograph.Graph[string]
 	roots         int
@@ -20,15 +23,22 @@ type Sap struct {
 	invertedOrder []*gograph.Vertex[string]
 }
 
+// Category represents the Tree of Science classification of an article node.
 type Category string
 
 const (
-	CategoryNone  Category = "none"
-	CategoryRoot  Category = "root"
+	// CategoryNone indicates that the article is not classified into any Tree of Science category.
+	CategoryNone Category = "none"
+	// CategoryRoot indicates foundational, seminal works that established the research field.
+	CategoryRoot Category = "root"
+	// CategoryTrunk indicates structural backbone papers that consolidate the research topic.
 	CategoryTrunk Category = "trunk"
-	CategoryLeaf  Category = "leaf"
+	// CategoryLeaf indicates recent, specialized developments representing the research frontier.
+	CategoryLeaf Category = "leaf"
 )
 
+// SapResult contains the outcome of the SAP algorithm, including category assignments
+// and metric scores (rootness, trunkness, and leafness) for each vertex in the graph.
 type SapResult struct {
 	Categories map[string]Category
 	Rootness   map[string]float64
@@ -36,26 +46,33 @@ type SapResult struct {
 	Leafness   map[string]float64
 }
 
+// SapOption configures a [Sap] algorithm instance.
 type SapOption func(*Sap)
 
+// WithRoots sets the maximum number of root nodes to select.
 func WithRoots(roots int) SapOption {
 	return func(s *Sap) {
 		s.roots = roots
 	}
 }
 
+// WithTrunks sets the maximum number of trunk nodes to select.
 func WithTrunks(trunks int) SapOption {
 	return func(s *Sap) {
 		s.trunks = trunks
 	}
 }
 
+// WithLeaves sets the maximum number of leaf nodes to select.
 func WithLeaves(leaves int) SapOption {
 	return func(s *Sap) {
 		s.leaves = leaves
 	}
 }
 
+// NewSapAlgorithm creates a new instance of the [Sap] algorithm for the given directed citation graph.
+// It computes topological orders required for sap flow simulations. Returns an error if the graph is undirected
+// or contains cycles.
 func NewSapAlgorithm(graph gograph.Graph[string], opts ...SapOption) (*Sap, error) {
 	if !graph.IsDirected() {
 		return nil, errors.New("graph must be directed")
@@ -86,6 +103,7 @@ func NewSapAlgorithm(graph gograph.Graph[string], opts ...SapOption) (*Sap, erro
 	return s, nil
 }
 
+// Run executes the SAP algorithm and returns the [SapResult] containing article categories and scores.
 func (s *Sap) Run() (*SapResult, error) {
 	rootness := s.computeRootness()
 	leafness := s.computeLeafness(rootness)

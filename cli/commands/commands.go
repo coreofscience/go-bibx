@@ -10,6 +10,7 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+// New returns the full slice of CLI subcommands supported by bibx.
 func New() []*cli.Command {
 	return []*cli.Command{
 		initcmd.New(),

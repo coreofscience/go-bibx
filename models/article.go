@@ -9,6 +9,8 @@ import (
 	"github.com/coreofscience/go-bibx/internal/utils"
 )
 
+// Article represents a bibliographic work, containing citation metadata, identifiers,
+// author information, and references to cited articles.
 type Article struct {
 	Label      string                   `json:"label"`
 	IDs        *collections.Set[string] `json:"ids,omitempty"`
@@ -28,14 +30,17 @@ type Article struct {
 	Rich       bool                     `json:"rich"`
 }
 
+// ArticleOption specifies a functional option for configuring an [Article].
 type ArticleOption func(*Article)
 
+// WithReferences sets the references for an [Article].
 func WithReferences(references []*Article) ArticleOption {
 	return func(a *Article) {
 		a.References = references
 	}
 }
 
+// Clone returns a deep copy of the [Article], applying any provided [ArticleOption] modifiers.
 func (a *Article) Clone(options ...ArticleOption) *Article {
 	if a == nil {
 		return nil
@@ -92,6 +97,8 @@ func (a *Article) Merge(other *Article) *Article {
 	return merged
 }
 
+// ID extracts the identifier value for the specified prefix source (e.g. "doi", "openalex").
+// Returns the identifier and true if found, or an empty string and false otherwise.
 func (a *Article) ID(source string) (string, bool) {
 	if a == nil || a.IDs.Len() == 0 {
 		return "", false
@@ -105,6 +112,7 @@ func (a *Article) ID(source string) (string, bool) {
 	return "", false
 }
 
+// PurgeReferences returns a cloned [Article] with any references matching the given IDs removed.
 func (a *Article) PurgeReferences(ids ...string) *Article {
 	if a == nil {
 		return nil
@@ -125,6 +133,7 @@ func (a *Article) PurgeReferences(ids ...string) *Article {
 	return a.Clone(WithReferences(newReferences))
 }
 
+// KeepReferences returns a cloned [Article] retaining only references that match at least one of the given IDs.
 func (a *Article) KeepReferences(ids ...string) *Article {
 	if a == nil {
 		return nil

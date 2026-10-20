@@ -9,6 +9,7 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+// New returns the setup subcommand which downloads models and prepares the environment.
 func New() *cli.Command {
 	return &cli.Command{
 		Name:  "setup",

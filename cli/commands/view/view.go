@@ -12,6 +12,7 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+// New returns the view subcommand which launches the browser-based visualization server.
 func New() *cli.Command {
 	return &cli.Command{
 		Name:  "view",

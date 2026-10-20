@@ -12,11 +12,13 @@ import (
 //go:embed templates/*.md
 var templatesFS embed.FS
 
+// MarkdownRenderer renders articles and analysis results using embedded markdown templates.
 type MarkdownRenderer struct {
 	template *template.Template
 	format   string
 }
 
+// NewMarkdownRenderer creates a new [MarkdownRenderer] with the specified template format.
 func NewMarkdownRenderer(format string) (*MarkdownRenderer, error) {
 	templ := template.New("")
 	templ, err := templ.Funcs(template.FuncMap{
@@ -54,6 +56,7 @@ func (e *MarkdownRenderer) RenderAnalysis(w io.Writer, analysis *models.Analysis
 	return nil
 }
 
+// Render executes the template corresponding to format on the provided item and writes the output to w.
 func (e *MarkdownRenderer) Render(w io.Writer, item any, format string) error {
 	if err := e.template.ExecuteTemplate(
 		w,

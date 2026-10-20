@@ -8,6 +8,7 @@ import (
 	"github.com/lmittmann/tint"
 )
 
+// SetDefaultLogger configures and registers the default application slog logger using tinted console output.
 func SetDefaultLogger(verbose bool) {
 	logLevel := slog.LevelInfo
 	if verbose {

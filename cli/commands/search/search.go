@@ -21,6 +21,7 @@ var (
 	formats = collections.NewSet(renderers.AnalysisFormats()...)
 )
 
+// New returns the search subcommand which performs semantic graph search on the collection.
 func New() *cli.Command {
 	supportedFormats := strings.Join(formats.Items(), ", ")
 	return &cli.Command{

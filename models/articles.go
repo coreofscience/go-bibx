@@ -10,6 +10,7 @@ import (
 	"github.com/hmdsefi/gograph"
 )
 
+// Articles represents a collection of [Article] pointers with helper methods for graph construction and deduplication.
 type Articles []*Article
 
 // All returns a slice of all articles including their references

@@ -7,6 +7,7 @@ import (
 	"slices"
 )
 
+// Set is a generic set of ordered elements.
 type Set[T cmp.Ordered] struct {
 	elements map[T]struct{}
 }
@@ -83,6 +84,7 @@ func (s *Set[T]) Union(other *Set[T]) *Set[T] {
 	return unionSet
 }
 
+// Intersect returns a new Set containing the elements common to both sets.
 func (s *Set[T]) Intersect(other *Set[T]) *Set[T] {
 	if s == nil || other == nil {
 		return nil

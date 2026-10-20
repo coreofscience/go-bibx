@@ -2,6 +2,7 @@ package collections
 
 import "math/rand"
 
+// UniqueQueue is a FIFO queue that ensures all enqueued elements are unique.
 type UniqueQueue[T comparable] struct {
 	queue   []T
 	inQueue map[T]struct{}

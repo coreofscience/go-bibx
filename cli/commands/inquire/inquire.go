@@ -13,6 +13,7 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+// New returns the inquire subcommand which fetches works from OpenAlex and performs analysis.
 func New() *cli.Command {
 	return &cli.Command{
 		Name:      "inquire",
