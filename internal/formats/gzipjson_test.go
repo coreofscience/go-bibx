@@ -148,15 +148,17 @@ func TestStoreGzipJSON_PreservesPermissions(t *testing.T) {
 	err := formats.StoreGzipJSON(fileName, originalData)
 	require.NoError(t, err)
 
-	expectedPerm := os.FileMode(0664)
-	err = os.Chmod(fileName, expectedPerm)
+	err = os.Chmod(fileName, 0664)
 	require.NoError(t, err)
+	beforeInfo, err := os.Stat(fileName)
+	require.NoError(t, err)
+	expectedPerm := beforeInfo.Mode().Perm()
 
 	updatedData := TestData{Name: "Updated", Age: 43}
 	err = formats.StoreGzipJSON(fileName, updatedData)
 	require.NoError(t, err)
 
-	info, err := os.Stat(fileName)
+	afterInfo, err := os.Stat(fileName)
 	require.NoError(t, err)
-	assert.Equal(t, expectedPerm, info.Mode().Perm())
+	assert.Equal(t, expectedPerm, afterInfo.Mode().Perm())
 }
