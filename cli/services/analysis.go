@@ -104,7 +104,7 @@ func (s *OpenAlexAnalysisService) Store(
 	}
 
 	slog.InfoContext(ctx, "building text embeddings")
-	texts := make([]string, collection.Len())
+	texts := make([]string, 0, collection.Len())
 	collectionArticles := slices.Collect(collection.All())
 	for _, article := range collectionArticles {
 		texts = append(texts, s.texter.ExtractText(article))

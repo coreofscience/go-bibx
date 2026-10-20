@@ -109,7 +109,11 @@ func New() *cli.Command {
 				mux := viewer.New(analysis)
 				port := c.Int("port")
 				slog.InfoContext(ctx, "starting visualization server", "port", port)
-				if err := http.ListenAndServe(fmt.Sprintf(":%d", port), mux); err != nil {
+				server := &http.Server{
+					Addr:    fmt.Sprintf(":%d", port),
+					Handler: mux,
+				}
+				if err := viewer.Serve(ctx, server); err != nil {
 					return fmt.Errorf("failed to start server: %w", err)
 				}
 			}

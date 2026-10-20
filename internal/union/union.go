@@ -47,7 +47,7 @@ func (u *UnionFind[K]) Union(a, b K) {
 		return
 	}
 	u.parent[rootA] = rootB
-	u.rank[rootA]++
+	u.rank[rootB]++
 }
 
 // Connected returns true if items a and b are connected.

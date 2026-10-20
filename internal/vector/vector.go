@@ -18,7 +18,16 @@ func CosineDistance(a, b []float32) float32 {
 		normA += a[i] * a[i]
 		normB += b[i] * b[i]
 	}
-	return 1 - (dotProduct / (sqrt(normA) * sqrt(normB)))
+	if normA == 0 || normB == 0 {
+		return 2.0
+	}
+	sim := dotProduct / (sqrt(normA) * sqrt(normB))
+	if sim > 1.0 {
+		sim = 1.0
+	} else if sim < -1.0 {
+		sim = -1.0
+	}
+	return 1.0 - sim
 }
 
 func sqrt(x float32) float32 {

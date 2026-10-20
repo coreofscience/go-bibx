@@ -113,3 +113,52 @@ func TestLoadGzipJSON_InvalidJSON(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to decode gzip json data")
 }
+
+func TestStoreGzipJSON_AtomicFailurePreservesOriginal(t *testing.T) {
+	tempDir := t.TempDir()
+	fileName := filepath.Join(tempDir, "atomic_test.json.gz")
+
+	originalData := TestData{Name: "Original", Age: 42}
+	err := formats.StoreGzipJSON(fileName, originalData)
+	require.NoError(t, err)
+
+	// Attempt to store un-serializable data (a channel) to the same fileName
+	err = formats.StoreGzipJSON(fileName, make(chan int))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to encode to gzip json")
+
+	// Verify that the original file is intact and not corrupted or truncated
+	var loaded TestData
+	err = formats.LoadGzipJSON(fileName, &loaded)
+	require.NoError(t, err)
+	assert.Equal(t, originalData, loaded)
+
+	// Verify no temporary files were left behind
+	entries, err := os.ReadDir(tempDir)
+	require.NoError(t, err)
+	assert.Len(t, entries, 1)
+	assert.Equal(t, "atomic_test.json.gz", entries[0].Name())
+}
+
+func TestStoreGzipJSON_PreservesPermissions(t *testing.T) {
+	tempDir := t.TempDir()
+	fileName := filepath.Join(tempDir, "perms_test.json.gz")
+
+	originalData := TestData{Name: "Original", Age: 42}
+	err := formats.StoreGzipJSON(fileName, originalData)
+	require.NoError(t, err)
+
+	err = os.Chmod(fileName, 0664)
+	require.NoError(t, err)
+	beforeInfo, err := os.Stat(fileName)
+	require.NoError(t, err)
+	expectedPerm := beforeInfo.Mode().Perm()
+
+	updatedData := TestData{Name: "Updated", Age: 43}
+	err = formats.StoreGzipJSON(fileName, updatedData)
+	require.NoError(t, err)
+
+	afterInfo, err := os.Stat(fileName)
+	require.NoError(t, err)
+	assert.Equal(t, expectedPerm, afterInfo.Mode().Perm())
+}

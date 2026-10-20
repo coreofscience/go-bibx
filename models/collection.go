@@ -76,7 +76,8 @@ func (c *Collection) Keep(labels ...string) (*Collection, error) {
 	toKeep := collections.NewSet(labels...)
 	newArticles := make([]*Article, 0, len(c.articles))
 	for _, article := range c.articles {
-		if !toKeep.Contains(*article.Key()) {
+		key := article.Key()
+		if key == nil || !toKeep.Contains(*key) {
 			continue
 		}
 		newArticle := article.KeepReferences(labels...)
