@@ -306,3 +306,28 @@ func TestPseudoSteiner_ComparableNonOrderedLabel(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, uint32(2), res.Order())
 }
+
+func TestPseudoSteiner_DoesNotMutateCallerSlice(t *testing.T) {
+	g := gograph.New[string](gograph.Directed(), gograph.Acyclic())
+	vA := gograph.NewVertex("A")
+	vB := gograph.NewVertex("B")
+	_, _ = g.AddEdge(vA, vB)
+
+	ps, err := algorithms.NewPseudoSteiner(g)
+	require.NoError(t, err)
+
+	input := []string{"A", "A", "B", "B"}
+	orig := slices.Clone(input)
+
+	res1, err := ps.Run(input)
+	require.NoError(t, err)
+	assert.NotNil(t, res1)
+
+	// Verify input slice was not mutated in place
+	assert.Equal(t, orig, input)
+
+	// Verify input slice can be reused in Run without error
+	res2, err := ps.Run(input)
+	require.NoError(t, err)
+	assert.NotNil(t, res2)
+}

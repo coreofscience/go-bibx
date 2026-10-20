@@ -82,6 +82,8 @@ func NewPseudoSteiner[K comparable](graph gograph.Graph[K], opts ...PseudoSteine
 // Go figure what the complexity is. But don't call this with a large number of
 // terminals.
 func (q *PseudoSteiner[K]) Run(terminals []K) (gograph.Graph[K], error) {
+	terminals = slices.Clone(terminals)
+
 	// Make sure all the terminals exists in the graph.
 	for _, terminal := range terminals {
 		if _, ok := q.topologicalIndex[terminal]; !ok {

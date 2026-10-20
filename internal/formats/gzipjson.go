@@ -43,10 +43,7 @@ func StoreGzipJSON(fileName string, v any) error {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
 
-	var perm os.FileMode = 0644
-	if info, err := os.Stat(fileName); err == nil {
-		perm = info.Mode().Perm()
-	}
+	perm := filePerm(fileName)
 
 	tempFile, err := os.CreateTemp(dir, fmt.Sprintf(".%s-*.tmp", filepath.Base(fileName)))
 	if err != nil {
