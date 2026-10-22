@@ -6,7 +6,6 @@ import (
 
 	"github.com/coreofscience/go-bibx/cli/clients/openalex"
 	"github.com/coreofscience/go-bibx/cli/services"
-	"github.com/coreofscience/go-bibx/internal/texter"
 	"github.com/coreofscience/go-bibx/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -31,35 +30,6 @@ func (m *mockOpenAlexClient) ListArticlesByIDs(ctx context.Context, ids []string
 	return results, nil
 }
 
-type mockEmbeddingsClient struct {
-	capturedTexts []string
-	embedManyFunc func(texts []string) ([][]float32, error)
-	embedFunc     func(text string) ([]float32, error)
-}
-
-func (m *mockEmbeddingsClient) Sync(ctx context.Context) error {
-	return nil
-}
-
-func (m *mockEmbeddingsClient) Embed(ctx context.Context, text string) ([]float32, error) {
-	if m.embedFunc != nil {
-		return m.embedFunc(text)
-	}
-	return []float32{1.0, 0.0}, nil
-}
-
-func (m *mockEmbeddingsClient) EmbedMany(ctx context.Context, texts []string) ([][]float32, error) {
-	m.capturedTexts = append(m.capturedTexts, texts...)
-	if m.embedManyFunc != nil {
-		return m.embedManyFunc(texts)
-	}
-	res := make([][]float32, len(texts))
-	for i := range texts {
-		res[i] = []float32{float32(i + 1), 0.0}
-	}
-	return res, nil
-}
-
 type mockAnalysisRepo struct {
 	storedAnalysis *models.Analysis
 }
@@ -73,11 +43,11 @@ func (m *mockAnalysisRepo) Store(ctx context.Context, a *models.Analysis) error 
 	return nil
 }
 
-func TestOpenAlexAnalysisService_Store_EmbeddingTextsAllocation(t *testing.T) {
-	title1 := "First Paper"
-	title2 := "Second Paper"
-	title3 := "Third Paper"
-	title4 := "Fourth Paper"
+func TestOpenAlexAnalysisService_StoreAndSearch(t *testing.T) {
+	title1 := "First Paper on Machine Learning"
+	title2 := "Second Paper on Deep Learning"
+	title3 := "Third Paper on Neural Networks"
+	title4 := "Fourth Paper on Foundation Models"
 
 	w1 := &openalex.Work{
 		ID:              "https://openalex.org/W1",
@@ -114,27 +84,21 @@ func TestOpenAlexAnalysisService_Store_EmbeddingTextsAllocation(t *testing.T) {
 		recentWorks: []*openalex.Work{w1, w2, w3, w4},
 		worksByID:   worksMap,
 	}
-	embedClient := &mockEmbeddingsClient{}
 	analysisRepo := &mockAnalysisRepo{}
-	ttr := texter.NewDefaultArticleTexter()
 
-	svc := services.NewOpenAlexAnalysisService(oaClient, analysisRepo, embedClient, ttr)
+	svc := services.NewOpenAlexAnalysisService(oaClient, analysisRepo)
 
 	err := svc.Store(context.Background(), "test query", 10)
 	require.NoError(t, err)
 
-	// Verify that texts passed to EmbedMany matches the number of articles in collection
-	// and does not have leading empty strings from make([]string, collection.Len())
-	require.Len(t, embedClient.capturedTexts, 4)
-	for _, txt := range embedClient.capturedTexts {
-		assert.NotEmpty(t, txt)
-	}
-
-	// Verify that the stored analysis has nodes with matching embeddings
+	// Verify that the stored analysis has 4 nodes
 	require.NotNil(t, analysisRepo.storedAnalysis)
 	require.Len(t, analysisRepo.storedAnalysis.Nodes, 4)
-	for i, node := range analysisRepo.storedAnalysis.Nodes {
-		assert.Equal(t, []float32{float32(i + 1), 0.0}, node.Embedding)
+
+	// Verify all links have weight 1.0
+	require.NotEmpty(t, analysisRepo.storedAnalysis.Links)
+	for _, link := range analysisRepo.storedAnalysis.Links {
+		assert.Equal(t, 1.0, link.Weight)
 	}
 
 	// Test Query
@@ -142,11 +106,16 @@ func TestOpenAlexAnalysisService_Store_EmbeddingTextsAllocation(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, results)
 
-	// Test Search
-	embedClient.embedFunc = func(text string) ([]float32, error) {
-		return []float32{1.0, 0.0}, nil
-	}
+	// Test Search with matching keyword query
 	searchResults, err := svc.Search(context.Background(), "First Paper", 2)
 	require.NoError(t, err)
-	assert.NotNil(t, searchResults)
+	require.NotNil(t, searchResults)
+	assert.NotEmpty(t, searchResults.Nodes)
+
+	// Test Search with zero matches returns empty analysis
+	emptyResults, err := svc.Search(context.Background(), "nonexistentqueryxyz", 2)
+	require.NoError(t, err)
+	require.NotNil(t, emptyResults)
+	assert.Empty(t, emptyResults.Nodes)
+	assert.Empty(t, emptyResults.Links)
 }

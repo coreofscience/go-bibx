@@ -5,14 +5,13 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"math"
 	"regexp"
 	"slices"
 	"strings"
 
 	"github.com/coreofscience/go-bibx/internal/collections"
+	"github.com/coreofscience/go-bibx/internal/search"
 	"github.com/coreofscience/go-bibx/internal/utils"
-	"github.com/coreofscience/go-bibx/internal/vector"
 	"github.com/hmdsefi/gograph"
 )
 
@@ -34,16 +33,15 @@ var (
 )
 
 // Node represents an article entity within an analysis, containing its metadata,
-// Tree of Science category and scores, community assignment, and embedding vector.
+// Tree of Science category and scores, and community assignment.
 type Node struct {
-	ID        string    `json:"id"`
-	Category  Category  `json:"category"`
-	Rootness  float64   `json:"rootness"`
-	Trunkness float64   `json:"trunkness"`
-	Leafness  float64   `json:"leafness"`
-	Community int       `json:"community"`
-	Embedding []float32 `json:"embedding"`
-	Article   *Article  `json:"article"`
+	ID        string   `json:"id"`
+	Category  Category `json:"category"`
+	Rootness  float64  `json:"rootness"`
+	Trunkness float64  `json:"trunkness"`
+	Leafness  float64  `json:"leafness"`
+	Community int      `json:"community"`
+	Article   *Article `json:"article"`
 }
 
 // NodeMetadata represents the YAML-serializable metadata of a [Node], commonly
@@ -257,40 +255,41 @@ func (a *Analysis) Query(category string, top int) ([]*Result, error) {
 	return results, nil
 }
 
-// Search performs a vector similarity search using cosine distance against node embeddings and returns up to limit closest nodes.
-func (a *Analysis) Search(vec []float32, limit int) ([]*Node, error) {
-	if len(a.Nodes) == 0 {
+// Search performs a keyword search using BM25 ranking over the analysis nodes.
+func (a *Analysis) Search(query string, limit int) ([]*Node, error) {
+	if len(a.Nodes) == 0 || limit <= 0 {
 		return nil, nil
 	}
-	if len(vec) != len(a.Nodes[0].Embedding) {
-		return nil, fmt.Errorf(
-			"invalid vector length: expected %d, got %d",
-			len(a.Nodes[0].Embedding),
-			len(vec),
-		)
-	}
-	type result struct {
-		node  *Node
-		score float32
-	}
-	results := make([]result, 0, len(a.Nodes))
-	for _, node := range a.Nodes {
-		score := vector.CosineDistance(node.Embedding, vec)
-		if math.IsNaN(float64(score)) {
-			continue
+	docs := make([]search.Document, len(a.Nodes))
+	nodeMap := make(map[string]*Node, len(a.Nodes))
+	for i, node := range a.Nodes {
+		nodeMap[node.ID] = node
+		doc := search.Document{ID: node.ID}
+		if node.Article != nil {
+			if node.Article.Title != nil {
+				doc.Title = *node.Article.Title
+			}
+			if node.Article.Keywords != nil {
+				doc.Keywords = node.Article.Keywords.Items()
+			}
+			if node.Article.Abstract != nil {
+				doc.Abstract = *node.Article.Abstract
+			}
+			doc.Authors = node.Article.Authors
 		}
-		results = append(results, result{
-			node:  node,
-			score: score,
-		})
+		docs[i] = doc
 	}
-	slices.SortFunc(results, func(a, b result) int {
-		return cmp.Compare(a.score, b.score)
-	})
-	limit = min(limit, len(results))
-	topResults := make([]*Node, 0, limit)
-	for _, result := range results[:limit] {
-		topResults = append(topResults, result.node)
+
+	searchResults := search.BM25Search(docs, query, limit)
+	if len(searchResults) == 0 {
+		return nil, nil
+	}
+
+	topResults := make([]*Node, 0, len(searchResults))
+	for _, result := range searchResults {
+		if node, ok := nodeMap[result.ID]; ok {
+			topResults = append(topResults, node)
+		}
 	}
 	return topResults, nil
 }

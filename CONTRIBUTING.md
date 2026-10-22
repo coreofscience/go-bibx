@@ -18,8 +18,6 @@ expect all contributors to maintain a welcoming and inclusive environment.
 ### Prerequisites
 
 - **Go**: The project requires Go 1.26 or newer.
-- **Ollama**: `go-bibx` depends on `ollama` running locally to generate
-  embeddings for semantic search.
 - **Make** (optional, but recommended if we add a Makefile later).
 - **Git**: For version control.
 
@@ -36,12 +34,6 @@ expect all contributors to maintain a welcoming and inclusive environment.
 
     ```bash
     go build -o bibx ./cmd/bibx
-    ```
-
-3.  **Setup the application**: Users will need to run the setup command once to
-    download the necessary models:
-    ```bash
-    ./bibx setup
     ```
 
 ## Development Process

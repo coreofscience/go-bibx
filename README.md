@@ -32,9 +32,9 @@ metaphor, it categorizes articles into:
   citation network.
 - **Visualize**: Interactive, browser-based graph exploration of your
   collections.
-- **Semantic Search**: Graph Semantic Search allows users to find articles
-  related to a query by leveraging both semantic relevance and their deep
-  relationships within the citation graph.
+- **Keyword Search**: Graph Search allows users to find articles related to a
+  query by leveraging both BM25 keyword relevance and their deep relationships
+  within the citation graph.
 - **Queries**: Query your collection by relevance in three main categories:
   - _Rootness_: how seminal the article is.
   - _Trunkness_: how important is this article within the structure of the
@@ -72,14 +72,6 @@ cd go-bibx
 go build -o bibx ./cmd/bibx
 ```
 
-Note: `go-bibx` depends on `ollama` running locally to generate embeddings for
-semantic search. Users will need to run the setup command once to download the
-model:
-
-```bash
-./bibx setup
-```
-
 ## Usage
 
 ### 1. Inquire a research topic
@@ -106,7 +98,7 @@ graph.
 
 ### 3. Search
 
-Perform a semantic search to find relevant articles:
+Perform a keyword search to find relevant articles:
 
 ```bash
 ./bibx search "your query" --limit 10 --format markdown --view --port 8081

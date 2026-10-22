@@ -43,9 +43,9 @@ command-line usage of the `bibx` tool.
 
 | Skill Name | Description | Command | Link to Skill |
 | :--- | :--- | :--- | :--- |
-| **`bibx-inquire`** | Searches research topics, fetches OpenAlex API bibliographic data, and builds semantic graphs. | `bibx inquire "<query>"` | [bibx-inquire SKILL.md](.agents/skills/bibx-inquire/SKILL.md) |
+| **`bibx-inquire`** | Searches research topics, fetches OpenAlex API bibliographic data, and builds citation graphs. | `bibx inquire "<query>"` | [bibx-inquire SKILL.md](.agents/skills/bibx-inquire/SKILL.md) |
 | **`bibx-query`** | Queries and filters local collections based on Tree of Science categories (roots, trunk, leaves). | `bibx query --category <cat>` | [bibx-query SKILL.md](.agents/skills/bibx-query/SKILL.md) |
-| **`bibx-search`** | Performs semantic search on a collection and starts a browser-based visualization server. | `bibx search "<query>"` | [bibx-search SKILL.md](.agents/skills/bibx-search/SKILL.md) |
+| **`bibx-search`** | Performs keyword search on a collection and starts a browser-based visualization server. | `bibx search "<query>"` | [bibx-search SKILL.md](.agents/skills/bibx-search/SKILL.md) |
 
 ---
 
@@ -83,16 +83,12 @@ collection based on the **Tree of Science** structure:
 bibx query --category root --limit 10 --format markdown
 ```
 
-### 3. Search & Visualize (Semantic Exploration)
+### 3. Search & Visualize (Keyword Exploration)
 
 Use the [bibx-search SKILL.md](.agents/skills/bibx-search/SKILL.md) to query
-concepts semantically or view the citation graph in a web browser.
+keywords or view the citation graph in a web browser.
 
 ```bash
 # Example: Launch the web-based visualization server on port 8080
 bibx search "attention mechanisms" --view --port 8080
 ```
-
-> [!NOTE]
-> Make sure `ollama` is running locally and the embedding model has been set up
-> via `bibx setup` before using semantic search functions.
