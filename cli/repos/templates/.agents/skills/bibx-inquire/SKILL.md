@@ -2,7 +2,7 @@
 name: bibx-inquire
 description: >-
   Use the `bibx inquire` command to search for research topics, fetch
-  bibliographic data from the OpenAlex API, and build semantic search graphs.
+  bibliographic data from the OpenAlex API, and build citation graphs.
 ---
 
 # bibx-inquire
@@ -52,14 +52,11 @@ bibx inquire "<query>" [flags]
 
 ## Expected Outputs
 
-Running this command generates the following compressed files under the
-`.bibx/` subdirectory of the active root directory (usually `.bibx/` in the
-workspace root):
+Running this command generates an analysis file under the `.bibx/` subdirectory
+of the active root directory (usually `.bibx/` in the workspace root):
 
-1. **`.bibx/collection.json.gz`**: A compressed JSON file containing the
+1. **`.bibx/analysis.json.gz`**: A compressed JSON file containing the
    retrieved academic publications, citation graphs, and associated metadata.
-2. **`.bibx/search.json.gz`**: A compressed semantic search index generated
-   from the collected papers, enabling subsequent semantic graph searches.
 
 ## Examples
 
@@ -99,9 +96,6 @@ bibx inquire "sustainability" --root ./data
 
 ## Troubleshooting
 
-- **Error: `file already exists`**: This occurs if `.bibx/collection.json.gz`
-  or `.bibx/search.json.gz` is already present. Either back up the old files
-  and delete them, or use the `--force` flag to overwrite them.
-- **Failed to store search results / embedding errors**: Ensure `ollama` is
-  running locally and the semantic search model has been set up via `bibx
-  setup` prior to running the inquiry.
+- **Error: `file already exists`**: This occurs if `.bibx/analysis.json.gz`
+  is already present. Either back up the old file and delete it, or use the
+  `--force` flag to overwrite it.

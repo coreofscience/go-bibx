@@ -21,12 +21,12 @@ var (
 	formats = collections.NewSet(renderers.AnalysisFormats()...)
 )
 
-// New returns the search subcommand which performs semantic graph search on the collection.
+// New returns the search subcommand which performs keyword graph search on the collection.
 func New() *cli.Command {
 	supportedFormats := strings.Join(formats.Items(), ", ")
 	return &cli.Command{
 		Name:      "search",
-		Usage:     "Perform a semantic search on the bibx collection",
+		Usage:     "Perform a keyword search on the bibx collection",
 		ArgsUsage: "<query>",
 		Flags: []cli.Flag{
 			&cli.IntFlag{

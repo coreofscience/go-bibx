@@ -4,40 +4,29 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"slices"
 
 	"github.com/coreofscience/go-bibx/algorithms"
-	"github.com/coreofscience/go-bibx/cli/clients/embeddings"
 	"github.com/coreofscience/go-bibx/cli/clients/openalex"
 	"github.com/coreofscience/go-bibx/cli/repos"
 	"github.com/coreofscience/go-bibx/internal/graphs"
-	"github.com/coreofscience/go-bibx/internal/texter"
-	"github.com/coreofscience/go-bibx/internal/utils"
-	"github.com/coreofscience/go-bibx/internal/vector"
 	"github.com/coreofscience/go-bibx/models"
 )
 
 // OpenAlexAnalysisService coordinates literature fetching from OpenAlex,
-// running SAP and Leiden algorithms, generating embeddings, and managing analysis storage.
+// running SAP and Leiden algorithms, and managing analysis storage.
 type OpenAlexAnalysisService struct {
-	openalexClient  openalex.Client
-	analysisRepo    repos.AnalysisRepo
-	embeddingClient embeddings.Client
-	texter          texter.ArticleTexter
+	openalexClient openalex.Client
+	analysisRepo   repos.AnalysisRepo
 }
 
 // NewOpenAlexAnalysisService creates a new [OpenAlexAnalysisService] with the specified dependencies.
 func NewOpenAlexAnalysisService(
 	openalexClient openalex.Client,
 	analysisRepo repos.AnalysisRepo,
-	embeddingClient embeddings.Client,
-	ttr texter.ArticleTexter,
 ) *OpenAlexAnalysisService {
 	return &OpenAlexAnalysisService{
-		openalexClient:  openalexClient,
-		analysisRepo:    analysisRepo,
-		embeddingClient: embeddingClient,
-		texter:          ttr,
+		openalexClient: openalexClient,
+		analysisRepo:   analysisRepo,
 	}
 }
 
@@ -50,20 +39,13 @@ type OpenAlexAnalysisServiceConfig struct {
 func NewOpenAlexAnalysisServiceFromConfig(config *OpenAlexAnalysisServiceConfig) (*OpenAlexAnalysisService, error) {
 	openalexClient := openalex.NewRestyClient()
 	analysisRepo := repos.NewFileAnalysisRepo(config.AnalysisPath)
-	embeddingClient, err := embeddings.NewOllamaClient()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create embedding client: %w", err)
-	}
-	ttr := texter.NewDefaultArticleTexter()
 	return NewOpenAlexAnalysisService(
 		openalexClient,
 		analysisRepo,
-		embeddingClient,
-		ttr,
 	), nil
 }
 
-// Store coordinates fetching literature, running community detection and SAP algorithms, generating embeddings, and storing the resulting analysis.
+// Store coordinates fetching literature, running community detection and SAP algorithms, and storing the resulting analysis.
 func (s *OpenAlexAnalysisService) Store(
 	ctx context.Context,
 	query string,
@@ -109,27 +91,14 @@ func (s *OpenAlexAnalysisService) Store(
 		return fmt.Errorf("failed to run sap algorithm: %w", err)
 	}
 
-	slog.InfoContext(ctx, "building text embeddings")
-	texts := make([]string, 0, collection.Len())
-	collectionArticles := slices.Collect(collection.All())
-	for _, article := range collectionArticles {
-		texts = append(texts, s.texter.ExtractText(article))
-	}
-	vectors, err := s.embeddingClient.EmbedMany(ctx, texts)
-	if err != nil {
-		return fmt.Errorf("failed to embed articles: %w", err)
-	}
-
 	nodes := make([]*models.Node, 0, collection.Len())
-	embeddingsByKey := make(map[string][]float32, collection.Len())
-	for article, embedding := range utils.Zip(collectionArticles, vectors) {
+	for article := range collection.All() {
 		articleKey := article.Key()
 		if articleKey == nil {
 			slog.WarnContext(ctx, "article without key, skipping", "label", article.Label)
 			continue
 		}
 		key := *articleKey
-		embeddingsByKey[key] = embedding
 		nodes = append(nodes, &models.Node{
 			ID:        key,
 			Article:   article,
@@ -137,24 +106,14 @@ func (s *OpenAlexAnalysisService) Store(
 			Rootness:  result.Rootness[key],
 			Trunkness: result.Trunkness[key],
 			Leafness:  result.Leafness[key],
-			Embedding: embedding,
 		})
 	}
 	links := make([]*models.Link, 0, collection.Len())
 	for _, edge := range graph.AllEdges() {
-		sourceKey := edge.Source().Label()
-		targetKey := edge.Destination().Label()
-		sourceEmbedding, hasSourceEmbed := embeddingsByKey[sourceKey]
-		targetEmbedding, hasTargetEmbed := embeddingsByKey[targetKey]
-		// If we have no source or target embedding, consider them unrelated
-		weight := float32(2)
-		if hasSourceEmbed && hasTargetEmbed {
-			weight = vector.CosineDistance(sourceEmbedding, targetEmbedding)
-		}
 		links = append(links, &models.Link{
 			Source: edge.Source().Label(),
 			Target: edge.Destination().Label(),
-			Weight: float64(weight),
+			Weight: 1.0,
 		})
 	}
 	analysis := &models.Analysis{
@@ -171,8 +130,7 @@ func (s *OpenAlexAnalysisService) Store(
 	if err != nil {
 		return fmt.Errorf("failed to make graph undirected: %w", err)
 	}
-	invertedGraph := graphs.InvertWeight(undirectedGraph)
-	communities := algorithms.NewLeiden(invertedGraph).Run()
+	communities := algorithms.NewLeiden(undirectedGraph).Run()
 	for _, node := range analysis.Nodes {
 		node.Community = communities[node.ID]
 	}
@@ -202,19 +160,22 @@ func (s *OpenAlexAnalysisService) Query(
 	return results, nil
 }
 
-// Search executes a semantic graph search using query embeddings and pseudo-Steiner graph reduction.
+// Search executes a keyword graph search using BM25 and pseudo-Steiner graph reduction.
 func (s *OpenAlexAnalysisService) Search(
 	ctx context.Context,
 	query string,
 	limit int,
 ) (*models.Analysis, error) {
-	vec, err := s.embeddingClient.Embed(ctx, s.texter.CleanText(query))
-	if err != nil {
-		return nil, fmt.Errorf("failed to embed query: %w", err)
-	}
 	analysis, err := s.analysisRepo.Load(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load analysis: %w", err)
+	}
+	searchResults, err := analysis.Search(query, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search analysis: %w", err)
+	}
+	if len(searchResults) == 0 {
+		return &models.Analysis{}, nil
 	}
 	citationGraph, err := analysis.CitationGraph()
 	if err != nil {
@@ -223,10 +184,6 @@ func (s *OpenAlexAnalysisService) Search(
 	pseudoStainer, err := algorithms.NewPseudoSteiner(citationGraph)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pseudo stainer: %w", err)
-	}
-	searchResults, err := analysis.Search(vec, limit)
-	if err != nil {
-		return nil, fmt.Errorf("failed to search analysis: %w", err)
 	}
 	terminals := make([]string, 0, len(searchResults))
 	for _, result := range searchResults {
