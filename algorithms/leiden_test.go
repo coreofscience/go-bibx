@@ -102,12 +102,12 @@ func BenchmarkLeiden(b *testing.B) {
 	numNodes := 250
 	numEdges := 1500
 
-	for i := 0; i < numNodes; i++ {
+	for i := range numNodes {
 		g.AddVertexByLabel(i)
 	}
 
 	r := rand.New(rand.NewSource(42))
-	for i := 0; i < numEdges; i++ {
+	for range numEdges {
 		u := r.Intn(numNodes)
 		v := r.Intn(numNodes)
 		if u != v {
