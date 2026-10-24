@@ -6,7 +6,6 @@ package repository
 
 import (
 	"database/sql"
-	"encoding/json"
 
 	"uuid"
 )
@@ -25,14 +24,14 @@ type Article struct {
 	TimesCited sql.NullInt64
 	Abstract   sql.NullString
 	Rich       sql.NullBool
-	Authors    json.RawMessage
-	Keywords   json.RawMessage
-	Ids        json.RawMessage
+	Authors    []byte
+	Keywords   []byte
+	Ids        []byte
 	CreatedAt  sql.NullTime
 }
 
 type ArticlesFt struct {
-	ArticleID string
+	ArticleID uuid.UUID
 	Title     string
 	Abstract  string
 	Keywords  string
@@ -44,7 +43,7 @@ type Collection struct {
 	QueryHash    interface{}
 	Query        string
 	ResultLimit  int64
-	Parameters   json.RawMessage
+	Parameters   []byte
 	Name         sql.NullString
 	ArticleCount sql.NullInt64
 	CreatedAt    sql.NullTime

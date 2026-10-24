@@ -8,7 +8,6 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 
 	"uuid"
 )
@@ -24,7 +23,7 @@ INSERT INTO articles_fts (
 `
 
 type CreateArticleFTSParams struct {
-	ArticleID string
+	ArticleID uuid.UUID
 	Title     string
 	Abstract  string
 	Keywords  string
@@ -59,7 +58,7 @@ type CreateCollectionParams struct {
 	QueryHash    interface{}
 	Query        string
 	ResultLimit  int64
-	Parameters   json.RawMessage
+	Parameters   []byte
 	Name         sql.NullString
 	ArticleCount sql.NullInt64
 }
@@ -82,7 +81,7 @@ DELETE FROM articles_fts
 WHERE article_id = ?
 `
 
-func (q *Queries) DeleteArticleFTS(ctx context.Context, articleID string) error {
+func (q *Queries) DeleteArticleFTS(ctx context.Context, articleID uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, deleteArticleFTS, articleID)
 	return err
 }
@@ -245,9 +244,9 @@ type ListLeavesRow struct {
 	TimesCited sql.NullInt64
 	Abstract   sql.NullString
 	Rich       sql.NullBool
-	Authors    json.RawMessage
-	Keywords   json.RawMessage
-	Ids        json.RawMessage
+	Authors    []byte
+	Keywords   []byte
+	Ids        []byte
 }
 
 func (q *Queries) ListLeaves(ctx context.Context, arg ListLeavesParams) ([]ListLeavesRow, error) {
@@ -356,9 +355,9 @@ type ListNodesRow struct {
 	TimesCited sql.NullInt64
 	Abstract   sql.NullString
 	Rich       sql.NullBool
-	Authors    json.RawMessage
-	Keywords   json.RawMessage
-	Ids        json.RawMessage
+	Authors    []byte
+	Keywords   []byte
+	Ids        []byte
 }
 
 func (q *Queries) ListNodes(ctx context.Context, collectionID uuid.UUID) ([]ListNodesRow, error) {
@@ -440,9 +439,9 @@ type ListRootsRow struct {
 	TimesCited sql.NullInt64
 	Abstract   sql.NullString
 	Rich       sql.NullBool
-	Authors    json.RawMessage
-	Keywords   json.RawMessage
-	Ids        json.RawMessage
+	Authors    []byte
+	Keywords   []byte
+	Ids        []byte
 }
 
 func (q *Queries) ListRoots(ctx context.Context, arg ListRootsParams) ([]ListRootsRow, error) {
@@ -519,9 +518,9 @@ type ListTrunksRow struct {
 	TimesCited sql.NullInt64
 	Abstract   sql.NullString
 	Rich       sql.NullBool
-	Authors    json.RawMessage
-	Keywords   json.RawMessage
-	Ids        json.RawMessage
+	Authors    []byte
+	Keywords   []byte
+	Ids        []byte
 }
 
 func (q *Queries) ListTrunks(ctx context.Context, arg ListTrunksParams) ([]ListTrunksRow, error) {
@@ -573,7 +572,7 @@ SELECT
     a.authors, a.keywords, a.ids
 FROM articles a
 JOIN articles_fts(?) fts ON a.id = fts.article_id
-JOIN nodes n ON n.article_id = articles.id
+JOIN nodes n ON n.article_id = a.id
 WHERE n.collection_id = ?
 ORDER BY bm25(articles_fts)
 LIMIT ?
@@ -605,9 +604,9 @@ type SearchRow struct {
 	TimesCited sql.NullInt64
 	Abstract   sql.NullString
 	Rich       sql.NullBool
-	Authors    json.RawMessage
-	Keywords   json.RawMessage
-	Ids        json.RawMessage
+	Authors    []byte
+	Keywords   []byte
+	Ids        []byte
 }
 
 func (q *Queries) Search(ctx context.Context, arg SearchParams) ([]SearchRow, error) {
@@ -728,9 +727,9 @@ type UpsertArticleParams struct {
 	TimesCited sql.NullInt64
 	Abstract   sql.NullString
 	Rich       sql.NullBool
-	Authors    json.RawMessage
-	Keywords   json.RawMessage
-	Ids        json.RawMessage
+	Authors    []byte
+	Keywords   []byte
+	Ids        []byte
 }
 
 func (q *Queries) UpsertArticle(ctx context.Context, arg UpsertArticleParams) (uuid.UUID, error) {

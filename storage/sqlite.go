@@ -7,12 +7,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
-	"time"
 	"uuid"
 
 	"github.com/coreofscience/go-bibx/internal/collections"
 	"github.com/coreofscience/go-bibx/models"
+	"github.com/coreofscience/go-bibx/repository"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
@@ -48,9 +49,10 @@ func runMigrations(db *sql.DB) error {
 	return nil
 }
 
-// SQLiteStore implements [Store] backed by a pure-Go SQLite database.
+// SQLiteStore implements [Store] backed by a pure-Go SQLite database and [repository.Queries].
 type SQLiteStore struct {
-	db *sql.DB
+	db      *sql.DB
+	queries *repository.Queries
 }
 
 // NewSQLiteStore opens or creates a SQLite database at the specified path,
@@ -72,7 +74,10 @@ func NewSQLiteStore(path string) (*SQLiteStore, error) {
 		return nil, fmt.Errorf("failed to run database migrations: %w", err)
 	}
 
-	return &SQLiteStore{db: db}, nil
+	return &SQLiteStore{
+		db:      db,
+		queries: repository.New(db),
+	}, nil
 }
 
 // NewSQLiteStoreWithDB creates a [*SQLiteStore] wrapping an existing [*sql.DB].
@@ -83,7 +88,10 @@ func NewSQLiteStoreWithDB(db *sql.DB, runMigration bool) (*SQLiteStore, error) {
 			return nil, fmt.Errorf("failed to run database migrations: %w", err)
 		}
 	}
-	return &SQLiteStore{db: db}, nil
+	return &SQLiteStore{
+		db:      db,
+		queries: repository.New(db),
+	}, nil
 }
 
 // DB returns the underlying [*sql.DB] instance.
@@ -104,59 +112,55 @@ func (s *SQLiteStore) Close() error {
 
 // FindCollectionByHash finds a collection matching the given query hash.
 func (s *SQLiteStore) FindCollectionByHash(ctx context.Context, hash [32]byte) (*Collection, error) {
-	query := `
-		SELECT id, query_hash, query, result_limit, parameters, name, article_count, created_at, updated_at
-		FROM collections
-		WHERE query_hash = ?`
-	row := s.db.QueryRowContext(ctx, query, hash[:])
-	return scanCollection(row)
+	c, err := s.queries.GetCollectionByHash(ctx, hash[:])
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrCollectionNotFound
+		}
+		return nil, fmt.Errorf("failed to get collection by hash: %w", err)
+	}
+	return toCollection(c), nil
 }
 
 // FindCollectionByID finds a collection by its UUID.
 func (s *SQLiteStore) FindCollectionByID(ctx context.Context, id uuid.UUID) (*Collection, error) {
-	query := `
-		SELECT id, query_hash, query, result_limit, parameters, name, article_count, created_at, updated_at
-		FROM collections
-		WHERE id = ?`
-	row := s.db.QueryRowContext(ctx, query, UUIDToBytes(id))
-	return scanCollection(row)
+	c, err := s.queries.GetCollectionByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrCollectionNotFound
+		}
+		return nil, fmt.Errorf("failed to get collection by id: %w", err)
+	}
+	return toCollection(c), nil
 }
 
 // FindCollectionByName finds a collection by its human-friendly name alias.
 func (s *SQLiteStore) FindCollectionByName(ctx context.Context, name string) (*Collection, error) {
-	query := `
-		SELECT id, query_hash, query, result_limit, parameters, name, article_count, created_at, updated_at
-		FROM collections
-		WHERE name = ?`
-	row := s.db.QueryRowContext(ctx, query, name)
-	return scanCollection(row)
+	c, err := s.queries.GetCollectionByName(ctx, sql.NullString{String: name, Valid: true})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrCollectionNotFound
+		}
+		return nil, fmt.Errorf("failed to get collection by name: %w", err)
+	}
+	return toCollection(c), nil
 }
 
 // ListCollections returns all collections ordered by creation timestamp descending.
 func (s *SQLiteStore) ListCollections(ctx context.Context) ([]*Collection, error) {
-	query := `
-		SELECT id, query_hash, query, result_limit, parameters, name, article_count, created_at, updated_at
-		FROM collections
-		ORDER BY created_at DESC, id DESC`
-	rows, err := s.db.QueryContext(ctx, query)
+	items, err := s.queries.ListCollections(ctx, repository.ListCollectionsParams{
+		ID:    uuid.Nil(),
+		Limit: 10000,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list collections: %w", err)
 	}
-	defer func() {
-		_ = rows.Close()
-	}()
 
-	var cols []*Collection
-	for rows.Next() {
-		col, err := scanCollectionRow(rows)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan collection: %w", err)
-		}
-		cols = append(cols, col)
+	cols := make([]*Collection, len(items))
+	for i, item := range items {
+		cols[i] = toCollection(item)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during collection rows iteration: %w", err)
-	}
+	slices.Reverse(cols)
 	return cols, nil
 }
 
@@ -169,18 +173,20 @@ func (s *SQLiteStore) CreateCollection(ctx context.Context, col *Collection) err
 		col.ID = uuid.NewV7()
 	}
 
-	query := `
-		INSERT INTO collections (id, query_hash, query, result_limit, parameters, name, article_count)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`
-	_, err := s.db.ExecContext(ctx, query,
-		UUIDToBytes(col.ID),
-		col.QueryHash[:],
-		col.Query,
-		col.ResultLimit,
-		col.Parameters,
-		col.Name,
-		col.ArticleCount,
-	)
+	var nameNull sql.NullString
+	if col.Name != nil {
+		nameNull = sql.NullString{String: *col.Name, Valid: true}
+	}
+
+	err := s.queries.CreateCollection(ctx, repository.CreateCollectionParams{
+		ID:           col.ID,
+		QueryHash:    col.QueryHash[:],
+		Query:        col.Query,
+		ResultLimit:  int64(col.ResultLimit),
+		Parameters:   col.Parameters,
+		Name:         nameNull,
+		ArticleCount: sql.NullInt64{Int64: int64(col.ArticleCount), Valid: true},
+	})
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return ErrCollectionExists
@@ -192,17 +198,15 @@ func (s *SQLiteStore) CreateCollection(ctx context.Context, col *Collection) err
 
 // DeleteCollection removes a collection and cascades to its nodes and links.
 func (s *SQLiteStore) DeleteCollection(ctx context.Context, id uuid.UUID) error {
-	query := "DELETE FROM collections WHERE id = ?"
-	res, err := s.db.ExecContext(ctx, query, UUIDToBytes(id))
-	if err != nil {
+	if _, err := s.queries.GetCollectionByID(ctx, id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrCollectionNotFound
+		}
+		return fmt.Errorf("failed to check collection before deletion: %w", err)
+	}
+
+	if err := s.queries.DeleteCollectionById(ctx, id); err != nil {
 		return fmt.Errorf("failed to delete collection: %w", err)
-	}
-	rowsAffected, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to check affected rows: %w", err)
-	}
-	if rowsAffected == 0 {
-		return ErrCollectionNotFound
 	}
 	return nil
 }
@@ -221,84 +225,20 @@ func (s *SQLiteStore) StoreAnalysis(ctx context.Context, collectionID uuid.UUID,
 		_ = tx.Rollback()
 	}()
 
+	qtx := s.queries.WithTx(tx)
+
 	// 1. Verify collection exists
-	var count int
-	err = tx.QueryRowContext(ctx, "SELECT count(*) FROM collections WHERE id = ?", UUIDToBytes(collectionID)).Scan(&count)
-	if err != nil {
+	if _, err := qtx.GetCollectionByID(ctx, collectionID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrCollectionNotFound
+		}
 		return fmt.Errorf("failed to verify collection existence: %w", err)
 	}
-	if count == 0 {
-		return ErrCollectionNotFound
-	}
-
-	// Prepare statements for performance
-	articleStmt, err := tx.PrepareContext(ctx, `
-		INSERT INTO articles (id, label, title, journal, year, volume, issue, page, doi, permalink, times_cited, abstract, rich, authors, keywords, ids)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT(label) DO UPDATE SET
-			title=COALESCE(excluded.title, articles.title),
-			journal=COALESCE(excluded.journal, articles.journal),
-			year=COALESCE(excluded.year, articles.year),
-			volume=COALESCE(excluded.volume, articles.volume),
-			issue=COALESCE(excluded.issue, articles.issue),
-			page=COALESCE(excluded.page, articles.page),
-			doi=COALESCE(excluded.doi, articles.doi),
-			permalink=COALESCE(excluded.permalink, articles.permalink),
-			times_cited=COALESCE(excluded.times_cited, articles.times_cited),
-			abstract=COALESCE(excluded.abstract, articles.abstract),
-			rich=excluded.rich OR articles.rich,
-			authors=COALESCE(excluded.authors, articles.authors),
-			keywords=COALESCE(excluded.keywords, articles.keywords),
-			ids=COALESCE(excluded.ids, articles.ids)
-		RETURNING id`)
-	if err != nil {
-		return fmt.Errorf("failed to prepare article statement: %w", err)
-	}
-	defer func() {
-		_ = articleStmt.Close()
-	}()
-
-	delFTSStmt, err := tx.PrepareContext(ctx, "DELETE FROM articles_fts WHERE article_id = ?")
-	if err != nil {
-		return fmt.Errorf("failed to prepare fts delete statement: %w", err)
-	}
-	defer func() {
-		_ = delFTSStmt.Close()
-	}()
-
-	insertFTSStmt, err := tx.PrepareContext(ctx, `
-		INSERT INTO articles_fts (article_id, title, abstract, keywords, authors)
-		VALUES (?, ?, ?, ?, ?)`)
-	if err != nil {
-		return fmt.Errorf("failed to prepare fts insert statement: %w", err)
-	}
-	defer func() {
-		_ = insertFTSStmt.Close()
-	}()
-
-	nodeStmt, err := tx.PrepareContext(ctx, `
-		INSERT INTO nodes (id, collection_id, article_id, category, rootness, trunkness, leafness, community)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT(collection_id, article_id) DO UPDATE SET
-			category=excluded.category,
-			rootness=excluded.rootness,
-			trunkness=excluded.trunkness,
-			leafness=excluded.leafness,
-			community=excluded.community
-		RETURNING id`)
-	if err != nil {
-		return fmt.Errorf("failed to prepare node statement: %w", err)
-	}
-	defer func() {
-		_ = nodeStmt.Close()
-	}()
-
-	// Map node string identifiers to their database UUIDs for linking
-	nodeIDToUUID := make(map[string]uuid.UUID, len(a.Nodes))
 
 	// 2. Insert/update Articles & Nodes
+	nodeIDToUUID := make(map[string]uuid.UUID, len(a.Nodes))
 	for _, node := range a.Nodes {
-		resolvedNodeID, err := persistNode(ctx, collectionID, node, articleStmt, delFTSStmt, insertFTSStmt, nodeStmt)
+		resolvedNodeID, err := persistNode(ctx, qtx, collectionID, node)
 		if err != nil {
 			return err
 		}
@@ -315,19 +255,15 @@ func (s *SQLiteStore) StoreAnalysis(ctx context.Context, collectionID uuid.UUID,
 	}
 
 	// 3. Insert Links
-	if err := persistLinks(ctx, collectionID, a.Links, nodeIDToUUID, tx); err != nil {
+	if err := persistLinks(ctx, qtx, collectionID, a.Links, nodeIDToUUID); err != nil {
 		return err
 	}
 
 	// 4. Update collection article count
-	_, err = tx.ExecContext(ctx, `
-		UPDATE collections
-		SET article_count = (SELECT count(*) FROM nodes WHERE collection_id = ?),
-		    updated_at = CURRENT_TIMESTAMP
-		WHERE id = ?`,
-		UUIDToBytes(collectionID), UUIDToBytes(collectionID),
-	)
-	if err != nil {
+	if err := qtx.UpdateArticleCount(ctx, repository.UpdateArticleCountParams{
+		CollectionID: collectionID,
+		ID:           collectionID,
+	}); err != nil {
 		return fmt.Errorf("failed to update collection metadata: %w", err)
 	}
 
@@ -340,9 +276,9 @@ func (s *SQLiteStore) StoreAnalysis(ctx context.Context, collectionID uuid.UUID,
 
 func persistNode(
 	ctx context.Context,
+	qtx *repository.Queries,
 	collectionID uuid.UUID,
 	node *models.Node,
-	articleStmt, delFTSStmt, insertFTSStmt, nodeStmt *sql.Stmt,
 ) (uuid.UUID, error) {
 	art := node.Article
 	if art == nil {
@@ -367,36 +303,29 @@ func persistNode(
 		idsJSON, _ = json.Marshal(art.IDs.Items())
 	}
 
-	newArtID := uuid.NewV7()
-	var resolvedArtIDBytes []byte
-	err := articleStmt.QueryRowContext(ctx,
-		UUIDToBytes(newArtID),
-		art.Label,
-		art.Title,
-		art.Journal,
-		art.Year,
-		art.Volume,
-		art.Issue,
-		art.Page,
-		art.DOI,
-		art.Permalink,
-		art.TimesCited,
-		art.Abstract,
-		art.Rich,
-		authorsJSON,
-		keywordsJSON,
-		idsJSON,
-	).Scan(&resolvedArtIDBytes)
+	resolvedArtID, err := qtx.UpsertArticle(ctx, repository.UpsertArticleParams{
+		ID:         uuid.NewV7(),
+		Label:      art.Label,
+		Title:      toNullString(art.Title),
+		Journal:    toNullString(art.Journal),
+		Year:       toNullInt64(art.Year),
+		Volume:     toNullString(art.Volume),
+		Issue:      toNullString(art.Issue),
+		Page:       toNullString(art.Page),
+		Doi:        toNullString(art.DOI),
+		Permalink:  toNullString(art.Permalink),
+		TimesCited: toNullInt64(art.TimesCited),
+		Abstract:   toNullString(art.Abstract),
+		Rich:       sql.NullBool{Bool: art.Rich, Valid: true},
+		Authors:    authorsJSON,
+		Keywords:   keywordsJSON,
+		Ids:        idsJSON,
+	})
 	if err != nil {
-		return uuid.Nil(), fmt.Errorf("failed to persist article %s: %w", art.Label, err)
+		return uuid.Nil(), fmt.Errorf("failed to upsert article %s: %w", art.Label, err)
 	}
 
-	resolvedArtID, err := ScanUUID(resolvedArtIDBytes)
-	if err != nil {
-		return uuid.Nil(), fmt.Errorf("failed to parse article id: %w", err)
-	}
-
-	if _, err := delFTSStmt.ExecContext(ctx, UUIDToBytes(resolvedArtID)); err != nil {
+	if err := qtx.DeleteArticleFTS(ctx, resolvedArtID); err != nil {
 		return uuid.Nil(), fmt.Errorf("failed to clean fts for article %s: %w", art.Label, err)
 	}
 
@@ -414,29 +343,28 @@ func persistNode(
 	}
 	authorsStr := strings.Join(art.Authors, " ")
 
-	if _, err := insertFTSStmt.ExecContext(ctx, UUIDToBytes(resolvedArtID), titleStr, abstractStr, keywordsStr, authorsStr); err != nil {
+	if err := qtx.CreateArticleFTS(ctx, repository.CreateArticleFTSParams{
+		ArticleID: resolvedArtID,
+		Title:     titleStr,
+		Abstract:  abstractStr,
+		Keywords:  keywordsStr,
+		Authors:   authorsStr,
+	}); err != nil {
 		return uuid.Nil(), fmt.Errorf("failed to index fts for article %s: %w", art.Label, err)
 	}
 
-	newNodeID := uuid.NewV7()
-	var resolvedNodeIDBytes []byte
-	err = nodeStmt.QueryRowContext(ctx,
-		UUIDToBytes(newNodeID),
-		UUIDToBytes(collectionID),
-		UUIDToBytes(resolvedArtID),
-		string(node.Category),
-		node.Rootness,
-		node.Trunkness,
-		node.Leafness,
-		node.Community,
-	).Scan(&resolvedNodeIDBytes)
+	resolvedNodeID, err := qtx.UpsertNode(ctx, repository.UpsertNodeParams{
+		ID:           uuid.NewV7(),
+		CollectionID: collectionID,
+		ArticleID:    resolvedArtID,
+		Category:     string(node.Category),
+		Rootness:     node.Rootness,
+		Trunkness:    node.Trunkness,
+		Leafness:     node.Leafness,
+		Community:    int64(node.Community),
+	})
 	if err != nil {
-		return uuid.Nil(), fmt.Errorf("failed to persist node %s: %w", node.ID, err)
-	}
-
-	resolvedNodeID, err := ScanUUID(resolvedNodeIDBytes)
-	if err != nil {
-		return uuid.Nil(), fmt.Errorf("failed to parse node id: %w", err)
+		return uuid.Nil(), fmt.Errorf("failed to upsert node %s: %w", node.ID, err)
 	}
 
 	return resolvedNodeID, nil
@@ -444,25 +372,11 @@ func persistNode(
 
 func persistLinks(
 	ctx context.Context,
+	qtx *repository.Queries,
 	collectionID uuid.UUID,
 	links []*models.Link,
 	nodeIDToUUID map[string]uuid.UUID,
-	tx *sql.Tx,
 ) error {
-	if len(links) == 0 {
-		return nil
-	}
-
-	linkStmt, err := tx.PrepareContext(ctx, `
-		INSERT OR REPLACE INTO links (collection_id, source_id, target_id, weight)
-		VALUES (?, ?, ?, ?)`)
-	if err != nil {
-		return fmt.Errorf("failed to prepare link statement: %w", err)
-	}
-	defer func() {
-		_ = linkStmt.Close()
-	}()
-
 	for _, link := range links {
 		sourceUUID, okSource := nodeIDToUUID[link.Source]
 		targetUUID, okTarget := nodeIDToUUID[link.Target]
@@ -475,142 +389,75 @@ func persistLinks(
 			weight = 1.0
 		}
 
-		if _, err := linkStmt.ExecContext(ctx, UUIDToBytes(collectionID), UUIDToBytes(sourceUUID), UUIDToBytes(targetUUID), weight); err != nil {
+		err := qtx.UpsertLink(ctx, repository.UpsertLinkParams{
+			CollectionID: collectionID,
+			SourceID:     sourceUUID,
+			TargetID:     targetUUID,
+			Weight:       sql.NullFloat64{Float64: weight, Valid: true},
+		})
+		if err != nil {
 			return fmt.Errorf("failed to insert link: %w", err)
 		}
 	}
-
 	return nil
 }
 
 // LoadAnalysis reconstructs the entire models.Analysis graph from the database for a collection.
 func (s *SQLiteStore) LoadAnalysis(ctx context.Context, collectionID uuid.UUID) (*models.Analysis, error) {
-	// Verify collection exists
-	var count int
-	err := s.db.QueryRowContext(ctx, "SELECT count(*) FROM collections WHERE id = ?", UUIDToBytes(collectionID)).Scan(&count)
-	if err != nil {
+	if _, err := s.queries.GetCollectionByID(ctx, collectionID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrCollectionNotFound
+		}
 		return nil, fmt.Errorf("failed to verify collection existence: %w", err)
 	}
-	if count == 0 {
-		return nil, ErrCollectionNotFound
-	}
 
-	// Load nodes joined with articles
-	nodesQuery := `
-		SELECT
-			n.id, n.category, n.rootness, n.trunkness, n.leafness, n.community,
-			a.id, a.label, a.title, a.journal, a.year, a.volume, a.issue, a.page,
-			a.doi, a.permalink, a.times_cited, a.abstract, a.rich,
-			a.authors, a.keywords, a.ids
-		FROM nodes n
-		JOIN articles a ON a.id = n.article_id
-		WHERE n.collection_id = ?`
-
-	rows, err := s.db.QueryContext(ctx, nodesQuery, UUIDToBytes(collectionID))
+	nodeRows, err := s.queries.ListNodes(ctx, collectionID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query collection nodes: %w", err)
 	}
-	defer func() {
-		_ = rows.Close()
-	}()
 
-	var nodes []*models.Node
-	nodeUUIDToLabel := make(map[string]string)
+	nodes := make([]*models.Node, 0, len(nodeRows))
+	nodeUUIDToLabel := make(map[uuid.UUID]string, len(nodeRows))
 
-	for rows.Next() {
-		var (
-			nodeIDBytes []byte
-			category    string
-			rootness    float64
-			trunkness   float64
-			leafness    float64
-			community   int
-			artIDBytes  []byte
-			label       string
-			title       sql.NullString
-			journal     sql.NullString
-			year        sql.NullInt64
-			volume      sql.NullString
-			issue       sql.NullString
-			page        sql.NullString
-			doi         sql.NullString
-			permalink   sql.NullString
-			timesCited  sql.NullInt64
-			abstract    sql.NullString
-			rich        bool
-			authorsRaw  []byte
-			keywordsRaw []byte
-			idsRaw      []byte
-		)
-
-		err := rows.Scan(
-			&nodeIDBytes, &category, &rootness, &trunkness, &leafness, &community,
-			&artIDBytes, &label, &title, &journal, &year, &volume, &issue, &page,
-			&doi, &permalink, &timesCited, &abstract, &rich,
-			&authorsRaw, &keywordsRaw, &idsRaw,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan node row: %w", err)
-		}
-
-		art := buildArticle(label, title, journal, year, volume, issue, page, doi, permalink, timesCited, abstract, rich, authorsRaw, keywordsRaw, idsRaw)
-		nodeID := label
+	for _, r := range nodeRows {
+		art := buildArticle(r.Label, r.Title, r.Journal, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
+		nodeID := r.Label
 		if key := art.Key(); key != nil {
 			nodeID = *key
 		}
 
-		node := &models.Node{
+		nodes = append(nodes, &models.Node{
 			ID:        nodeID,
-			Category:  models.Category(category),
-			Rootness:  rootness,
-			Trunkness: trunkness,
-			Leafness:  leafness,
-			Community: community,
+			Category:  models.Category(r.Category),
+			Rootness:  r.Rootness,
+			Trunkness: r.Trunkness,
+			Leafness:  r.Leafness,
+			Community: int(r.Community),
 			Article:   art,
-		}
-		nodes = append(nodes, node)
-		nodeUUIDToLabel[string(nodeIDBytes)] = nodeID
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during node rows iteration: %w", err)
+		})
+		nodeUUIDToLabel[r.ID] = nodeID
 	}
 
-	// Load links
-	linksQuery := `
-		SELECT source_id, target_id, weight
-		FROM links
-		WHERE collection_id = ?`
-
-	linkRows, err := s.db.QueryContext(ctx, linksQuery, UUIDToBytes(collectionID))
+	linkRows, err := s.queries.ListLinks(ctx, collectionID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query collection links: %w", err)
 	}
-	defer func() {
-		_ = linkRows.Close()
-	}()
 
-	var links []*models.Link
-	for linkRows.Next() {
-		var (
-			sourceBytes []byte
-			targetBytes []byte
-			weight      float64
-		)
-		if err := linkRows.Scan(&sourceBytes, &targetBytes, &weight); err != nil {
-			return nil, fmt.Errorf("failed to scan link row: %w", err)
-		}
-		sourceID, ok1 := nodeUUIDToLabel[string(sourceBytes)]
-		targetID, ok2 := nodeUUIDToLabel[string(targetBytes)]
-		if ok1 && ok2 {
+	links := make([]*models.Link, 0, len(linkRows))
+	for _, r := range linkRows {
+		sourceID, okSource := nodeUUIDToLabel[r.SourceID]
+		targetID, okTarget := nodeUUIDToLabel[r.TargetID]
+		if okSource && okTarget {
+			weight := 1.0
+			if r.Weight.Valid {
+				weight = r.Weight.Float64
+			}
 			links = append(links, &models.Link{
 				Source: sourceID,
 				Target: targetID,
 				Weight: weight,
 			})
 		}
-	}
-	if err := linkRows.Err(); err != nil {
-		return nil, fmt.Errorf("error during link rows iteration: %w", err)
 	}
 
 	return &models.Analysis{
@@ -625,79 +472,52 @@ func (s *SQLiteStore) QueryCategory(ctx context.Context, collectionID uuid.UUID,
 		return nil, nil
 	}
 
-	var scoreCol string
 	switch models.Category(category) {
 	case models.CategoryTrunk:
-		scoreCol = "n.trunkness"
-	case models.CategoryLeaf:
-		scoreCol = "n.leafness"
-	default:
-		scoreCol = "n.rootness"
-	}
-
-	query := fmt.Sprintf(`
-		SELECT
-			%s,
-			a.id, a.label, a.title, a.journal, a.year, a.volume, a.issue, a.page,
-			a.doi, a.permalink, a.times_cited, a.abstract, a.rich,
-			a.authors, a.keywords, a.ids
-		FROM nodes n
-		JOIN articles a ON a.id = n.article_id
-		WHERE n.collection_id = ? AND %s > 0
-		ORDER BY %s DESC
-		LIMIT ?`, scoreCol, scoreCol, scoreCol)
-
-	rows, err := s.db.QueryContext(ctx, query, UUIDToBytes(collectionID), limit)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query category: %w", err)
-	}
-	defer func() {
-		_ = rows.Close()
-	}()
-
-	var results []*models.Result
-	for rows.Next() {
-		var (
-			score       float64
-			artIDBytes  []byte
-			label       string
-			title       sql.NullString
-			journal     sql.NullString
-			year        sql.NullInt64
-			volume      sql.NullString
-			issue       sql.NullString
-			page        sql.NullString
-			doi         sql.NullString
-			permalink   sql.NullString
-			timesCited  sql.NullInt64
-			abstract    sql.NullString
-			rich        bool
-			authorsRaw  []byte
-			keywordsRaw []byte
-			idsRaw      []byte
-		)
-
-		err := rows.Scan(
-			&score,
-			&artIDBytes, &label, &title, &journal, &year, &volume, &issue, &page,
-			&doi, &permalink, &timesCited, &abstract, &rich,
-			&authorsRaw, &keywordsRaw, &idsRaw,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan category result: %w", err)
-		}
-
-		art := buildArticle(label, title, journal, year, volume, issue, page, doi, permalink, timesCited, abstract, rich, authorsRaw, keywordsRaw, idsRaw)
-		results = append(results, &models.Result{
-			Score:   score,
-			Article: art,
+		rows, err := s.queries.ListTrunks(ctx, repository.ListTrunksParams{
+			CollectionID: collectionID,
+			Limit:        int64(limit),
 		})
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during category rows iteration: %w", err)
-	}
+		if err != nil {
+			return nil, fmt.Errorf("failed to query trunks: %w", err)
+		}
+		results := make([]*models.Result, len(rows))
+		for i, r := range rows {
+			art := buildArticle(r.Label, r.Title, r.Journal, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
+			results[i] = &models.Result{Score: r.Trunkness, Article: art}
+		}
+		return results, nil
 
-	return results, nil
+	case models.CategoryLeaf:
+		rows, err := s.queries.ListLeaves(ctx, repository.ListLeavesParams{
+			CollectionID: collectionID,
+			Limit:        int64(limit),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to query leaves: %w", err)
+		}
+		results := make([]*models.Result, len(rows))
+		for i, r := range rows {
+			art := buildArticle(r.Label, r.Title, r.Journal, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
+			results[i] = &models.Result{Score: r.Leafness, Article: art}
+		}
+		return results, nil
+
+	default: // Root
+		rows, err := s.queries.ListRoots(ctx, repository.ListRootsParams{
+			CollectionID: collectionID,
+			Limit:        int64(limit),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to query roots: %w", err)
+		}
+		results := make([]*models.Result, len(rows))
+		for i, r := range rows {
+			art := buildArticle(r.Label, r.Title, r.Journal, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
+			results[i] = &models.Result{Score: r.Rootness, Article: art}
+		}
+		return results, nil
+	}
 }
 
 // Search executes a keyword full-text search against the collection's articles using SQLite FTS5 BM25.
@@ -711,87 +531,32 @@ func (s *SQLiteStore) Search(ctx context.Context, collectionID uuid.UUID, query 
 		return nil, nil
 	}
 
-	searchSQL := `
-		SELECT
-			n.id, n.category, n.rootness, n.trunkness, n.leafness, n.community,
-			a.id, a.label, a.title, a.journal, a.year, a.volume, a.issue, a.page,
-			a.doi, a.permalink, a.times_cited, a.abstract, a.rich,
-			a.authors, a.keywords, a.ids,
-			bm25(articles_fts) AS rank
-		FROM articles_fts
-		JOIN nodes n ON n.article_id = articles_fts.article_id
-		JOIN articles a ON a.id = n.article_id
-		WHERE n.collection_id = ? AND articles_fts MATCH ?
-		ORDER BY rank
-		LIMIT ?`
-
-	rows, err := s.db.QueryContext(ctx, searchSQL, UUIDToBytes(collectionID), ftsQuery, limit)
+	rows, err := s.queries.Search(ctx, repository.SearchParams{
+		ArticlesFts:  ftsQuery,
+		CollectionID: collectionID,
+		Limit:        int64(limit),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to search fts: %w", err)
 	}
-	defer func() {
-		_ = rows.Close()
-	}()
 
-	var nodes []*models.Node
-	for rows.Next() {
-		var (
-			nodeIDBytes []byte
-			category    string
-			rootness    float64
-			trunkness   float64
-			leafness    float64
-			community   int
-			artIDBytes  []byte
-			label       string
-			title       sql.NullString
-			journal     sql.NullString
-			year        sql.NullInt64
-			volume      sql.NullString
-			issue       sql.NullString
-			page        sql.NullString
-			doi         sql.NullString
-			permalink   sql.NullString
-			timesCited  sql.NullInt64
-			abstract    sql.NullString
-			rich        bool
-			authorsRaw  []byte
-			keywordsRaw []byte
-			idsRaw      []byte
-			rank        float64
-		)
-
-		err := rows.Scan(
-			&nodeIDBytes, &category, &rootness, &trunkness, &leafness, &community,
-			&artIDBytes, &label, &title, &journal, &year, &volume, &issue, &page,
-			&doi, &permalink, &timesCited, &abstract, &rich,
-			&authorsRaw, &keywordsRaw, &idsRaw,
-			&rank,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan search node: %w", err)
-		}
-
-		art := buildArticle(label, title, journal, year, volume, issue, page, doi, permalink, timesCited, abstract, rich, authorsRaw, keywordsRaw, idsRaw)
-		nodeID := label
+	nodes := make([]*models.Node, len(rows))
+	for i, r := range rows {
+		art := buildArticle(r.Label, r.Title, r.Journal, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
+		nodeID := r.Label
 		if key := art.Key(); key != nil {
 			nodeID = *key
 		}
-
-		nodes = append(nodes, &models.Node{
+		nodes[i] = &models.Node{
 			ID:        nodeID,
-			Category:  models.Category(category),
-			Rootness:  rootness,
-			Trunkness: trunkness,
-			Leafness:  leafness,
-			Community: community,
+			Category:  models.Category(r.Category),
+			Rootness:  r.Rootness,
+			Trunkness: r.Trunkness,
+			Leafness:  r.Leafness,
+			Community: int(r.Community),
 			Article:   art,
-		})
+		}
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during search rows iteration: %w", err)
-	}
-
 	return nodes, nil
 }
 
@@ -811,97 +576,42 @@ func cleanFTS5Query(query string) string {
 	return strings.Join(cleaned, " ")
 }
 
-// scanCollection scans a single row into a [*Collection].
-func scanCollection(row *sql.Row) (*Collection, error) {
-	var (
-		idBytes      []byte
-		hashBytes    []byte
-		query        string
-		resultLimit  int
-		parameters   []byte
-		name         sql.NullString
-		articleCount int
-		createdAt    time.Time
-		updatedAt    time.Time
-	)
-
-	err := row.Scan(&idBytes, &hashBytes, &query, &resultLimit, &parameters, &name, &articleCount, &createdAt, &updatedAt)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrCollectionNotFound
-		}
-		return nil, fmt.Errorf("failed to scan collection row: %w", err)
-	}
-
-	id, err := ScanUUID(idBytes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to scan collection uuid: %w", err)
-	}
-
+func toCollection(c repository.Collection) *Collection {
 	var hash [32]byte
-	copy(hash[:], hashBytes)
+	if b, ok := c.QueryHash.([]byte); ok {
+		copy(hash[:], b)
+	}
 
 	var namePtr *string
-	if name.Valid {
-		namePtr = &name.String
+	if c.Name.Valid {
+		namePtr = &c.Name.String
 	}
 
 	return &Collection{
-		ID:           id,
+		ID:           c.ID,
 		QueryHash:    hash,
-		Query:        query,
-		ResultLimit:  resultLimit,
-		Parameters:   parameters,
+		Query:        c.Query,
+		ResultLimit:  int(c.ResultLimit),
+		Parameters:   c.Parameters,
 		Name:         namePtr,
-		ArticleCount: articleCount,
-		CreatedAt:    createdAt,
-		UpdatedAt:    updatedAt,
-	}, nil
+		ArticleCount: int(c.ArticleCount.Int64),
+		CreatedAt:    c.CreatedAt.Time,
+		UpdatedAt:    c.UpdatedAt.Time,
+	}
 }
 
-// scanCollectionRow scans the current row from [*sql.Rows] into a [*Collection].
-func scanCollectionRow(rows *sql.Rows) (*Collection, error) {
-	var (
-		idBytes      []byte
-		hashBytes    []byte
-		query        string
-		resultLimit  int
-		parameters   []byte
-		name         sql.NullString
-		articleCount int
-		createdAt    time.Time
-		updatedAt    time.Time
-	)
-
-	err := rows.Scan(&idBytes, &hashBytes, &query, &resultLimit, &parameters, &name, &articleCount, &createdAt, &updatedAt)
-	if err != nil {
-		return nil, fmt.Errorf("failed to scan collection row: %w", err)
+func toNullString(s *string) sql.NullString {
+	if s == nil {
+		return sql.NullString{}
 	}
+	return sql.NullString{String: *s, Valid: true}
+}
 
-	id, err := ScanUUID(idBytes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to scan collection uuid: %w", err)
+func toNullInt64(i *int) sql.NullInt64 {
+	if i == nil {
+		return sql.NullInt64{}
 	}
-
-	var hash [32]byte
-	copy(hash[:], hashBytes)
-
-	var namePtr *string
-	if name.Valid {
-		namePtr = &name.String
-	}
-
-	return &Collection{
-		ID:           id,
-		QueryHash:    hash,
-		Query:        query,
-		ResultLimit:  resultLimit,
-		Parameters:   parameters,
-		Name:         namePtr,
-		ArticleCount: articleCount,
-		CreatedAt:    createdAt,
-		UpdatedAt:    updatedAt,
-	}, nil
+	return sql.NullInt64{Int64: int64(*i), Valid: true}
 }
 
 // buildArticle constructs a [*models.Article] from scanned SQL fields.

@@ -180,7 +180,7 @@ SELECT
     a.authors, a.keywords, a.ids
 FROM articles a
 JOIN articles_fts(?) fts ON a.id = fts.article_id
-JOIN nodes n ON n.article_id = articles.id
+JOIN nodes n ON n.article_id = a.id
 WHERE n.collection_id = ?
 ORDER BY bm25(articles_fts)
 LIMIT ?;
