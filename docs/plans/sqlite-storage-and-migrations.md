@@ -190,7 +190,7 @@ CREATE VIRTUAL TABLE articles_fts USING fts5(
   - Test category queries and FTS5 search ranking.
 
 ### Phase 5: Service Refactoring & Idempotency Integration
-- [ ] Update `cli/services/analysis.go`:
+- [x] Update `cli/services/analysis.go`:
   - Replace `repos.AnalysisRepo` with `storage.Store`.
   - Update `OpenAlexAnalysisService.Store(ctx, query, limit, force)`:
     1. Compute `queryHash = storage.ComputeQueryHash(query, limit)`.
@@ -199,7 +199,7 @@ CREATE VIRTUAL TABLE articles_fts USING fts5(
     4. If not found or `force`, fetch works, compute algorithms, create `Collection` record with new `uuid.NewV7()`, and call `s.store.StoreAnalysis(...)`.
   - Update `Query` to delegate to `s.store.QueryCategory`.
   - Update `Search` to leverage `s.store.Search`.
-- [ ] Update `cli/services/analysis_test.go` with mock store verifying idempotency behavior.
+- [x] Update `cli/services/analysis_test.go` with mock store verifying idempotency behavior.
 
 ### Phase 6: CLI Commands & UX Expansion
 - [ ] Update `cmd/bibx/main.go` and `internal/utils/context.go`:

@@ -73,7 +73,7 @@ func New() *cli.Command {
 			}
 			limit := c.Int("limit")
 			slog.InfoContext(ctx, "starting inquiry", "query", query, "limit", limit)
-			if err := analysisService.Store(ctx, query, limit); err != nil {
+			if _, err := analysisService.Store(ctx, query, limit, force); err != nil {
 				return fmt.Errorf("failed to store analysis: %w", err)
 			}
 			return nil
