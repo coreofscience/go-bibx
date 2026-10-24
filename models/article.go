@@ -203,7 +203,7 @@ func (a *Article) SimpleId() *string {
 		return nil
 	}
 	author := a.Authors[0]
-	firstName := strings.Split(author, " ")[0]
+	firstName, _, _ := strings.Cut(author, " ")
 	name := strings.ReplaceAll(firstName, ",", "")
 	result := strings.ToLower(fmt.Sprintf("%s%d", name, *a.Year))
 	return &result
