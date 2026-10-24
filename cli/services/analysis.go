@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"uuid"
 
 	"github.com/coreofscience/go-bibx/algorithms"
@@ -36,9 +37,6 @@ func NewOpenAlexAnalysisService(
 type OpenAlexAnalysisServiceConfig struct {
 	DBPath string
 	Store  storage.Store
-
-	// AnalysisPath is maintained for backward compatibility.
-	AnalysisPath string
 }
 
 // NewOpenAlexAnalysisServiceFromConfig creates a new [OpenAlexAnalysisService] initialized with default dependencies and the provided config.
@@ -49,12 +47,8 @@ func NewOpenAlexAnalysisServiceFromConfig(config *OpenAlexAnalysisServiceConfig)
 	}
 
 	dbPath := ""
-	if config != nil {
-		if config.DBPath != "" {
-			dbPath = config.DBPath
-		} else if config.AnalysisPath != "" {
-			dbPath = config.AnalysisPath
-		}
+	if config != nil && config.DBPath != "" {
+		dbPath = config.DBPath
 	}
 	if dbPath == "" {
 		dbPath = ".bibx/bibx.db"
@@ -71,6 +65,18 @@ func NewOpenAlexAnalysisServiceFromConfig(config *OpenAlexAnalysisServiceConfig)
 	), nil
 }
 
+// StoreOptions specifies optional configuration for storing inquiry results.
+type StoreOptions struct {
+	Force bool
+	Name  string
+}
+
+// StoreResult encapsulates the stored or matched collection and whether it was newly queried.
+type StoreResult struct {
+	Collection *storage.Collection
+	IsNew      bool
+}
+
 // Store coordinates fetching literature, running community detection and SAP algorithms,
 // and storing the resulting analysis with query idempotency support.
 func (s *OpenAlexAnalysisService) Store(
@@ -80,17 +86,35 @@ func (s *OpenAlexAnalysisService) Store(
 	force ...bool,
 ) (*storage.Collection, error) {
 	isForce := len(force) > 0 && force[0]
+	res, err := s.StoreWithOptions(ctx, query, limit, StoreOptions{Force: isForce})
+	if err != nil {
+		return nil, err
+	}
+	return res.Collection, nil
+}
+
+// StoreWithOptions coordinates fetching literature, running community detection and SAP algorithms,
+// and storing the resulting analysis with query idempotency support and custom options.
+func (s *OpenAlexAnalysisService) StoreWithOptions(
+	ctx context.Context,
+	query string,
+	limit int,
+	opts StoreOptions,
+) (*StoreResult, error) {
 	queryHash := storage.ComputeQueryHash(query, limit)
 
 	existing, err := s.store.FindCollectionByHash(ctx, queryHash)
 	if err == nil && existing != nil {
-		if !isForce {
+		if !opts.Force {
 			slog.InfoContext(ctx, "collection already exists for query; skipping remote inquiry",
 				"collection_id", existing.ID,
 				"query", query,
 				"limit", limit,
 			)
-			return existing, nil
+			return &StoreResult{
+				Collection: existing,
+				IsNew:      false,
+			}, nil
 		}
 		slog.InfoContext(ctx, "collection already exists for query; force re-run enabled",
 			"collection_id", existing.ID,
@@ -188,8 +212,13 @@ func (s *OpenAlexAnalysisService) Store(
 	if existing != nil {
 		colID = existing.ID
 	} else {
+		var colName *string
+		if trimmed := strings.TrimSpace(opts.Name); trimmed != "" {
+			colName = &trimmed
+		}
 		col := &storage.Collection{
 			ID:           colID,
+			Name:         colName,
 			QueryHash:    queryHash,
 			Query:        storage.NormalizeQuery(query),
 			ResultLimit:  limit,
@@ -210,7 +239,10 @@ func (s *OpenAlexAnalysisService) Store(
 	if err != nil {
 		return nil, fmt.Errorf("failed to load saved collection: %w", err)
 	}
-	return savedCol, nil
+	return &StoreResult{
+		Collection: savedCol,
+		IsNew:      true,
+	}, nil
 }
 
 // Query retrieves top articles by Tree of Science category from the analysis storage.

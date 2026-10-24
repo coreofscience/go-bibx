@@ -8,12 +8,14 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"uuid"
 
 	"github.com/coreofscience/go-bibx/cli/renderers"
 	"github.com/coreofscience/go-bibx/cli/servers/viewer"
 	"github.com/coreofscience/go-bibx/cli/services"
 	"github.com/coreofscience/go-bibx/internal/collections"
 	"github.com/coreofscience/go-bibx/internal/utils"
+	"github.com/coreofscience/go-bibx/storage"
 	"github.com/urfave/cli/v3"
 )
 
@@ -68,6 +70,11 @@ func New() *cli.Command {
 				Usage:   "port to serve the visualization on",
 				Value:   8080,
 			},
+			&cli.StringFlag{
+				Name:    "collection",
+				Aliases: []string{"col", "c"},
+				Usage:   "collection ID or name alias to search (defaults to latest)",
+			},
 		},
 		Arguments: []cli.Argument{
 			&cli.StringArg{
@@ -79,13 +86,13 @@ func New() *cli.Command {
 			},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
-			analysisPath, ok := utils.GetAnalysisPath(ctx)
+			dbPath, ok := utils.GetDBPath(ctx)
 			if !ok {
-				return fmt.Errorf("analysis path not set")
+				return errors.New("database path not set")
 			}
 			analysisService, err := services.NewOpenAlexAnalysisServiceFromConfig(
 				&services.OpenAlexAnalysisServiceConfig{
-					AnalysisPath: analysisPath,
+					DBPath: dbPath,
 				},
 			)
 			if err != nil {
@@ -99,7 +106,18 @@ func New() *cli.Command {
 			if query == "" {
 				return errors.New("query is required")
 			}
-			analysis, err := analysisService.Search(ctx, query, c.Int("limit"))
+
+			colTarget := c.String("collection")
+			var colID uuid.UUID
+			if colTarget != "" {
+				col, err := storage.ResolveCollection(ctx, analysisService.StoreBackend(), colTarget)
+				if err != nil {
+					return fmt.Errorf("failed to resolve collection %q: %w", colTarget, err)
+				}
+				colID = col.ID
+			}
+
+			analysis, err := analysisService.Search(ctx, query, c.Int("limit"), colID)
 			if err != nil {
 				return fmt.Errorf("failed to perform search: %w", err)
 			}

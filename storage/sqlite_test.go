@@ -384,3 +384,58 @@ func TestNewSQLiteStoreWithDB(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, version)
 }
+
+func TestResolveCollection(t *testing.T) {
+	ctx := context.Background()
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "resolve_test.db")
+
+	store, err := storage.NewSQLiteStore(dbPath)
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, store.Close())
+	}()
+
+	// Empty store resolution
+	_, err = storage.ResolveCollection(ctx, store, "")
+	require.ErrorIs(t, err, storage.ErrCollectionNotFound)
+
+	name1 := "col-one"
+	col1 := &storage.Collection{
+		ID:          uuid.NewV7(),
+		Name:        &name1,
+		QueryHash:   storage.ComputeQueryHash("q1", 10),
+		Query:       "q1",
+		ResultLimit: 10,
+	}
+	require.NoError(t, store.CreateCollection(ctx, col1))
+
+	name2 := "col-two"
+	col2 := &storage.Collection{
+		ID:          uuid.NewV7(),
+		Name:        &name2,
+		QueryHash:   storage.ComputeQueryHash("q2", 20),
+		Query:       "q2",
+		ResultLimit: 20,
+	}
+	require.NoError(t, store.CreateCollection(ctx, col2))
+
+	// Resolve latest (target "")
+	latest, err := storage.ResolveCollection(ctx, store, "")
+	require.NoError(t, err)
+	assert.Equal(t, col2.ID, latest.ID)
+
+	// Resolve by UUID
+	byID, err := storage.ResolveCollection(ctx, store, col1.ID.String())
+	require.NoError(t, err)
+	assert.Equal(t, col1.ID, byID.ID)
+
+	// Resolve by Name
+	byName, err := storage.ResolveCollection(ctx, store, "col-one")
+	require.NoError(t, err)
+	assert.Equal(t, col1.ID, byName.ID)
+
+	// Resolve nonexistent
+	_, err = storage.ResolveCollection(ctx, store, "nonexistent")
+	require.ErrorIs(t, err, storage.ErrCollectionNotFound)
+}

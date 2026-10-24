@@ -122,6 +122,21 @@ func TestOpenAlexAnalysisService_StoreAndSearch(t *testing.T) {
 	require.NotNil(t, emptyResults)
 	assert.Empty(t, emptyResults.Nodes)
 	assert.Empty(t, emptyResults.Links)
+
+	// 7. Test StoreWithOptions with custom name
+	namedRes, err := svc.StoreWithOptions(context.Background(), "named query", 10, services.StoreOptions{
+		Name: "custom-alias",
+	})
+	require.NoError(t, err)
+	require.True(t, namedRes.IsNew)
+	require.NotNil(t, namedRes.Collection.Name)
+	assert.Equal(t, "custom-alias", *namedRes.Collection.Name)
+
+	// Re-run idempotent check with StoreWithOptions
+	cachedRes, err := svc.StoreWithOptions(context.Background(), "named query", 10, services.StoreOptions{})
+	require.NoError(t, err)
+	assert.False(t, cachedRes.IsNew)
+	assert.Equal(t, namedRes.Collection.ID, cachedRes.Collection.ID)
 }
 
 func worksMapToSlice(works ...*openalex.Work) []*openalex.Work {

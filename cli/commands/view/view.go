@@ -2,13 +2,14 @@ package view
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 
-	"github.com/coreofscience/go-bibx/cli/repos"
 	"github.com/coreofscience/go-bibx/cli/servers/viewer"
 	"github.com/coreofscience/go-bibx/internal/utils"
+	"github.com/coreofscience/go-bibx/storage"
 	"github.com/urfave/cli/v3"
 )
 
@@ -24,20 +25,47 @@ func New() *cli.Command {
 				Usage:   "port to listen on",
 				Value:   8080,
 			},
+			&cli.StringFlag{
+				Name:    "collection",
+				Aliases: []string{"col", "c"},
+				Usage:   "collection ID or name alias to view (defaults to latest)",
+			},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
 			port := c.Int("port")
-			analysisPath, ok := utils.GetAnalysisPath(ctx)
+
+			dbPath, ok := utils.GetDBPath(ctx)
 			if !ok {
-				return fmt.Errorf("analysis path not set")
+				return errors.New("database path not set")
 			}
-			analysisRepo := repos.NewFileAnalysisRepo(analysisPath)
-			analysis, err := analysisRepo.Load(ctx)
+
+			store, err := storage.NewSQLiteStore(dbPath)
 			if err != nil {
-				return fmt.Errorf("failed to load analysis from file: %w", err)
+				return fmt.Errorf("failed to open database: %w", err)
 			}
+			defer func() {
+				_ = store.Close()
+			}()
+
+			colTarget := c.String("collection")
+			col, err := storage.ResolveCollection(ctx, store, colTarget)
+			if err != nil {
+				if errors.Is(err, storage.ErrCollectionNotFound) {
+					if colTarget != "" {
+						return fmt.Errorf("collection not found: %s", colTarget)
+					}
+					return errors.New("no collections found; run 'bibx inquire' first")
+				}
+				return fmt.Errorf("failed to resolve collection: %w", err)
+			}
+
+			analysis, err := store.LoadAnalysis(ctx, col.ID)
+			if err != nil {
+				return fmt.Errorf("failed to load analysis from database: %w", err)
+			}
+
 			mux := viewer.New(analysis)
-			slog.InfoContext(ctx, "visualization started", "port", port)
+			slog.InfoContext(ctx, "visualization started", "port", port, "collection_id", col.ID)
 			server := &http.Server{
 				Addr:    fmt.Sprintf(":%d", port),
 				Handler: mux,

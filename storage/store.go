@@ -104,3 +104,39 @@ func ScanUUID(src any) (uuid.UUID, error) {
 		return uuid.Nil(), fmt.Errorf("unsupported uuid type: %T", src)
 	}
 }
+
+// ResolveCollection resolves a collection from the store by target string.
+// If target is empty, it returns the most recent collection.
+// If target parses as a valid UUID, it queries by ID.
+// If not found or if target is not a valid UUID, it queries by name.
+func ResolveCollection(ctx context.Context, store Store, target string) (*Collection, error) {
+	if target == "" {
+		cols, err := store.ListCollections(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list collections: %w", err)
+		}
+		if len(cols) == 0 {
+			return nil, ErrCollectionNotFound
+		}
+		return cols[0], nil
+	}
+
+	if id, err := uuid.Parse(target); err == nil {
+		col, err := store.FindCollectionByID(ctx, id)
+		if err == nil {
+			return col, nil
+		}
+		if !errors.Is(err, ErrCollectionNotFound) {
+			return nil, fmt.Errorf("failed to find collection by id: %w", err)
+		}
+	}
+
+	col, err := store.FindCollectionByName(ctx, target)
+	if err != nil {
+		if errors.Is(err, ErrCollectionNotFound) {
+			return nil, ErrCollectionNotFound
+		}
+		return nil, fmt.Errorf("failed to find collection by name: %w", err)
+	}
+	return col, nil
+}

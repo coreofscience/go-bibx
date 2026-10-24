@@ -4,6 +4,5 @@ bibx
 bibx.exe
 !cmd/bibx
 raw/
-!cli/repos/templates/raw/
 # Added by goreleaser init:
 dist/

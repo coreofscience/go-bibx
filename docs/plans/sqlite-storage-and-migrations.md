@@ -202,26 +202,27 @@ CREATE VIRTUAL TABLE articles_fts USING fts5(
 - [x] Update `cli/services/analysis_test.go` with mock store verifying idempotency behavior.
 
 ### Phase 6: CLI Commands & UX Expansion
-- [ ] Update `cmd/bibx/main.go` and `internal/utils/context.go`:
+- [x] Update `cmd/bibx/main.go` and `internal/utils/context.go`:
   - Add global `--db` flag (default: `.bibx/bibx.db`).
   - Update context helpers to resolve active database path.
-- [ ] Update `cli/commands/inquire/inquire.go`:
+- [x] Update `cli/commands/inquire/inquire.go`:
   - Support `--force` to override idempotency.
   - Display helpful message when skipping existing queries (`Collection already exists... Use --force to re-run`).
-- [ ] Add `cli/commands/collection/`:
+- [x] Add `cli/commands/collection/`:
   - `bibx collection list`: Print tabular list of collections (UUIDv7, name, article count, query, created_at).
   - `bibx collection show <id|name>`: Display collection summary.
   - `bibx collection delete <id|name>`: Delete collection and cascade remove nodes/links.
-- [ ] Update `cli/commands/query/query.go` & `search/search.go`:
+- [x] Update `cli/commands/query/query.go` & `search/search.go`:
   - Add optional `--collection` flag (defaults to latest collection if omitted).
-- [ ] Update `cli/commands/view/view.go`:
+- [x] Update `cli/commands/view/view.go`:
   - Load requested (or latest) collection from `SQLiteStore` and pass to viewer server.
 
-### Phase 7: Backward Compatibility & Migration Utility
-- [ ] Detect legacy `.bibx/analysis.json.gz`:
-  - If `.bibx/bibx.db` does not exist and `.bibx/analysis.json.gz` exists, automatically offer or perform migration into collection `legacy`.
-- [ ] Add explicit command: `bibx storage migrate` to import legacy gzip files.
-- [ ] Verify test suite and run static checks:
+### Phase 7: Removal of Legacy Storage & Final Verification
+- [x] Remove legacy file-based storage:
+  - Removed `cli/repos/analysis.go` (`FileAnalysisRepo`) and `cli/repos/` package.
+  - Removed `internal/formats/` (`gzipjson.go`).
+  - Cleaned up `AnalysisPath` and legacy fallback paths in commands and services.
+- [x] Verify test suite and run static checks:
   - `go test -v ./...`
   - `golangci-lint run`
   - `CGO_ENABLED=0 go build -o /tmp/bibx ./cmd/bibx`
