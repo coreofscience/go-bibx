@@ -143,12 +143,12 @@ CREATE VIRTUAL TABLE articles_fts USING fts5(
 ## 4. Phased Implementation Steps
 
 ### Phase 1: Toolchain Upgrades & Dependency Management
-- [ ] Upgrade `go.mod` to Go 1.27 (`go 1.27.0`).
-- [ ] Add `github.com/golang-migrate/migrate/v4` with components:
+- [x] Upgrade `go.mod` to Go 1.27 (`go 1.27.0`).
+- [x] Add `github.com/golang-migrate/migrate/v4` with components:
   - `github.com/golang-migrate/migrate/v4/source/iofs`
   - `github.com/golang-migrate/migrate/v4/database/sqlite`
-- [ ] Add `modernc.org/sqlite` pure-Go driver.
-- [ ] Run `go mod tidy` and verify `CGO_ENABLED=0 go test ./...` builds cleanly.
+- [x] Add `modernc.org/sqlite` pure-Go driver.
+- [x] Run `go mod tidy` and verify `CGO_ENABLED=0 go test ./...` builds cleanly.
 
 ### Phase 2: Core Storage Interface & Utilities (`internal/storage`)
 - [ ] Create `internal/storage/store.go`:
