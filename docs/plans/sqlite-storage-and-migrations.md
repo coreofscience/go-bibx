@@ -19,14 +19,14 @@ This plan outlines the implementation steps to transition `go-bibx` from single-
 ```
 go-bibx/
 ├── cmd/bibx/main.go
+├── storage/
+│   ├── store.go                      # Store interface, domain entities, query hasher
+│   ├── sqlite.go                     # SQLiteStore implementation & constructor
+│   ├── sqlite_test.go                # Integration tests (WAL, migrations, CRUD, FTS)
+│   └── migrations/
+│       ├── 000001_init_schema.up.sql
+│       └── 000001_init_schema.down.sql
 ├── internal/
-│   ├── storage/
-│   │   ├── store.go                  # Store interface, domain entities, query hasher
-│   │   ├── sqlite.go                 # SQLiteStore implementation & constructor
-│   │   ├── sqlite_test.go            # Integration tests (WAL, migrations, CRUD, FTS)
-│   │   └── migrations/
-│   │       ├── 000001_init_schema.up.sql
-│   │       └── 000001_init_schema.down.sql
 │   └── utils/
 │       └── context.go                # DB path resolution & context helpers
 ├── cli/
@@ -150,19 +150,19 @@ CREATE VIRTUAL TABLE articles_fts USING fts5(
 - [x] Add `modernc.org/sqlite` pure-Go driver.
 - [x] Run `go mod tidy` and verify `CGO_ENABLED=0 go test ./...` builds cleanly.
 
-### Phase 2: Core Storage Interface & Utilities (`internal/storage`)
-- [ ] Create `internal/storage/store.go`:
+### Phase 2: Core Storage Interface & Utilities (`storage`)
+- [x] Create `storage/store.go`:
   - Define `Store` interface (`FindCollectionByHash`, `FindCollectionByID`, `FindCollectionByName`, `ListCollections`, `CreateCollection`, `DeleteCollection`, `StoreAnalysis`, `LoadAnalysis`, `QueryCategory`, `Search`, `Close`).
   - Define `Collection` struct with `ID uuid.UUID`, `QueryHash [32]byte`, `Query`, `ResultLimit`, etc.
   - Implement `NormalizeQuery(q string) string` (lowercases, trims, and replaces `\s+` with a single space `" "`).
   - Implement `ComputeQueryHash(query string, limit int) [32]byte`.
   - Implement UUID helper functions for scanning and serializing Go 1.27 `uuid.UUID` to/from SQLite `BLOB(16)`.
-- [ ] Add unit tests in `internal/storage/store_test.go` verifying query normalization and hash determinism.
+- [x] Add unit tests in `storage/store_test.go` verifying query normalization and hash determinism.
 
 ### Phase 3: Embedded Migrations & Schema Initialization
-- [ ] Create `internal/storage/migrations/000001_init_schema.up.sql` with full schema.
-- [ ] Create `internal/storage/migrations/000001_init_schema.down.sql` with cleanup drops.
-- [ ] In `internal/storage/sqlite.go`, embed migrations using:
+- [ ] Create `storage/migrations/000001_init_schema.up.sql` with full schema.
+- [ ] Create `storage/migrations/000001_init_schema.down.sql` with cleanup drops.
+- [ ] In `storage/sqlite.go`, embed migrations using:
   ```go
   //go:embed migrations/*.sql
   var migrationsFS embed.FS
@@ -183,7 +183,7 @@ CREATE VIRTUAL TABLE articles_fts USING fts5(
   - `LoadAnalysis`: Reconstructs `models.Analysis` from `nodes`, `articles`, and `links` for a given `collection_id`.
   - `QueryCategory`: Direct indexed SQL query (`SELECT ... FROM nodes JOIN articles ... ORDER BY ... LIMIT ?`).
   - `Search`: SQL query using `articles_fts MATCH ?` with `bm25(articles_fts)`.
-- [ ] Write integration test suite `internal/storage/sqlite_test.go`:
+- [ ] Write integration test suite `storage/sqlite_test.go`:
   - Test migration execution and schema creation in an in-memory/temp SQLite file.
   - Test query hash lookup and collection idempotency.
   - Test storing and re-loading an analysis graph.
