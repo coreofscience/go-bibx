@@ -12,7 +12,7 @@ import (
 // ShowInput represents the input parameters for the Show tool.
 type ShowInput struct {
 	// Target is the collection ID (UUID) or name alias. If omitted, the latest collection is returned.
-	Target string `json:"target,omitempty" jsonschema:"description=collection ID or name alias (defaults to latest if omitted)"`
+	Target string `json:"target,omitempty"`
 }
 
 // ShowOutput contains the collection details.
