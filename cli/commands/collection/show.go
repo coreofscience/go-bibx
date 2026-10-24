@@ -64,8 +64,8 @@ func newShowCommand() *cli.Command {
 			_, _ = fmt.Fprintf(w, "Query:\t%s\n", col.Query)
 			_, _ = fmt.Fprintf(w, "Limit:\t%d\n", col.ResultLimit)
 			_, _ = fmt.Fprintf(w, "Articles:\t%d\n", col.ArticleCount)
-			_, _ = fmt.Fprintf(w, "Created:\t%s\n", col.CreatedAt.Format("2006-01-02 15:04:05"))
-			_, _ = fmt.Fprintf(w, "Updated:\t%s\n", col.UpdatedAt.Format("2006-01-02 15:04:05"))
+			_, _ = fmt.Fprintf(w, "Created:\t%s\n", col.CreatedAt.Local().Format("2006-01-02 15:04:05"))
+			_, _ = fmt.Fprintf(w, "Updated:\t%s\n", col.UpdatedAt.Local().Format("2006-01-02 15:04:05"))
 			return w.Flush()
 		},
 	}

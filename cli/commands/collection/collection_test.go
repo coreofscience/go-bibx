@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 	"uuid"
 
 	"github.com/coreofscience/go-bibx/cli/commands/collection"
@@ -118,6 +119,11 @@ func TestCollectionCommands(t *testing.T) {
 		assert.Contains(t, out, "second-col")
 		assert.Contains(t, out, col1.ID.String())
 		assert.Contains(t, out, col2.ID.String())
+
+		savedCol1, err := store.FindCollectionByID(ctx, col1.ID)
+		require.NoError(t, err)
+		assert.Equal(t, time.UTC, savedCol1.CreatedAt.Location())
+		assert.Contains(t, out, savedCol1.CreatedAt.Local().Format("2006-01-02 15:04"))
 	})
 
 	t.Run("show latest", func(t *testing.T) {
@@ -128,6 +134,12 @@ func TestCollectionCommands(t *testing.T) {
 		assert.Contains(t, out, col2.ID.String())
 		assert.Contains(t, out, "second-col")
 		assert.Contains(t, out, "second query")
+
+		savedCol2, err := store.FindCollectionByID(ctx, col2.ID)
+		require.NoError(t, err)
+		assert.Equal(t, time.UTC, savedCol2.CreatedAt.Location())
+		assert.Contains(t, out, savedCol2.CreatedAt.Local().Format("2006-01-02 15:04:05"))
+		assert.Contains(t, out, savedCol2.UpdatedAt.Local().Format("2006-01-02 15:04:05"))
 	})
 
 	t.Run("show by name", func(t *testing.T) {

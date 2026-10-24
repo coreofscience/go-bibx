@@ -52,7 +52,7 @@ func newListCommand() *cli.Command {
 				if len(q) > 40 {
 					q = q[:37] + "..."
 				}
-				created := col.CreatedAt.Format("2006-01-02 15:04")
+				created := col.CreatedAt.Local().Format("2006-01-02 15:04")
 				_, _ = fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\n", col.ID.String(), name, col.ArticleCount, q, created)
 			}
 			return w.Flush()

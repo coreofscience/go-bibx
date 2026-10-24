@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 	"uuid"
 
 	"github.com/coreofscience/go-bibx/internal/collections"
@@ -587,6 +588,14 @@ func toCollection(c repository.Collection) *Collection {
 		namePtr = &c.Name.String
 	}
 
+	var createdAt, updatedAt time.Time
+	if c.CreatedAt.Valid {
+		createdAt = c.CreatedAt.Time.UTC()
+	}
+	if c.UpdatedAt.Valid {
+		updatedAt = c.UpdatedAt.Time.UTC()
+	}
+
 	return &Collection{
 		ID:           c.ID,
 		QueryHash:    hash,
@@ -595,8 +604,8 @@ func toCollection(c repository.Collection) *Collection {
 		Parameters:   c.Parameters,
 		Name:         namePtr,
 		ArticleCount: int(c.ArticleCount.Int64),
-		CreatedAt:    c.CreatedAt.Time,
-		UpdatedAt:    c.UpdatedAt.Time,
+		CreatedAt:    createdAt,
+		UpdatedAt:    updatedAt,
 	}
 }
 

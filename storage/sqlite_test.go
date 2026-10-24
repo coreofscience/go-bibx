@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"path/filepath"
 	"testing"
+	"time"
 	"uuid"
 
 	"github.com/coreofscience/go-bibx/internal/collections"
@@ -103,6 +104,7 @@ func TestSQLiteStore_CollectionCRUD(t *testing.T) {
 	assert.Equal(t, col1.ID, foundHash.ID)
 	assert.Equal(t, col1.Query, foundHash.Query)
 	assert.Equal(t, name1, *foundHash.Name)
+	assert.Equal(t, time.UTC, foundHash.CreatedAt.Location())
 
 	// 5. Find by non-existent hash
 	_, err = store.FindCollectionByHash(ctx, storage.ComputeQueryHash("non-existent", 10))
