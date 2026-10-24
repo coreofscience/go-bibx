@@ -1,11 +1,9 @@
-# Implementation Plan: Remove AI Setup & Transition to Model Context Protocol (MCP)
+# Implementation Plan: Remove AI Setup
 
 ## Executive Summary
 
 The purpose of this plan is to design the complete removal of the existing AI
-setup from the `go-bibx` codebase, and outline the architectural roadmap to
-replace it with a native **Model Context Protocol (MCP)** server in a subsequent
-release.
+setup from the `go-bibx` codebase.
 
 Currently, `go-bibx` provides an AI integration via the `bibx init` command,
 which unpacks markdown instructions (`AGENTS.md`) and agent skills
@@ -23,11 +21,9 @@ significant drawbacks:
    scaffolding code within the core CLI repository distracts from core
    bibliographic graph analysis.
 
-By removing the scaffolding mechanism and planning a future native MCP server,
-`go-bibx` will provide modern LLMs and agent harnesses (e.g., OpenCode, Claude
-Desktop, Cursor) with direct, schema-driven tool calling (`bibx_inquire`,
-`bibx_query`, `bibx_search`, `bibx_view`) and dynamic resource inspection over
-standard JSON-RPC 2.0 (stdio / SSE).
+By removing the scaffolding mechanism, `go-bibx` eliminates workspace pollution
+and maintenance overhead, keeping the CLI focused on its core bibliographic
+graph analysis capabilities.
 
 ---
 
@@ -103,26 +99,6 @@ cli/
    - Existing user repositories that already scaffolded `AGENTS.md` and
      `.agents/` will continue to function without disruption.
 
-3. **Separation of Removal and MCP Implementation**:
-   - **Step 1 (Scope of this plan)**: Cleanly excise the legacy file-scaffolding
-     AI setup, leaving the codebase streamlined and tests passing.
-   - **Step 2 (Future phase)**: Introduce an MCP server package (e.g.,
-     `cli/servers/mcp` or `internal/mcp`) exposing `go-bibx` as a standard Model
-     Context Protocol server.
-
----
-
-## Comparison: Legacy File-Scaffolding vs. Future MCP Server
-
-| Aspect | Legacy AI Setup (`bibx init`) | Future MCP Server (`bibx mcp`) |
-| :--- | :--- | :--- |
-| **Integration Model** | File-based prompt scaffolding (`AGENTS.md`, `SKILL.md`) | Protocol-driven RPC (Model Context Protocol over stdio / SSE) |
-| **Agent Interaction** | Agent reads markdown files and constructs shell commands | Agent invokes structured tools with JSON Schema validation |
-| **Workspace Footprint** | Pollutes user repository with `.agents/` and `AGENTS.md` | Zero files created in user project; purely runtime communication |
-| **Error Handling** | Agent must parse stdout/stderr and exit codes | Structured JSON-RPC error responses with typed diagnostics |
-| **State Inspection** | Static markdown documentation | Dynamic resource endpoints (e.g. `bibx://collection/summary`) |
-| **Client Support** | Specific to tools supporting `.agents` / `AGENTS.md` | Universal standard supported by Claude, OpenCode, Cursor, etc. |
-
 ---
 
 ## Proposed Changes: Step-by-Step Removal Plan
@@ -154,7 +130,8 @@ cli/
      `DefaultScaffoldService`, `DefaultScaffoldServiceConfig`).
 
 2. **Verify `cli/services` Package**:
-   - `cli/services` will retain only `analysis.go` (`AnalysisService` and `OpenAlexAnalysisService`) and `analysis_test.go`.
+   - `cli/services` will retain only `analysis.go` (`AnalysisService` and
+     `OpenAlexAnalysisService`) and `analysis_test.go`.
 
 ---
 
@@ -191,81 +168,8 @@ cli/
    - Run `gofmt -s -w .` to ensure proper formatting.
 
 2. **Verify Documentation**:
-   - Verify `README.md` and `CONTRIBUTING.md` (confirm no references to `bibx init` or AI scaffolding exist).
-
----
-
-## Future MCP Integration Architecture (Roadmap Preview)
-
-Once the legacy setup is removed, the transition to MCP can proceed cleanly. Below is the proposed design for the future MCP implementation.
-
-### Architecture Overview
-
-```
-               ┌────────────────────────────────────────────────────────┐
-               │              AI Agent / Client Harness                 │
-               │         (OpenCode / Claude Desktop / Cursor)           │
-               └───────────────────────────┬────────────────────────────┘
-                                           │
-                                           │ JSON-RPC 2.0 (stdio)
-                                           ▼
-┌───────────────────────────────────────────────────────────────────────────────┐
-│                                 go-bibx                                       │
-│                                                                               │
-│   ┌───────────────────────────────────────────────────────────────────────┐   │
-│   │                         MCP Server Handler                            │   │
-│   │                      (tools/list, tools/call)                         │   │
-│   └──────┬──────────────────────┬───────────────────┬───────────────────┬─┘   │
-│          │                      │                   │                   │     │
-│          ▼                      ▼                   ▼                   ▼     │
-│   ┌──────────────┐       ┌──────────────┐    ┌──────────────┐    ┌──────────┐ │
-│   │ bibx_inquire │       │  bibx_query  │    │ bibx_search  │    │bibx_view │ │
-│   └──────┬───────┘       └──────┬───────┘    └──────┬───────┘    └─────┬────┘ │
-│          │                      │                   │                  │      │
-│          └──────────────────────┴─────────┬─────────┴──────────────────┘      │
-│                                           │                                   │
-│                                           ▼                                   │
-│                           ┌───────────────────────────────┐                   │
-│                           │      cli/services.Analysis    │                   │
-│                           │   (OpenAlex, ToS/SAP, BM25)   │                   │
-│                           └───────────────────────────────┘                   │
-└───────────────────────────────────────────────────────────────────────────────┘
-```
-
-### Proposed MCP Tools
-
-The MCP server will expose the existing domain services directly as typed tools:
-
-1. **`bibx_inquire`**:
-   - **Description**: Fetch bibliographic metadata from OpenAlex, build citation networks, compute Tree of Science metrics (SAP), run Leiden clustering, and persist the analysis.
-   - **Parameters**:
-     - `query` (string, required): Research topic or query string.
-     - `limit` (integer, optional, default: 200): Maximum number of root works to retrieve.
-     - `force` (boolean, optional, default: false): Overwrite existing `.bibx` analysis files.
-
-2. **`bibx_query`**:
-   - **Description**: Filter and extract articles based on their Tree of Science structural category.
-   - **Parameters**:
-     - `category` (string, enum: `["root", "trunk", "leaf"]`, required): Category to query.
-     - `limit` (integer, optional, default: 10): Number of top articles to retrieve.
-     - `format` (string, enum: `["reference", "markdown", "simple", "json"]`, optional, default: `"reference"`): Output representation.
-
-3. **`bibx_search`**:
-   - **Description**: Perform BM25 keyword search on the bibliographic collection and derive connected subgraphs using pseudo-Steiner tree reduction.
-   - **Parameters**:
-     - `query` (string, required): Keywords to match across title, keywords, abstract, and authors.
-     - `limit` (integer, optional, default: 10): Maximum number of matching articles.
-     - `format` (string, enum: `["reference", "markdown", "simple", "json"]`, optional, default: `"markdown"`): Output representation.
-
-4. **`bibx_view`**:
-   - **Description**: Launch the interactive local HTTP visualization server for graph exploration.
-   - **Parameters**:
-     - `port` (integer, optional, default: 8080): Port to bind the viewer server.
-
-### Proposed MCP Resources
-
-- **`bibx://analysis`**: Returns current collection statistics (total nodes, edges, density, cluster count, date generated).
-- **`bibx://articles/{id}`**: Returns bibliographic metadata and Tree of Science metrics for an individual paper.
+   - Verify `README.md` and `CONTRIBUTING.md` (confirm no references to `bibx
+     init` or AI scaffolding exist).
 
 ---
 
@@ -279,13 +183,15 @@ After executing the removal:
    ```bash
    go build -v ./cmd/bibx
    ```
-   Ensure the binary builds without errors and contains no references to `init` or `scaffold`.
+   Ensure the binary builds without errors and contains no references to `init`
+   or `scaffold`.
 
 2. **Test Suite**:
    ```bash
    go test -race -timeout 5s -v ./...
    ```
-   All remaining unit tests across `models`, `algorithms`, `internal`, and `cli` must pass.
+   All remaining unit tests across `models`, `algorithms`, `internal`, and `cli`
+   must pass.
 
 3. **Code Quality and Linter**:
    ```bash
@@ -300,7 +206,9 @@ After executing the removal:
    ```bash
    ./bibx --help
    ```
-   Confirm that the `COMMANDS` list includes `inquire`, `query`, `search`, `view`, and **not** `init`.
+   Confirm that the `COMMANDS` list includes `inquire`, `query`, `search`,
+   `view`, and **not** `init`.
 
 2. **Regression Check on Core Commands**:
-   - Run a test search / query on mock or sample data to guarantee no unintended side-effects on `cli/services` or `cli/repos`.
+   - Run a test search / query on mock or sample data to guarantee no unintended
+     side-effects on `cli/services` or `cli/repos`.
