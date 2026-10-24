@@ -160,14 +160,14 @@ CREATE VIRTUAL TABLE articles_fts USING fts5(
 - [x] Add unit tests in `storage/store_test.go` verifying query normalization and hash determinism.
 
 ### Phase 3: Embedded Migrations & Schema Initialization
-- [ ] Create `storage/migrations/000001_init_schema.up.sql` with full schema.
-- [ ] Create `storage/migrations/000001_init_schema.down.sql` with cleanup drops.
-- [ ] In `storage/sqlite.go`, embed migrations using:
+- [x] Create `storage/migrations/000001_init_schema.up.sql` with full schema.
+- [x] Create `storage/migrations/000001_init_schema.down.sql` with cleanup drops.
+- [x] In `storage/sqlite.go`, embed migrations using:
   ```go
   //go:embed migrations/*.sql
   var migrationsFS embed.FS
   ```
-- [ ] Implement `runMigrations(db *sql.DB) error` utilizing `iofs.New` and `sqlite.WithInstance`.
+- [x] Implement `runMigrations(db *sql.DB) error` utilizing `iofs.New` and `sqlite.WithInstance`.
 
 ### Phase 4: `SQLiteStore` Implementation & Testing
 - [ ] Create `SQLiteStore` struct wrapping `*sql.DB`.
