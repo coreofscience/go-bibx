@@ -17,7 +17,7 @@ type ShowInput struct {
 
 // ShowOutput contains the collection details.
 type ShowOutput struct {
-	Collection *storage.Collection `json:"collection"`
+	Collection *CollectionSummary `json:"collection"`
 }
 
 // Show holds the show tool.
@@ -38,7 +38,7 @@ func (s *Show) Tool() *mcp.Tool {
 		Annotations: &mcp.ToolAnnotations{
 			DestructiveHint: new(false),
 			IdempotentHint:  true,
-			OpenWorldHint:   new(false),
+			OpenWorldHint:   new(true),
 			ReadOnlyHint:    true,
 			Title:           "show collection",
 		},
@@ -59,7 +59,7 @@ func (s *Show) Handle(
 		target = input.Target
 	}
 
-	col, err := storage.ResolveCollection(ctx, s.store, target)
+	collection, err := storage.ResolveCollection(ctx, s.store, target)
 	if err != nil {
 		if errors.Is(err, storage.ErrCollectionNotFound) {
 			if target == "" {
@@ -70,7 +70,16 @@ func (s *Show) Handle(
 		return nil, nil, fmt.Errorf("failed to resolve collection: %w", err)
 	}
 
-	return &mcp.CallToolResult{IsError: false}, &ShowOutput{Collection: col}, nil
+	summary := &CollectionSummary{
+		ID:           collection.ID.String(),
+		Query:        collection.Query,
+		ResultLimit:  collection.ResultLimit,
+		Name:         collection.Name,
+		ArticleCount: collection.ArticleCount,
+		CreatedAt:    collection.CreatedAt,
+		UpdatedAt:    collection.UpdatedAt,
+	}
+	return &mcp.CallToolResult{IsError: false}, &ShowOutput{Collection: summary}, nil
 }
 
 // Register registers the current tool to the given [mcp.Server].

@@ -15,7 +15,7 @@ type ListInput struct{}
 
 // ListOutput contains the collection we want to show to the user.
 type ListOutput struct {
-	Collections []*storage.Collection `json:"collections"`
+	Collections []*CollectionSummary `json:"collections"`
 }
 
 // List holds the list command.
@@ -36,7 +36,7 @@ func (l *List) Tool() *mcp.Tool {
 		Annotations: &mcp.ToolAnnotations{
 			DestructiveHint: new(false),
 			IdempotentHint:  true,
-			OpenWorldHint:   new(false),
+			OpenWorldHint:   new(true),
 			ReadOnlyHint:    true,
 			Title:           "list collections",
 		},
@@ -56,7 +56,19 @@ func (l *List) Handle(
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to list collections: %w", err)
 	}
-	return &mcp.CallToolResult{IsError: false}, &ListOutput{Collections: collections}, nil
+	summaries := make([]*CollectionSummary, len(collections))
+	for i, collection := range collections {
+		summaries[i] = &CollectionSummary{
+			ID:           collection.ID.String(),
+			Query:        collection.Query,
+			ResultLimit:  collection.ResultLimit,
+			Name:         collection.Name,
+			ArticleCount: collection.ArticleCount,
+			CreatedAt:    collection.CreatedAt,
+			UpdatedAt:    collection.UpdatedAt,
+		}
+	}
+	return &mcp.CallToolResult{IsError: false}, &ListOutput{Collections: summaries}, nil
 }
 
 // Register registers the current tool to the given [mcp.Server].
