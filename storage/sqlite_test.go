@@ -59,6 +59,21 @@ func TestNewSQLiteStore_Migrations(t *testing.T) {
 	require.NoError(t, secondStore.Close())
 }
 
+func TestNewSQLiteStore_CreatesParentDirectories(t *testing.T) {
+	tempDir := t.TempDir()
+	nestedPath := filepath.Join(tempDir, "deeply", "nested", ".bibx", "bibx.db")
+
+	store, err := storage.NewSQLiteStore(nestedPath)
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, store.Close())
+	}()
+
+	cols, err := store.ListCollections(context.Background())
+	require.NoError(t, err)
+	assert.Empty(t, cols)
+}
+
 func TestSQLiteStore_CollectionCRUD(t *testing.T) {
 	tempDir := t.TempDir()
 	dbPath := filepath.Join(tempDir, "test_collection_crud.db")
