@@ -1,0 +1,18 @@
+version: "2"
+sql:
+  - engine: "sqlite"
+    queries: "queries.sql"
+    schema: "./storage/migrations"
+    gen:
+      go:
+        package: "repository"
+        out: "repository"
+        overrides:
+          - db_type: "BLOB(16)"
+            go_type: "uuid.UUID"
+          - db_type: "BLOB(16)"
+            nullable: true
+            go_type:
+              import: "uuid"
+              type: "UUID"
+              pointer: true
