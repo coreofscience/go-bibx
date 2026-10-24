@@ -2,21 +2,24 @@ package services_test
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 
 	"github.com/coreofscience/go-bibx/cli/clients/openalex"
 	"github.com/coreofscience/go-bibx/cli/services"
-	"github.com/coreofscience/go-bibx/models"
+	"github.com/coreofscience/go-bibx/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 type mockOpenAlexClient struct {
-	recentWorks []*openalex.Work
-	worksByID   map[string]*openalex.Work
+	recentWorks                  []*openalex.Work
+	worksByID                    map[string]*openalex.Work
+	listRecentArticlesCallsCount int
 }
 
 func (m *mockOpenAlexClient) ListRecentArticles(ctx context.Context, query string, limit int) ([]*openalex.Work, error) {
+	m.listRecentArticlesCallsCount++
 	return m.recentWorks, nil
 }
 
@@ -28,19 +31,6 @@ func (m *mockOpenAlexClient) ListArticlesByIDs(ctx context.Context, ids []string
 		}
 	}
 	return results, nil
-}
-
-type mockAnalysisRepo struct {
-	storedAnalysis *models.Analysis
-}
-
-func (m *mockAnalysisRepo) Load(ctx context.Context) (*models.Analysis, error) {
-	return m.storedAnalysis, nil
-}
-
-func (m *mockAnalysisRepo) Store(ctx context.Context, a *models.Analysis) error {
-	m.storedAnalysis = a
-	return nil
 }
 
 func TestOpenAlexAnalysisService_StoreAndSearch(t *testing.T) {
@@ -81,41 +71,74 @@ func TestOpenAlexAnalysisService_StoreAndSearch(t *testing.T) {
 	}
 
 	oaClient := &mockOpenAlexClient{
-		recentWorks: []*openalex.Work{w1, w2, w3, w4},
+		recentWorks: worksMapToSlice(w1, w2, w3, w4),
 		worksByID:   worksMap,
 	}
-	analysisRepo := &mockAnalysisRepo{}
 
-	svc := services.NewOpenAlexAnalysisService(oaClient, analysisRepo)
-
-	err := svc.Store(context.Background(), "test query", 10)
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "service_test.db")
+	store, err := storage.NewSQLiteStore(dbPath)
 	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, store.Close())
+	}()
 
-	// Verify that the stored analysis has 4 nodes
-	require.NotNil(t, analysisRepo.storedAnalysis)
-	require.Len(t, analysisRepo.storedAnalysis.Nodes, 4)
+	svc := services.NewOpenAlexAnalysisService(oaClient, store)
 
-	// Verify all links have weight 1.0
-	require.NotEmpty(t, analysisRepo.storedAnalysis.Links)
-	for _, link := range analysisRepo.storedAnalysis.Links {
-		assert.Equal(t, 1.0, link.Weight)
-	}
+	// 1. Initial Store
+	col, err := svc.Store(context.Background(), "test query", 10)
+	require.NoError(t, err)
+	require.NotNil(t, col)
+	assert.Equal(t, 1, oaClient.listRecentArticlesCallsCount)
+	assert.Equal(t, 4, col.ArticleCount)
 
-	// Test Query
+	// 2. Query Idempotency: re-running identical query (with whitespace variation) skips remote fetch
+	col2, err := svc.Store(context.Background(), "  test   query  ", 10)
+	require.NoError(t, err)
+	require.NotNil(t, col2)
+	assert.Equal(t, col.ID, col2.ID, "idempotent query must return the existing collection")
+	assert.Equal(t, 1, oaClient.listRecentArticlesCallsCount, "remote fetch must not be called again")
+
+	// 3. Force re-run: with force=true, OpenAlex is called again
+	col3, err := svc.Store(context.Background(), "test query", 10, true)
+	require.NoError(t, err)
+	require.NotNil(t, col3)
+	assert.Equal(t, 2, oaClient.listRecentArticlesCallsCount, "remote fetch must be called when force is true")
+
+	// 4. Test Query category (defaults to latest collection)
 	results, err := svc.Query(context.Background(), "root", 2)
 	require.NoError(t, err)
-	assert.NotNil(t, results)
+	assert.NotEmpty(t, results)
 
-	// Test Search with matching keyword query
+	// 5. Test Search with matching keyword query (via SQLite FTS5)
 	searchResults, err := svc.Search(context.Background(), "First Paper", 2)
 	require.NoError(t, err)
 	require.NotNil(t, searchResults)
 	assert.NotEmpty(t, searchResults.Nodes)
 
-	// Test Search with zero matches returns empty analysis
+	// 6. Test Search with zero matches returns empty analysis
 	emptyResults, err := svc.Search(context.Background(), "nonexistentqueryxyz", 2)
 	require.NoError(t, err)
 	require.NotNil(t, emptyResults)
 	assert.Empty(t, emptyResults.Nodes)
 	assert.Empty(t, emptyResults.Links)
+
+	// 7. Test StoreWithOptions with custom name
+	namedRes, err := svc.StoreWithOptions(context.Background(), "named query", 10, services.StoreOptions{
+		Name: "custom-alias",
+	})
+	require.NoError(t, err)
+	require.True(t, namedRes.IsNew)
+	require.NotNil(t, namedRes.Collection.Name)
+	assert.Equal(t, "custom-alias", *namedRes.Collection.Name)
+
+	// Re-run idempotent check with StoreWithOptions
+	cachedRes, err := svc.StoreWithOptions(context.Background(), "named query", 10, services.StoreOptions{})
+	require.NoError(t, err)
+	assert.False(t, cachedRes.IsNew)
+	assert.Equal(t, namedRes.Collection.ID, cachedRes.Collection.ID)
+}
+
+func worksMapToSlice(works ...*openalex.Work) []*openalex.Work {
+	return works
 }

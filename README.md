@@ -3,54 +3,39 @@
 [![Go](https://github.com/coreofscience/go-bibx/actions/workflows/go.yml/badge.svg)](https://github.com/coreofscience/go-bibx/actions/workflows/go.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/coreofscience/go-bibx.svg)](https://pkg.go.dev/github.com/coreofscience/go-bibx)
 
-`go-bibx` is a high-performance command-line tool designed for researchers to
+`go-bibx` is a high-performance command-line tool and Go library designed for researchers to
 perform deep, graph-based bibliographic analysis. Maintained by the
 [Core of Science](https://coreofscience.org/) organization, it serves as a Go
 implementation of the **Tree of Science (ToS)** methodology.
 
-The project is built to be both a standalone tool for quick academic inquiry and
-a robust component for larger data pipelines, offering high interoperability
-through its binary distribution.
+The project is built to be both a standalone CLI tool for academic inquiry and
+a robust library for larger data pipelines, featuring a pure-Go embedded SQLite storage engine
+with zero CGO requirements.
 
 ## The Tree of Science & SAP Algorithm
 
-At its core, `go-bibx` implements the **SAP algorithm** (found in
-`algorithms/sap.go`), which analyzes citation graph topology to map the
-evolutionary structure of a research field. Using the "Tree of Science"
-metaphor, it categorizes articles into:
+At its core, `go-bibx` implements the **SAP algorithm** (`algorithms/sap.go`), which analyzes citation graph topology to map the evolutionary structure of a research field. Using the "Tree of Science" metaphor, it categorizes articles into:
 
 - **Roots**: Foundational, seminal works that established the field.
-- **Trunk**: Core papers that provide the structural backbone and consolidate
-  the topic.
-- **Leaves**: Recent, specialized developments representing the current frontier
-  of research.
+- **Trunk**: Core papers that provide the structural backbone and consolidate the topic.
+- **Leaves**: Recent, specialized developments representing the current frontier of research.
 
 ## Features
 
-- **Inquire**: Efficiently fetch bibliographic data from the OpenAlex API.
-- **SAP Analysis**: Automatically derive the Tree of Science structure from any
-  citation network.
-- **Visualize**: Interactive, browser-based graph exploration of your
-  collections.
-- **Keyword Search**: Graph Search allows users to find articles related to a
-  query by leveraging both BM25 keyword relevance and their deep relationships
-  within the citation graph.
-- **Queries**: Query your collection by relevance in three main categories:
-  - _Rootness_: how seminal the article is.
-  - _Trunkness_: how important is this article within the structure of the
-    topic.
-  - _Leafness_: how complete and recent the article is.
-- **Community Detection**: Leverage the Leiden algorithm for robust community
-  structure analysis within citation networks.
-- **Interoperable**: Designed as a standalone CLI that fits perfectly into
-  automated workflows.
+- **Multi-Collection SQLite Storage**: Persistent storage in `.bibx/bibx.db` powered by a pure-Go driver (`modernc.org/sqlite`) with embedded database migrations. Multiple inquiries can coexist in a single database.
+- **Query Idempotency**: Deterministic query hashing prevents redundant OpenAlex API calls and recalculations when re-running identical inquiries.
+- **Bring Your Own Storage (BYOS)**: The public `storage` package exposes standard interfaces (`storage.Store`), allowing `go-bibx` to be integrated with custom databases or storage backends.
+- **Inquire**: Fetch literature and citation networks directly from the OpenAlex API and run SAP and community detection algorithms.
+- **Collection Management**: Inspect, list, and delete inquiry collections by UUIDv7 or human-readable name aliases.
+- **Visualize**: Interactive, browser-based graph exploration of any collection.
+- **Keyword Search**: Graph search combining SQLite FTS5 (BM25 ranking) with pseudo-Steiner graph reduction to isolate subnetworks related to specific keywords.
+- **ToS Category Queries**: Filter and rank articles by relevance across Tree of Science categories (*Root*, *Trunk*, *Leaf*).
+- **Community Detection**: High-performance Leiden algorithm for detecting thematic clusters in citation networks.
+- **Pure Go & Cross-Platform**: Fully builds and runs with `CGO_ENABLED=0` on Linux, macOS, and Windows.
 
 ## Installation
 
 ### Via `go install`
-
-If you have Go installed, you can easily install the latest version of
-`go-bibx`:
 
 ```bash
 go install github.com/coreofscience/go-bibx/cmd/bibx@latest
@@ -58,66 +43,145 @@ go install github.com/coreofscience/go-bibx/cmd/bibx@latest
 
 ### Pre-built Binaries
 
-You can download pre-built binaries for your operating system and architecture
-from the [GitHub Releases](https://github.com/coreofscience/go-bibx/releases)
-page.
+You can download pre-built binaries for your operating system and architecture from the [GitHub Releases](https://github.com/coreofscience/go-bibx/releases) page.
 
 ### Build from Source
 
-Ensure you have Go installed, then clone the repository and build the project:
+Ensure you have Go 1.27+ installed, then clone the repository and build:
 
 ```bash
 git clone https://github.com/coreofscience/go-bibx.git
 cd go-bibx
-go build -o bibx ./cmd/bibx
+CGO_ENABLED=0 go build -o bibx ./cmd/bibx
 ```
 
-## Usage
+## CLI Usage
+
+### Global Options
+
+`bibx` supports global flags across all subcommands:
+
+- `--db string`: Custom path to the SQLite database file (defaults to `.bibx/bibx.db` relative to root).
+- `--root, -r string`: Root working directory (defaults to current directory `.`).
+- `--verbose`: Enable debug logging.
 
 ### 1. Inquire a research topic
 
-Fetch papers related to a specific topic and save them to a compressed JSON
-file:
+Fetch papers related to a specific topic, compute Tree of Science metrics and Leiden communities, and save them as a collection:
 
 ```bash
-./bibx inquire "bibliometric analysis" --limit 100 --force
+# Basic inquiry (defaults to limit 200)
+bibx inquire "quantum machine learning" --limit 100
+
+# Name the collection for easy reference
+bibx inquire "deep learning transformers" --limit 100 --name "transformers"
+
+# Force re-fetching an existing query
+bibx inquire "quantum machine learning" --limit 100 --force
 ```
 
-This will create an analysis file at `.bibx/analysis.json.gz`.
+If an inquiry with the same normalized query and limit has already been executed, `bibx` detects the existing collection and skips remote network requests unless `--force` (`-f`) is passed.
 
-### 2. View the collection
+### 2. Manage collections
 
-Visualize the generated collection in your browser:
+List, inspect, and delete collections within your database:
 
 ```bash
-./bibx view --port 8080
+# List all collections
+bibx collection list
+
+# Show collection details (by name alias or UUIDv7, defaults to latest)
+bibx collection show transformers
+bibx collection show 019a1234-5678-7000-8000-123456789abc
+
+# Delete a collection (cascades to associated nodes and links)
+bibx collection delete transformers
 ```
 
-Open [http://localhost:8080](http://localhost:8080) to explore the interactive
-graph.
+### 3. Query by Tree of Science category
 
-### 3. Search
-
-Perform a keyword search to find relevant articles:
+Query top articles in a collection by category score (`root`, `trunk`, or `leaf`):
 
 ```bash
-./bibx search "your query" --limit 10 --format markdown --view --port 8081
+# Query the latest collection
+bibx query --category root --limit 10 --format reference
+
+# Query a specific collection by name or ID
+bibx query --category trunk --limit 5 --collection transformers --format markdown
 ```
 
-### 4. Query
+Supported output formats: `json` (default), `markdown`, `reference`, `simple`.
 
-Query your collection by relevance in three main categories (e.g., root, trunk,
-leaf):
+### 4. Graph Search
+
+Perform a keyword search using full-text search (SQLite FTS5) combined with pseudo-Steiner graph reduction:
 
 ```bash
-./bibx query --category root --limit 10 --format reference
+# Search and output simple summary
+bibx search "attention mechanism" --limit 10 --collection transformers
+
+# Search and launch interactive browser visualization
+bibx search "attention mechanism" --limit 10 --view --port 8081
+```
+
+Supported output formats: `simple` (default), `json`, `markdown`, `reference`, `filename`.
+
+### 5. View the collection
+
+Launch an interactive browser-based visualization for any collection:
+
+```bash
+# View the latest collection
+bibx view --port 8080
+
+# View a specific collection
+bibx view --collection transformers --port 8080
+```
+
+Open [http://localhost:8080](http://localhost:8080) to explore the interactive citation graph.
+
+## Library Usage (BYOS)
+
+`go-bibx` can be imported as a Go library. The public `storage` package allows using the embedded SQLite implementation or plugging in a custom `storage.Store`:
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/coreofscience/go-bibx/storage"
+)
+
+func main() {
+	ctx := context.Background()
+
+	// Open or create SQLite store with embedded migrations
+	store, err := storage.NewSQLiteStore(".bibx/bibx.db")
+	if err != nil {
+		panic(err)
+	}
+	defer store.Close()
+
+	// List collections
+	collections, err := store.ListCollections(ctx)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, col := range collections {
+		fmt.Printf("Collection: %s, Articles: %d\n", col.ID, col.ArticleCount)
+	}
+}
 ```
 
 ## Development
 
 - **Run with Air**: For live-reloading during development, use [Air][air].
-- **Testing**: Run tests with `go test ./...`.
-- **Linting**: Use `golangci-lint run`.
+- **Testing**: Run tests with `CGO_ENABLED=0 go test ./...`.
+- **Linting**: Run `golangci-lint run`.
+- **SQL Queries (sqlc)**: Regenerate typed database queries with `sqlc generate`.
 
 ## License
 

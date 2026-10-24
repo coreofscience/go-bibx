@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"uuid"
 
 	"github.com/coreofscience/go-bibx/cli/renderers"
 	"github.com/coreofscience/go-bibx/cli/services"
 	"github.com/coreofscience/go-bibx/internal/collections"
 	"github.com/coreofscience/go-bibx/internal/utils"
+	"github.com/coreofscience/go-bibx/storage"
 	"github.com/urfave/cli/v3"
 )
 
@@ -69,14 +71,19 @@ func New() *cli.Command {
 					return nil
 				},
 			},
+			&cli.StringFlag{
+				Name:    "collection",
+				Aliases: []string{"col"},
+				Usage:   "collection ID or name alias to query (defaults to latest)",
+			},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
-			analysisPath, ok := utils.GetAnalysisPath(ctx)
+			dbPath, ok := utils.GetDBPath(ctx)
 			if !ok {
-				return fmt.Errorf("analysis path not set")
+				return errors.New("database path not set")
 			}
 			analysisServiceConfig := &services.OpenAlexAnalysisServiceConfig{
-				AnalysisPath: analysisPath,
+				DBPath: dbPath,
 			}
 			service, err := services.NewOpenAlexAnalysisServiceFromConfig(analysisServiceConfig)
 			if err != nil {
@@ -86,7 +93,18 @@ func New() *cli.Command {
 			if err != nil {
 				return fmt.Errorf("failed to create renderer: %w", err)
 			}
-			results, err := service.Query(ctx, c.String("category"), c.Int("limit"))
+
+			colTarget := c.String("collection")
+			var colID uuid.UUID
+			if colTarget != "" {
+				col, err := storage.ResolveCollection(ctx, service.StoreBackend(), colTarget)
+				if err != nil {
+					return fmt.Errorf("failed to resolve collection %q: %w", colTarget, err)
+				}
+				colID = col.ID
+			}
+
+			results, err := service.Query(ctx, c.String("category"), c.Int("limit"), colID)
 			if err != nil {
 				return fmt.Errorf("failed to query: %w", err)
 			}

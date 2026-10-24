@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"os"
 
 	"github.com/coreofscience/go-bibx/cli/services"
 	"github.com/coreofscience/go-bibx/internal/utils"
@@ -23,7 +22,7 @@ func New() *cli.Command {
 			&cli.BoolFlag{
 				Name:    "force",
 				Aliases: []string{"f"},
-				Usage:   "force overwrite of existing results",
+				Usage:   "force re-fetching and recalculation of existing query results",
 				Value:   false,
 			},
 			&cli.IntFlag{
@@ -41,6 +40,11 @@ func New() *cli.Command {
 					return nil
 				},
 			},
+			&cli.StringFlag{
+				Name:    "name",
+				Aliases: []string{"n"},
+				Usage:   "optional name alias for the collection",
+			},
 		},
 		Arguments: []cli.Argument{
 			&cli.StringArg{
@@ -52,30 +56,46 @@ func New() *cli.Command {
 			},
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {
-			analysisPath, ok := utils.GetAnalysisPath(ctx)
+			dbPath, ok := utils.GetDBPath(ctx)
 			if !ok {
-				return fmt.Errorf("analysis path not set")
+				return errors.New("database path not set")
 			}
+
 			force := c.Bool("force")
-			if _, err := os.Stat(analysisPath); err == nil && !force {
-				return fmt.Errorf("file already exists: %s", analysisPath)
-			}
 			analysisServiceConfig := &services.OpenAlexAnalysisServiceConfig{
-				AnalysisPath: analysisPath,
+				DBPath: dbPath,
 			}
 			analysisService, err := services.NewOpenAlexAnalysisServiceFromConfig(analysisServiceConfig)
 			if err != nil {
 				return fmt.Errorf("failed to create analysis service: %w", err)
 			}
+
 			query := c.StringArg("query")
 			if query == "" {
 				return errors.New("query argument is required")
 			}
 			limit := c.Int("limit")
+
+			name := c.String("name")
 			slog.InfoContext(ctx, "starting inquiry", "query", query, "limit", limit)
-			if err := analysisService.Store(ctx, query, limit); err != nil {
+			res, err := analysisService.StoreWithOptions(ctx, query, limit, services.StoreOptions{
+				Force: force,
+				Name:  name,
+			})
+			if err != nil {
 				return fmt.Errorf("failed to store analysis: %w", err)
 			}
+
+			if !res.IsNew {
+				fmt.Printf("Collection already exists: %s (%d articles). Use --force to re-run inquiry.\n", res.Collection.ID, res.Collection.ArticleCount)
+				return nil
+			}
+
+			slog.InfoContext(ctx, "inquiry completed",
+				"collection_id", res.Collection.ID,
+				"articles", res.Collection.ArticleCount,
+			)
+			fmt.Printf("Collection ready: %s (articles: %d)\n", res.Collection.ID, res.Collection.ArticleCount)
 			return nil
 		},
 	}

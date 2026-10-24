@@ -29,10 +29,17 @@ func main() {
 				Usage:   "path to the root directory",
 				Value:   ".",
 			},
+			&cli.StringFlag{
+				Name:  "db",
+				Usage: "path to the SQLite database (defaults to .bibx/bibx.db relative to root)",
+			},
 		},
 		Before: func(ctx context.Context, c *cli.Command) (context.Context, error) {
 			utils.SetDefaultLogger(c.Bool("verbose"))
 			ctx = utils.WithRootDir(ctx, c.String("root"))
+			if dbPath := c.String("db"); dbPath != "" {
+				ctx = utils.WithDBPath(ctx, dbPath)
+			}
 			return ctx, nil
 		},
 		Commands: commands.New(),

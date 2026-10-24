@@ -17,7 +17,7 @@ expect all contributors to maintain a welcoming and inclusive environment.
 
 ### Prerequisites
 
-- **Go**: The project requires Go 1.26 or newer.
+- **Go**: The project requires Go 1.27 or newer.
 - **Make** (optional, but recommended if we add a Makefile later).
 - **Git**: For version control.
 

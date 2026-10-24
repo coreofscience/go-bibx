@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"github.com/coreofscience/go-bibx/cli/commands/collection"
 	"github.com/coreofscience/go-bibx/cli/commands/inquire"
 	"github.com/coreofscience/go-bibx/cli/commands/query"
 	"github.com/coreofscience/go-bibx/cli/commands/search"
@@ -11,6 +12,7 @@ import (
 // New returns the full slice of CLI subcommands supported by bibx.
 func New() []*cli.Command {
 	return []*cli.Command{
+		collection.New(),
 		inquire.New(),
 		query.New(),
 		search.New(),

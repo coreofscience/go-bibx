@@ -1,0 +1,36 @@
+version: '2'
+sql:
+- engine: sqlite
+  queries: queries.sql
+  schema: ./storage/migrations
+  gen:
+    go:
+      out: repository
+      overrides:
+      - db_type: BLOB(16)
+        go_type: uuid.UUID
+      - db_type: BLOB(16)
+        go_type:
+          import: uuid
+          pointer: true
+          type: UUID
+        nullable: true
+      - column: articles_fts.article_id
+        go_type: uuid.UUID
+      - column: collections.parameters
+        go_type:
+          slice: true
+          type: byte
+      - column: articles.authors
+        go_type:
+          slice: true
+          type: byte
+      - column: articles.keywords
+        go_type:
+          slice: true
+          type: byte
+      - column: articles.ids
+        go_type:
+          slice: true
+          type: byte
+      package: repository
