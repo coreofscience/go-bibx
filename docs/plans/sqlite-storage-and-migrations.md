@@ -170,20 +170,20 @@ CREATE VIRTUAL TABLE articles_fts USING fts5(
 - [x] Implement `runMigrations(db *sql.DB) error` utilizing `iofs.New` and `sqlite.WithInstance`.
 
 ### Phase 4: `SQLiteStore` Implementation & Testing
-- [ ] Create `SQLiteStore` struct wrapping `*sql.DB`.
-- [ ] Implement `NewSQLiteStore(path string) (*SQLiteStore, error)`:
+- [x] Create `SQLiteStore` struct wrapping `*sql.DB`.
+- [x] Implement `NewSQLiteStore(path string) (*SQLiteStore, error)`:
   - Open database via `sql.Open("sqlite", path)`.
   - Set pragmas: `PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;`.
   - Execute `runMigrations(db)`.
-- [ ] Implement `NewSQLiteStoreWithDB(db *sql.DB) *SQLiteStore`.
-- [ ] Implement `CollectionStore` methods on `SQLiteStore`:
+- [x] Implement `NewSQLiteStoreWithDB(db *sql.DB, runMigration bool) (*SQLiteStore, error)`.
+- [x] Implement `CollectionStore` methods on `SQLiteStore`:
   - `FindCollectionByHash`, `FindCollectionByID`, `FindCollectionByName`, `ListCollections`, `CreateCollection`, `DeleteCollection`.
-- [ ] Implement `AnalysisStore` methods on `SQLiteStore`:
+- [x] Implement `AnalysisStore` methods on `SQLiteStore`:
   - `StoreAnalysis`: Inserts/updates `articles` (deduplicated by `label`), inserts `nodes`, `links`, and populates `articles_fts`.
   - `LoadAnalysis`: Reconstructs `models.Analysis` from `nodes`, `articles`, and `links` for a given `collection_id`.
   - `QueryCategory`: Direct indexed SQL query (`SELECT ... FROM nodes JOIN articles ... ORDER BY ... LIMIT ?`).
   - `Search`: SQL query using `articles_fts MATCH ?` with `bm25(articles_fts)`.
-- [ ] Write integration test suite `storage/sqlite_test.go`:
+- [x] Write integration test suite `storage/sqlite_test.go`:
   - Test migration execution and schema creation in an in-memory/temp SQLite file.
   - Test query hash lookup and collection idempotency.
   - Test storing and re-loading an analysis graph.
