@@ -9,4 +9,6 @@ import (
 // Register all the tools in the given mcp server
 func Register(server *mcp.Server, store storage.Store) {
 	collections.NewList(store).Register(server)
+	collections.NewShow(store).Register(server)
+	collections.NewDelete(store).Register(server)
 }
