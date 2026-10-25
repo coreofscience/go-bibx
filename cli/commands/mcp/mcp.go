@@ -9,8 +9,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/coreofscience/go-bibx/cli/mcp/tools"
 	"github.com/coreofscience/go-bibx/internal/utils"
+	"github.com/coreofscience/go-bibx/mcp/resources"
+	"github.com/coreofscience/go-bibx/mcp/tools"
 	"github.com/coreofscience/go-bibx/storage"
 	"github.com/urfave/cli/v3"
 )
@@ -64,6 +65,7 @@ func New() *cli.Command {
 			)
 
 			tools.Register(server, store)
+			resources.Register(server, store)
 
 			if err := server.Run(ctx, &mcp.StdioTransport{}); err != nil {
 				return fmt.Errorf("failed to run mcp server: %w", err)
