@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 	"uuid"
 
@@ -42,9 +43,12 @@ func (s *Summary) Provide(ctx context.Context, rrr *mcp.ReadResourceRequest) (*m
 	if u.Scheme != "bibx" {
 		return nil, fmt.Errorf("URI scheme should be bibx, got: %q", u.Scheme)
 	}
-	id, err := uuid.Parse(u.Opaque)
+	raw := strings.TrimPrefix(rrr.Params.URI, "bibx:")
+	raw = strings.TrimPrefix(raw, "/collections/")
+	raw = strings.TrimSuffix(raw, "/summary")
+	id, err := uuid.Parse(raw)
 	if err != nil {
-		return nil, fmt.Errorf("the provided id could not be parsed as UUID, got: %q", u.Opaque)
+		return nil, fmt.Errorf("the provided id could not be parsed as UUID, got: %q", raw)
 	}
 	collection, err := s.store.FindCollectionByID(ctx, id)
 	if err != nil {
