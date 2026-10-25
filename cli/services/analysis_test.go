@@ -7,31 +7,12 @@ import (
 
 	"github.com/coreofscience/go-bibx/cli/clients/openalex"
 	"github.com/coreofscience/go-bibx/cli/services"
+	openalexmocks "github.com/coreofscience/go-bibx/internal/mocks/cli/clients/openalex"
 	"github.com/coreofscience/go-bibx/storage"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
-
-type mockOpenAlexClient struct {
-	recentWorks                  []*openalex.Work
-	worksByID                    map[string]*openalex.Work
-	listRecentArticlesCallsCount int
-}
-
-func (m *mockOpenAlexClient) ListRecentArticles(ctx context.Context, query string, limit int) ([]*openalex.Work, error) {
-	m.listRecentArticlesCallsCount++
-	return m.recentWorks, nil
-}
-
-func (m *mockOpenAlexClient) ListArticlesByIDs(ctx context.Context, ids []string) ([]*openalex.Work, error) {
-	var results []*openalex.Work
-	for _, id := range ids {
-		if w, ok := m.worksByID[id]; ok {
-			results = append(results, w)
-		}
-	}
-	return results, nil
-}
 
 func TestOpenAlexAnalysisService_StoreAndSearch(t *testing.T) {
 	title1 := "First Paper on Machine Learning"
@@ -70,10 +51,23 @@ func TestOpenAlexAnalysisService_StoreAndSearch(t *testing.T) {
 		"https://openalex.org/W4": w4,
 	}
 
-	oaClient := &mockOpenAlexClient{
-		recentWorks: worksMapToSlice(w1, w2, w3, w4),
-		worksByID:   worksMap,
-	}
+	oaClient := openalexmocks.NewMockClient(t)
+	oaClient.EXPECT().
+		ListRecentArticles(mock.Anything, mock.Anything, mock.Anything).
+		Return(worksMapToSlice(w1, w2, w3, w4), nil).
+		Times(3)
+	oaClient.EXPECT().
+		ListArticlesByIDs(mock.Anything, mock.Anything).
+		RunAndReturn(func(ctx context.Context, ids []string) ([]*openalex.Work, error) {
+			var results []*openalex.Work
+			for _, id := range ids {
+				if w, ok := worksMap[id]; ok {
+					results = append(results, w)
+				}
+			}
+			return results, nil
+		}).
+		Maybe()
 
 	tempDir := t.TempDir()
 	dbPath := filepath.Join(tempDir, "service_test.db")
@@ -89,7 +83,7 @@ func TestOpenAlexAnalysisService_StoreAndSearch(t *testing.T) {
 	col, err := svc.Store(context.Background(), "test query", 10)
 	require.NoError(t, err)
 	require.NotNil(t, col)
-	assert.Equal(t, 1, oaClient.listRecentArticlesCallsCount)
+	oaClient.AssertNumberOfCalls(t, "ListRecentArticles", 1)
 	assert.Equal(t, 4, col.ArticleCount)
 
 	// 2. Query Idempotency: re-running identical query (with whitespace variation) skips remote fetch
@@ -97,13 +91,13 @@ func TestOpenAlexAnalysisService_StoreAndSearch(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, col2)
 	assert.Equal(t, col.ID, col2.ID, "idempotent query must return the existing collection")
-	assert.Equal(t, 1, oaClient.listRecentArticlesCallsCount, "remote fetch must not be called again")
+	oaClient.AssertNumberOfCalls(t, "ListRecentArticles", 1)
 
 	// 3. Force re-run: with force=true, OpenAlex is called again
 	col3, err := svc.Store(context.Background(), "test query", 10, true)
 	require.NoError(t, err)
 	require.NotNil(t, col3)
-	assert.Equal(t, 2, oaClient.listRecentArticlesCallsCount, "remote fetch must be called when force is true")
+	oaClient.AssertNumberOfCalls(t, "ListRecentArticles", 2)
 
 	// 4. Test Query category (defaults to latest collection)
 	results, err := svc.Query(context.Background(), "root", 2)
