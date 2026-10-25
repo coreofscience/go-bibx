@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"github.com/coreofscience/go-bibx/mcp/tools/analysis"
 	"github.com/coreofscience/go-bibx/mcp/tools/collections"
 	"github.com/coreofscience/go-bibx/storage"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -11,4 +12,5 @@ func Register(server *mcp.Server, store storage.Store) {
 	collections.NewList(store).Register(server)
 	collections.NewShow(store).Register(server)
 	collections.NewInquire(store).Register(server)
+	analysis.NewTos(store).Register(server)
 }
