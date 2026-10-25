@@ -9,6 +9,7 @@ import (
 	"time"
 	"uuid"
 
+	"github.com/coreofscience/go-bibx/mcp/models"
 	"github.com/coreofscience/go-bibx/storage"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -54,7 +55,7 @@ func (s *Summary) Provide(ctx context.Context, rrr *mcp.ReadResourceRequest) (*m
 	if err != nil {
 		return nil, fmt.Errorf("failed to find collection: %w", err)
 	}
-	bytes, err := json.Marshal(collection)
+	bytes, err := json.Marshal(models.NewCollectionSummaryFromModel(collection))
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal collection summary: %w", err)
 	}

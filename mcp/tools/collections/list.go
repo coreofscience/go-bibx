@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/coreofscience/go-bibx/mcp/models"
 	"github.com/coreofscience/go-bibx/storage"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -15,7 +16,7 @@ type ListInput struct{}
 
 // ListOutput contains the collection we want to show to the user.
 type ListOutput struct {
-	Collections []*CollectionSummary `json:"collections"`
+	Collections []*models.CollectionSummary `json:"collections"`
 }
 
 // List holds the list command.
@@ -56,9 +57,9 @@ func (l *List) Handle(
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to list collections: %w", err)
 	}
-	summaries := make([]*CollectionSummary, len(collections))
+	summaries := make([]*models.CollectionSummary, len(collections))
 	for i, collection := range collections {
-		summaries[i] = NewCollectionSummaryFromModel(collection)
+		summaries[i] = models.NewCollectionSummaryFromModel(collection)
 	}
 	return &mcp.CallToolResult{IsError: false}, &ListOutput{Collections: summaries}, nil
 }

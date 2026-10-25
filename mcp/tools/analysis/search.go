@@ -9,6 +9,7 @@ import (
 
 	"github.com/coreofscience/go-bibx/cli/clients/openalex"
 	"github.com/coreofscience/go-bibx/cli/services"
+	mcpmodels "github.com/coreofscience/go-bibx/mcp/models"
 	"github.com/coreofscience/go-bibx/models"
 	"github.com/coreofscience/go-bibx/storage"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -26,8 +27,8 @@ type SearchInput struct {
 
 // SearchOutput contains the graph results of the search query.
 type SearchOutput struct {
-	Nodes []*NodeSummary `json:"nodes"`
-	Links []*LinkSummary `json:"links"`
+	Nodes []*mcpmodels.NodeSummary `json:"nodes"`
+	Links []*mcpmodels.LinkSummary `json:"links"`
 }
 
 // SearchService defines the interface needed by the Search tool.
@@ -139,16 +140,16 @@ func (s *Search) Handle(
 		return nil, nil, fmt.Errorf("failed to search analysis: %w", err)
 	}
 
-	var nodes []*NodeSummary
-	var links []*LinkSummary
+	var nodes []*mcpmodels.NodeSummary
+	var links []*mcpmodels.LinkSummary
 	if rawAnalysis != nil {
-		nodes = make([]*NodeSummary, len(rawAnalysis.Nodes))
+		nodes = make([]*mcpmodels.NodeSummary, len(rawAnalysis.Nodes))
 		for i, n := range rawAnalysis.Nodes {
-			nodes[i] = NewNodeSummaryFromModel(n)
+			nodes[i] = mcpmodels.NewNodeSummaryFromModel(n)
 		}
-		links = make([]*LinkSummary, len(rawAnalysis.Links))
+		links = make([]*mcpmodels.LinkSummary, len(rawAnalysis.Links))
 		for i, l := range rawAnalysis.Links {
-			links[i] = NewLinkSummaryFromModel(l)
+			links[i] = mcpmodels.NewLinkSummaryFromModel(l)
 		}
 	}
 

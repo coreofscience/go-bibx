@@ -8,6 +8,7 @@ import (
 
 	"github.com/coreofscience/go-bibx/cli/clients/openalex"
 	"github.com/coreofscience/go-bibx/cli/services"
+	"github.com/coreofscience/go-bibx/mcp/models"
 	"github.com/coreofscience/go-bibx/storage"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -29,8 +30,8 @@ type InquireInput struct {
 
 // InquireOutput contains the collection details and whether it was newly queried.
 type InquireOutput struct {
-	Collection *CollectionSummary `json:"collection"`
-	IsNew      bool               `json:"is_new"`
+	Collection *models.CollectionSummary `json:"collection"`
+	IsNew      bool                      `json:"is_new"`
 }
 
 // InquireService defines the interface needed by the Inquire tool.
@@ -113,7 +114,7 @@ func (i *Inquire) Handle(
 	}
 
 	return &mcp.CallToolResult{IsError: false}, &InquireOutput{
-		Collection: NewCollectionSummaryFromModel(res.Collection),
+		Collection: models.NewCollectionSummaryFromModel(res.Collection),
 		IsNew:      res.IsNew,
 	}, nil
 }

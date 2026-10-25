@@ -9,6 +9,7 @@ import (
 
 	"github.com/coreofscience/go-bibx/cli/clients/openalex"
 	"github.com/coreofscience/go-bibx/cli/services"
+	mcpmodels "github.com/coreofscience/go-bibx/mcp/models"
 	"github.com/coreofscience/go-bibx/models"
 	"github.com/coreofscience/go-bibx/storage"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -36,7 +37,7 @@ type TosInput struct {
 
 // TosOutput contains the results of the Tree of Science query.
 type TosOutput struct {
-	Results []*Result `json:"results"`
+	Results []*mcpmodels.Result `json:"results"`
 }
 
 // TosService defines the interface needed by the Tos tool.
@@ -152,9 +153,9 @@ func (t *Tos) Handle(
 		return nil, nil, fmt.Errorf("failed to query tos category: %w", err)
 	}
 
-	results := make([]*Result, len(rawResults))
+	results := make([]*mcpmodels.Result, len(rawResults))
 	for i, r := range rawResults {
-		results[i] = NewResultFromModel(r)
+		results[i] = mcpmodels.NewResultFromModel(r)
 	}
 
 	return &mcp.CallToolResult{IsError: false}, &TosOutput{

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/coreofscience/go-bibx/mcp/models"
 	"github.com/coreofscience/go-bibx/storage"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -17,7 +18,7 @@ type ShowInput struct {
 
 // ShowOutput contains the collection details.
 type ShowOutput struct {
-	Collection *CollectionSummary `json:"collection"`
+	Collection *models.CollectionSummary `json:"collection"`
 }
 
 // Show holds the show tool.
@@ -71,7 +72,7 @@ func (s *Show) Handle(
 	}
 
 	return &mcp.CallToolResult{IsError: false}, &ShowOutput{
-		Collection: NewCollectionSummaryFromModel(collection),
+		Collection: models.NewCollectionSummaryFromModel(collection),
 	}, nil
 }
 
