@@ -58,15 +58,7 @@ func (l *List) Handle(
 	}
 	summaries := make([]*CollectionSummary, len(collections))
 	for i, collection := range collections {
-		summaries[i] = &CollectionSummary{
-			ID:           collection.ID.String(),
-			Query:        collection.Query,
-			ResultLimit:  collection.ResultLimit,
-			Name:         collection.Name,
-			ArticleCount: collection.ArticleCount,
-			CreatedAt:    collection.CreatedAt,
-			UpdatedAt:    collection.UpdatedAt,
-		}
+		summaries[i] = NewCollectionSummaryFromModel(collection)
 	}
 	return &mcp.CallToolResult{IsError: false}, &ListOutput{Collections: summaries}, nil
 }

@@ -70,16 +70,9 @@ func (s *Show) Handle(
 		return nil, nil, fmt.Errorf("failed to resolve collection: %w", err)
 	}
 
-	summary := &CollectionSummary{
-		ID:           collection.ID.String(),
-		Query:        collection.Query,
-		ResultLimit:  collection.ResultLimit,
-		Name:         collection.Name,
-		ArticleCount: collection.ArticleCount,
-		CreatedAt:    collection.CreatedAt,
-		UpdatedAt:    collection.UpdatedAt,
-	}
-	return &mcp.CallToolResult{IsError: false}, &ShowOutput{Collection: summary}, nil
+	return &mcp.CallToolResult{IsError: false}, &ShowOutput{
+		Collection: NewCollectionSummaryFromModel(collection),
+	}, nil
 }
 
 // Register registers the current tool to the given [mcp.Server].

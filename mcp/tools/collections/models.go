@@ -1,8 +1,12 @@
 package collections
 
-import "time"
+import (
+	"time"
 
-// CollectionSummary is a version of [storage.Collection] that safe to infer.
+	"github.com/coreofscience/go-bibx/storage"
+)
+
+// CollectionSummary is a version of [storage.Collection] that is safe to infer.
 type CollectionSummary struct {
 	ID           string    `json:"id"`
 	Query        string    `json:"query"`
@@ -11,4 +15,20 @@ type CollectionSummary struct {
 	ArticleCount int       `json:"article_count"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+// NewCollectionSummaryFromModel converts a [storage.Collection] to a schema-safe [CollectionSummary].
+func NewCollectionSummaryFromModel(c *storage.Collection) *CollectionSummary {
+	if c == nil {
+		return nil
+	}
+	return &CollectionSummary{
+		ID:           c.ID.String(),
+		Query:        c.Query,
+		ResultLimit:  c.ResultLimit,
+		Name:         c.Name,
+		ArticleCount: c.ArticleCount,
+		CreatedAt:    c.CreatedAt,
+		UpdatedAt:    c.UpdatedAt,
+	}
 }

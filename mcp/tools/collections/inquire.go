@@ -113,16 +113,8 @@ func (i *Inquire) Handle(
 	}
 
 	return &mcp.CallToolResult{IsError: false}, &InquireOutput{
-		Collection: &CollectionSummary{
-			ID:           res.Collection.ID.String(),
-			Query:        res.Collection.Query,
-			ResultLimit:  res.Collection.ResultLimit,
-			Name:         res.Collection.Name,
-			ArticleCount: res.Collection.ArticleCount,
-			CreatedAt:    res.Collection.CreatedAt,
-			UpdatedAt:    res.Collection.UpdatedAt,
-		},
-		IsNew: res.IsNew,
+		Collection: NewCollectionSummaryFromModel(res.Collection),
+		IsNew:      res.IsNew,
 	}, nil
 }
 
