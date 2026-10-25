@@ -63,8 +63,8 @@ type SQLiteStore struct {
 // runs embedded migrations, and returns an initialized [*SQLiteStore].
 func NewSQLiteStore(path string) (*SQLiteStore, error) {
 	cleanPath := path
-	if strings.HasPrefix(cleanPath, "file:") {
-		cleanPath = strings.TrimPrefix(cleanPath, "file:")
+	if after, ok := strings.CutPrefix(cleanPath, "file:"); ok {
+		cleanPath = after
 		if idx := strings.Index(cleanPath, "?"); idx != -1 {
 			cleanPath = cleanPath[:idx]
 		}

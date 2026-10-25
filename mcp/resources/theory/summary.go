@@ -67,10 +67,8 @@ func (s *Summary) Provide(ctx context.Context, rrr *mcp.ReadResourceRequest) (*m
 		return nil, fmt.Errorf("URI scheme should be bibx, got: %q", u.Scheme)
 	}
 	return &mcp.ReadResourceResult{
-		Cacheable: mcp.Cacheable{
-			TTLMs:      int((24 * time.Hour).Milliseconds()),
-			CacheScope: "public",
-		},
+		TTLMs:      int((24 * time.Hour).Milliseconds()),
+		CacheScope: "public",
 		Contents: []*mcp.ResourceContents{{
 			URI:      "bibx:/summary",
 			MIMEType: "text/plain",

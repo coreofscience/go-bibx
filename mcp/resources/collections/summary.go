@@ -59,10 +59,8 @@ func (s *Summary) Provide(ctx context.Context, rrr *mcp.ReadResourceRequest) (*m
 		return nil, fmt.Errorf("failed to marshal collection summary: %w", err)
 	}
 	return &mcp.ReadResourceResult{
-		Cacheable: mcp.Cacheable{
-			TTLMs:      int((60 * time.Minute).Milliseconds()),
-			CacheScope: "private",
-		},
+		TTLMs:      int((60 * time.Minute).Milliseconds()),
+		CacheScope: "private",
 		Contents: []*mcp.ResourceContents{{
 			URI:      rrr.Params.URI,
 			MIMEType: "application/json",
