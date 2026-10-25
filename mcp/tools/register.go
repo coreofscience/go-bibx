@@ -13,4 +13,5 @@ func Register(server *mcp.Server, store storage.Store) {
 	collections.NewShow(store).Register(server)
 	collections.NewInquire(store).Register(server)
 	analysis.NewTos(store).Register(server)
+	analysis.NewSearch(store).Register(server)
 }
