@@ -188,18 +188,12 @@ func (q *Queries) GetCollectionByName(ctx context.Context, name sql.NullString) 
 const listCollections = `-- name: ListCollections :many
 SELECT id, query_hash, "query", result_limit, parameters, name, article_count, created_at, updated_at
 FROM collections
-WHERE id > ?
-ORDER BY id
+ORDER BY created_at DESC, id DESC
 LIMIT ?
 `
 
-type ListCollectionsParams struct {
-	ID    uuid.UUID
-	Limit int64
-}
-
-func (q *Queries) ListCollections(ctx context.Context, arg ListCollectionsParams) ([]Collection, error) {
-	rows, err := q.db.QueryContext(ctx, listCollections, arg.ID, arg.Limit)
+func (q *Queries) ListCollections(ctx context.Context, limit int64) ([]Collection, error) {
+	rows, err := q.db.QueryContext(ctx, listCollections, limit)
 	if err != nil {
 		return nil, err
 	}

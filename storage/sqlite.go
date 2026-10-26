@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"time"
 	"uuid"
@@ -168,10 +167,7 @@ func (s *SQLiteStore) FindCollectionByName(ctx context.Context, name string) (*C
 
 // ListCollections returns all collections ordered by creation timestamp descending.
 func (s *SQLiteStore) ListCollections(ctx context.Context) ([]*Collection, error) {
-	items, err := s.queries.ListCollections(ctx, repository.ListCollectionsParams{
-		ID:    uuid.Nil(),
-		Limit: 10000,
-	})
+	items, err := s.queries.ListCollections(ctx, 10000)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list collections: %w", err)
 	}
@@ -180,7 +176,6 @@ func (s *SQLiteStore) ListCollections(ctx context.Context) ([]*Collection, error
 	for i, item := range items {
 		cols[i] = toCollection(item)
 	}
-	slices.Reverse(cols)
 	return cols, nil
 }
 
@@ -244,6 +239,9 @@ func (s *SQLiteStore) UpdateCollectionName(ctx context.Context, id uuid.UUID, na
 		Name: toNullString(name),
 		ID:   id,
 	}); err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			return ErrCollectionExists
+		}
 		return fmt.Errorf("failed to update collection name: %w", err)
 	}
 	return nil

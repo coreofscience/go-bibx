@@ -16,8 +16,7 @@ WHERE name = ?;
 -- name: ListCollections :many
 SELECT *
 FROM collections
-WHERE id > ?
-ORDER BY id
+ORDER BY created_at DESC, id DESC
 LIMIT ?;
 
 -- name: CreateCollection :exec

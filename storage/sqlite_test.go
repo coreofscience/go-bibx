@@ -109,6 +109,16 @@ func TestSQLiteStore_CollectionCRUD(t *testing.T) {
 	})
 	require.ErrorIs(t, err, storage.ErrCollectionExists)
 
+	// 2b. Create collection with duplicate name fails
+	err = store.CreateCollection(ctx, &storage.Collection{
+		ID:          uuid.NewV7(),
+		QueryHash:   storage.ComputeQueryHash("different query", 100),
+		Query:       "different query",
+		ResultLimit: 100,
+		Name:        &name1,
+	})
+	require.ErrorIs(t, err, storage.ErrCollectionExists)
+
 	// 3. Create nil collection fails
 	err = store.CreateCollection(ctx, nil)
 	require.Error(t, err)
@@ -156,7 +166,11 @@ func TestSQLiteStore_CollectionCRUD(t *testing.T) {
 	list, err := store.ListCollections(ctx)
 	require.NoError(t, err)
 	require.Len(t, list, 2)
-	assert.Equal(t, col2.ID, list[0].ID) // Ordered by created_at DESC
+	assert.Equal(t, col2.ID, list[0].ID) // Ordered by created_at DESC, id DESC
+
+	// 10b. UpdateCollectionName to an existing collection's name fails with ErrCollectionExists
+	err = store.UpdateCollectionName(ctx, col2.ID, &name1)
+	require.ErrorIs(t, err, storage.ErrCollectionExists)
 
 	// 11. Delete collection
 	err = store.DeleteCollection(ctx, col1.ID)

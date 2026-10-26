@@ -5,14 +5,14 @@ CREATE TABLE collections (
     query         TEXT NOT NULL,
     result_limit  INTEGER NOT NULL,
     parameters    JSON,
-    name          TEXT,
+    name          TEXT UNIQUE,
     article_count INTEGER DEFAULT 0,
     created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_collections_created_at ON collections(created_at DESC);
-CREATE INDEX idx_collections_name ON collections(name);
+CREATE INDEX idx_collections_created_at ON collections(created_at DESC, id DESC);
+CREATE UNIQUE INDEX idx_collections_name ON collections(name);
 
 -- Articles Table (Normalized Bibliographic Data)
 CREATE TABLE articles (
