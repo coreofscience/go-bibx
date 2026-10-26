@@ -369,7 +369,54 @@ func TestSQLiteStore_AnalysisPersistenceAndQuery(t *testing.T) {
 	assert.Nil(t, mustSearch(t, store, colID, "", 10))
 	assert.Nil(t, mustSearch(t, store, colID, "neural", 0))
 
-	// 10. Verify DeleteCollection cascades and removes nodes/links
+	// 10. Verify re-storing a smaller analysis removes stale nodes/links and preserves existing article authors/keywords when nil
+	stubNode1 := &models.Node{
+		ID:        "openalex:W1",
+		Category:  models.CategoryRoot,
+		Rootness:  0.80,
+		Trunkness: 0.0,
+		Leafness:  0.0,
+		Community: 2,
+		Article: &models.Article{
+			Label:    "openalex:W1",
+			Authors:  nil,
+			Keywords: collections.NewSet[string](),
+			IDs:      collections.NewSet("openalex:W1"),
+			Rich:     false,
+		},
+	}
+	smallerAnalysis := &models.Analysis{
+		Nodes: []*models.Node{stubNode1, node2},
+		Links: []*models.Link{
+			{Source: "openalex:W2", Target: "openalex:W1", Weight: 1.0},
+		},
+	}
+	require.NoError(t, store.StoreAnalysis(ctx, colID, smallerAnalysis))
+
+	colAfterUpdate, err := store.FindCollectionByID(ctx, colID)
+	require.NoError(t, err)
+	assert.Equal(t, 2, colAfterUpdate.ArticleCount, "stale node W3 should be removed from collection count")
+
+	reloaded, err := store.LoadAnalysis(ctx, colID)
+	require.NoError(t, err)
+	require.Len(t, reloaded.Nodes, 2, "stale node W3 should be removed")
+	require.Len(t, reloaded.Links, 1, "stale link W3->W2 should be removed")
+
+	reloadedMap := make(map[string]*models.Node)
+	for _, n := range reloaded.Nodes {
+		reloadedMap[n.ID] = n
+	}
+	require.NotNil(t, reloadedMap["openalex:W1"])
+	assert.ElementsMatch(t, []string{"Turing, Alan", "Shannon, Claude"}, reloadedMap["openalex:W1"].Article.Authors, "existing authors must not be overwritten by nil/empty slice")
+	assert.True(t, reloadedMap["openalex:W1"].Article.Keywords.Contains("foundations"), "existing keywords must not be overwritten by empty set")
+
+	// Author FTS search should still match W1 after unenriched upsert
+	authorAfterUpsert, err := store.Search(ctx, colID, "Turing", 10)
+	require.NoError(t, err)
+	require.Len(t, authorAfterUpsert, 1)
+	assert.Equal(t, "openalex:W1", authorAfterUpsert[0].ID)
+
+	// 11. Verify DeleteCollection cascades and removes nodes/links
 	require.NoError(t, store.DeleteCollection(ctx, colID))
 	_, err = store.LoadAnalysis(ctx, colID)
 	require.ErrorIs(t, err, storage.ErrCollectionNotFound)

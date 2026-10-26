@@ -35,6 +35,20 @@ INSERT INTO collections (
 DELETE FROM collections
 WHERE id = ?;
 
+-- name: UpdateCollectionName :exec
+UPDATE collections
+SET name = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?;
+
+-- name: DeleteNodesByCollectionID :exec
+DELETE FROM nodes
+WHERE collection_id = ?;
+
+-- name: DeleteLinksByCollectionID :exec
+DELETE FROM links
+WHERE collection_id = ?;
+
 -- name: UpsertArticle :one
 INSERT INTO articles (
     id,
@@ -69,7 +83,7 @@ ON CONFLICT(label) DO UPDATE SET
     authors=COALESCE(excluded.authors, articles.authors),
     keywords=COALESCE(excluded.keywords, articles.keywords),
     ids=COALESCE(excluded.ids, articles.ids)
-RETURNING id;
+RETURNING id, title, abstract, keywords, authors;
 
 -- name: DeleteArticleFTS :exec
 DELETE FROM articles_fts

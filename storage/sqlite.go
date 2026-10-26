@@ -231,6 +231,24 @@ func (s *SQLiteStore) DeleteCollection(ctx context.Context, id uuid.UUID) error 
 	return nil
 }
 
+// UpdateCollectionName updates the name alias of an existing collection.
+func (s *SQLiteStore) UpdateCollectionName(ctx context.Context, id uuid.UUID, name *string) error {
+	if _, err := s.queries.GetCollectionByID(ctx, id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrCollectionNotFound
+		}
+		return fmt.Errorf("failed to check collection before updating name: %w", err)
+	}
+
+	if err := s.queries.UpdateCollectionName(ctx, repository.UpdateCollectionNameParams{
+		Name: toNullString(name),
+		ID:   id,
+	}); err != nil {
+		return fmt.Errorf("failed to update collection name: %w", err)
+	}
+	return nil
+}
+
 // StoreAnalysis persists an analysis graph (articles, scored nodes, links, and FTS5 entries) for a collection.
 func (s *SQLiteStore) StoreAnalysis(ctx context.Context, collectionID uuid.UUID, a *models.Analysis) error {
 	if a == nil {
@@ -255,7 +273,15 @@ func (s *SQLiteStore) StoreAnalysis(ctx context.Context, collectionID uuid.UUID,
 		return fmt.Errorf("failed to verify collection existence: %w", err)
 	}
 
-	// 2. Insert/update Articles & Nodes
+	// 2. Clear any prior links and nodes for this collection
+	if err := qtx.DeleteLinksByCollectionID(ctx, collectionID); err != nil {
+		return fmt.Errorf("failed to clear existing collection links: %w", err)
+	}
+	if err := qtx.DeleteNodesByCollectionID(ctx, collectionID); err != nil {
+		return fmt.Errorf("failed to clear existing collection nodes: %w", err)
+	}
+
+	// 3. Insert/update Articles & Nodes
 	nodeIDToUUID := make(map[string]uuid.UUID, len(a.Nodes))
 	for _, node := range a.Nodes {
 		resolvedNodeID, err := persistNode(ctx, qtx, collectionID, node)
@@ -274,12 +300,12 @@ func (s *SQLiteStore) StoreAnalysis(ctx context.Context, collectionID uuid.UUID,
 		}
 	}
 
-	// 3. Insert Links
+	// 4. Insert Links
 	if err := persistLinks(ctx, qtx, collectionID, a.Links, nodeIDToUUID); err != nil {
 		return err
 	}
 
-	// 4. Update collection article count
+	// 5. Update collection article count
 	if err := qtx.UpdateArticleCount(ctx, repository.UpdateArticleCountParams{
 		CollectionID: collectionID,
 		ID:           collectionID,
@@ -314,16 +340,18 @@ func persistNode(
 		}
 	}
 
-	authorsJSON, _ := json.Marshal(art.Authors)
-	var keywordsJSON, idsJSON []byte
-	if art.Keywords != nil {
+	var authorsJSON, keywordsJSON, idsJSON []byte
+	if len(art.Authors) > 0 {
+		authorsJSON, _ = json.Marshal(art.Authors)
+	}
+	if art.Keywords.Len() > 0 {
 		keywordsJSON, _ = json.Marshal(art.Keywords.Items())
 	}
-	if art.IDs != nil {
+	if art.IDs.Len() > 0 {
 		idsJSON, _ = json.Marshal(art.IDs.Items())
 	}
 
-	resolvedArtID, err := qtx.UpsertArticle(ctx, repository.UpsertArticleParams{
+	upsertedArt, err := qtx.UpsertArticle(ctx, repository.UpsertArticleParams{
 		ID:         uuid.NewV7(),
 		Label:      art.Label,
 		Title:      toNullString(art.Title),
@@ -345,23 +373,33 @@ func persistNode(
 		return uuid.Nil(), fmt.Errorf("failed to upsert article %s: %w", art.Label, err)
 	}
 
+	resolvedArtID := upsertedArt.ID
 	if err := qtx.DeleteArticleFTS(ctx, resolvedArtID); err != nil {
 		return uuid.Nil(), fmt.Errorf("failed to clean fts for article %s: %w", art.Label, err)
 	}
 
 	titleStr := ""
-	if art.Title != nil {
-		titleStr = *art.Title
+	if upsertedArt.Title.Valid {
+		titleStr = upsertedArt.Title.String
 	}
 	abstractStr := ""
-	if art.Abstract != nil {
-		abstractStr = *art.Abstract
+	if upsertedArt.Abstract.Valid {
+		abstractStr = upsertedArt.Abstract.String
 	}
 	keywordsStr := ""
-	if art.Keywords != nil {
-		keywordsStr = strings.Join(art.Keywords.Items(), " ")
+	if len(upsertedArt.Keywords) > 0 {
+		var kwList []string
+		if err := json.Unmarshal(upsertedArt.Keywords, &kwList); err == nil {
+			keywordsStr = strings.Join(kwList, " ")
+		}
 	}
-	authorsStr := strings.Join(art.Authors, " ")
+	authorsStr := ""
+	if len(upsertedArt.Authors) > 0 {
+		var authorList []string
+		if err := json.Unmarshal(upsertedArt.Authors, &authorList); err == nil {
+			authorsStr = strings.Join(authorList, " ")
+		}
+	}
 
 	if err := qtx.CreateArticleFTS(ctx, repository.CreateArticleFTSParams{
 		ArticleID: resolvedArtID,

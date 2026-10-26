@@ -55,7 +55,7 @@ func TestOpenAlexAnalysisService_StoreAndSearch(t *testing.T) {
 	oaClient.EXPECT().
 		ListRecentArticles(mock.Anything, mock.Anything, mock.Anything).
 		Return(worksMapToSlice(w1, w2, w3, w4), nil).
-		Times(3)
+		Times(4)
 	oaClient.EXPECT().
 		ListArticlesByIDs(mock.Anything, mock.Anything).
 		RunAndReturn(func(ctx context.Context, ids []string) ([]*openalex.Work, error) {
@@ -131,6 +131,17 @@ func TestOpenAlexAnalysisService_StoreAndSearch(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, cachedRes.IsNew)
 	assert.Equal(t, namedRes.Collection.ID, cachedRes.Collection.ID)
+
+	// Force re-run with updated name updates the existing collection's name
+	renamedRes, err := svc.StoreWithOptions(context.Background(), "named query", 10, services.StoreOptions{
+		Force: true,
+		Name:  "renamed-alias",
+	})
+	require.NoError(t, err)
+	assert.True(t, renamedRes.IsNew)
+	assert.Equal(t, namedRes.Collection.ID, renamedRes.Collection.ID)
+	require.NotNil(t, renamedRes.Collection.Name)
+	assert.Equal(t, "renamed-alias", *renamedRes.Collection.Name)
 }
 
 func worksMapToSlice(works ...*openalex.Work) []*openalex.Work {

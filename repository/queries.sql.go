@@ -96,6 +96,26 @@ func (q *Queries) DeleteCollectionById(ctx context.Context, id uuid.UUID) error 
 	return err
 }
 
+const deleteLinksByCollectionID = `-- name: DeleteLinksByCollectionID :exec
+DELETE FROM links
+WHERE collection_id = ?
+`
+
+func (q *Queries) DeleteLinksByCollectionID(ctx context.Context, collectionID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteLinksByCollectionID, collectionID)
+	return err
+}
+
+const deleteNodesByCollectionID = `-- name: DeleteNodesByCollectionID :exec
+DELETE FROM nodes
+WHERE collection_id = ?
+`
+
+func (q *Queries) DeleteNodesByCollectionID(ctx context.Context, collectionID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteNodesByCollectionID, collectionID)
+	return err
+}
+
 const getCollectionByHash = `-- name: GetCollectionByHash :one
 SELECT id, query_hash, "query", result_limit, parameters, name, article_count, created_at, updated_at
 FROM collections
@@ -676,6 +696,23 @@ func (q *Queries) UpdateArticleCount(ctx context.Context, arg UpdateArticleCount
 	return err
 }
 
+const updateCollectionName = `-- name: UpdateCollectionName :exec
+UPDATE collections
+SET name = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?
+`
+
+type UpdateCollectionNameParams struct {
+	Name sql.NullString
+	ID   uuid.UUID
+}
+
+func (q *Queries) UpdateCollectionName(ctx context.Context, arg UpdateCollectionNameParams) error {
+	_, err := q.db.ExecContext(ctx, updateCollectionName, arg.Name, arg.ID)
+	return err
+}
+
 const upsertArticle = `-- name: UpsertArticle :one
 INSERT INTO articles (
     id,
@@ -710,7 +747,7 @@ ON CONFLICT(label) DO UPDATE SET
     authors=COALESCE(excluded.authors, articles.authors),
     keywords=COALESCE(excluded.keywords, articles.keywords),
     ids=COALESCE(excluded.ids, articles.ids)
-RETURNING id
+RETURNING id, title, abstract, keywords, authors
 `
 
 type UpsertArticleParams struct {
@@ -732,7 +769,15 @@ type UpsertArticleParams struct {
 	Ids        []byte
 }
 
-func (q *Queries) UpsertArticle(ctx context.Context, arg UpsertArticleParams) (uuid.UUID, error) {
+type UpsertArticleRow struct {
+	ID       uuid.UUID
+	Title    sql.NullString
+	Abstract sql.NullString
+	Keywords []byte
+	Authors  []byte
+}
+
+func (q *Queries) UpsertArticle(ctx context.Context, arg UpsertArticleParams) (UpsertArticleRow, error) {
 	row := q.db.QueryRowContext(ctx, upsertArticle,
 		arg.ID,
 		arg.Label,
@@ -751,9 +796,15 @@ func (q *Queries) UpsertArticle(ctx context.Context, arg UpsertArticleParams) (u
 		arg.Keywords,
 		arg.Ids,
 	)
-	var id uuid.UUID
-	err := row.Scan(&id)
-	return id, err
+	var i UpsertArticleRow
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Abstract,
+		&i.Keywords,
+		&i.Authors,
+	)
+	return i, err
 }
 
 const upsertLink = `-- name: UpsertLink :exec

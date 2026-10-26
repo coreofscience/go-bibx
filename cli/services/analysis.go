@@ -208,14 +208,24 @@ func (s *OpenAlexAnalysisService) StoreWithOptions(
 		node.Community = communities[node.ID]
 	}
 
+	var colName *string
+	if trimmed := strings.TrimSpace(opts.Name); trimmed != "" {
+		colName = &trimmed
+	}
+
 	colID := uuid.NewV7()
 	if existing != nil {
 		colID = existing.ID
-	} else {
-		var colName *string
-		if trimmed := strings.TrimSpace(opts.Name); trimmed != "" {
-			colName = &trimmed
+		if colName != nil {
+			if namer, ok := s.store.(interface {
+				UpdateCollectionName(ctx context.Context, id uuid.UUID, name *string) error
+			}); ok {
+				if err := namer.UpdateCollectionName(ctx, colID, colName); err != nil {
+					return nil, fmt.Errorf("failed to update collection name: %w", err)
+				}
+			}
 		}
+	} else {
 		col := &storage.Collection{
 			ID:           colID,
 			Name:         colName,
