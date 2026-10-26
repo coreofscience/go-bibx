@@ -3,6 +3,7 @@ package commands
 import (
 	"github.com/coreofscience/go-bibx/cli/commands/collection"
 	"github.com/coreofscience/go-bibx/cli/commands/inquire"
+	"github.com/coreofscience/go-bibx/cli/commands/mcp"
 	"github.com/coreofscience/go-bibx/cli/commands/query"
 	"github.com/coreofscience/go-bibx/cli/commands/search"
 	"github.com/coreofscience/go-bibx/cli/commands/view"
@@ -17,5 +18,6 @@ func New() []*cli.Command {
 		query.New(),
 		search.New(),
 		view.New(),
+		mcp.New(),
 	}
 }

@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/coreofscience/go-bibx/internal/collections"
-	"github.com/coreofscience/go-bibx/internal/search"
 	"github.com/coreofscience/go-bibx/internal/utils"
 	"github.com/hmdsefi/gograph"
 )
@@ -253,43 +252,4 @@ func (a *Analysis) Query(category string, top int) ([]*Result, error) {
 		results = append(results, node)
 	}
 	return results, nil
-}
-
-// Search performs a keyword search using BM25 ranking over the analysis nodes.
-func (a *Analysis) Search(query string, limit int) ([]*Node, error) {
-	if len(a.Nodes) == 0 || limit <= 0 {
-		return nil, nil
-	}
-	docs := make([]search.Document, len(a.Nodes))
-	nodeMap := make(map[string]*Node, len(a.Nodes))
-	for i, node := range a.Nodes {
-		nodeMap[node.ID] = node
-		doc := search.Document{ID: node.ID}
-		if node.Article != nil {
-			if node.Article.Title != nil {
-				doc.Title = *node.Article.Title
-			}
-			if node.Article.Keywords != nil {
-				doc.Keywords = node.Article.Keywords.Items()
-			}
-			if node.Article.Abstract != nil {
-				doc.Abstract = *node.Article.Abstract
-			}
-			doc.Authors = node.Article.Authors
-		}
-		docs[i] = doc
-	}
-
-	searchResults := search.BM25Search(docs, query, limit)
-	if len(searchResults) == 0 {
-		return nil, nil
-	}
-
-	topResults := make([]*Node, 0, len(searchResults))
-	for _, result := range searchResults {
-		if node, ok := nodeMap[result.ID]; ok {
-			topResults = append(topResults, node)
-		}
-	}
-	return topResults, nil
 }

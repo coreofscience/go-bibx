@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -57,9 +59,26 @@ type SQLiteStore struct {
 }
 
 // NewSQLiteStore opens or creates a SQLite database at the specified path,
-// applies WAL mode and foreign key constraints, runs embedded migrations,
-// and returns an initialized [*SQLiteStore].
+// ensures its parent directory exists, applies WAL mode and foreign key constraints,
+// runs embedded migrations, and returns an initialized [*SQLiteStore].
 func NewSQLiteStore(path string) (*SQLiteStore, error) {
+	cleanPath := path
+	if after, ok := strings.CutPrefix(cleanPath, "file:"); ok {
+		cleanPath = after
+		if idx := strings.Index(cleanPath, "?"); idx != -1 {
+			cleanPath = cleanPath[:idx]
+		}
+	}
+
+	if cleanPath != ":memory:" && cleanPath != "" {
+		dir := filepath.Dir(cleanPath)
+		if dir != "" && dir != "." {
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				return nil, fmt.Errorf("failed to create database directory: %w", err)
+			}
+		}
+	}
+
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite database: %w", err)
