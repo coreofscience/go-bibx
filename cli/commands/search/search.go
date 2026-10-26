@@ -37,8 +37,8 @@ func New() *cli.Command {
 				Usage:   "number of nodes to start the graph algorithm with",
 				Value:   10,
 				Validator: func(value int) error {
-					if value < 0 {
-						return fmt.Errorf("limit must be greater than or equal to 0")
+					if value < 1 {
+						return fmt.Errorf("limit must be greater than 0")
 					}
 					return nil
 				},
@@ -98,6 +98,9 @@ func New() *cli.Command {
 			if err != nil {
 				return fmt.Errorf("failed to create analysis service: %w", err)
 			}
+			defer func() {
+				_ = analysisService.StoreBackend().Close()
+			}()
 			renderer, err := renderers.NewAnalysisRendererWithFormat(c.String("format"))
 			if err != nil {
 				return fmt.Errorf("failed to create renderer: %w", err)

@@ -22,7 +22,7 @@ var indexTemplate []byte
 // New creates an [http.ServeMux] configured to serve the interactive graph viewer and collection data.
 func New(analysis *models.Analysis) *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		if _, err := w.Write(indexTemplate); err != nil {

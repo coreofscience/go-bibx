@@ -35,18 +35,21 @@ func frontMatter(a *models.Article) string {
 	if a == nil {
 		return ""
 	}
-	keywords := a.Keywords.Items()
+	var keywords []string
+	if a.Keywords != nil {
+		keywords = a.Keywords.Items()
+	}
 	m := &struct {
-		Title      *string   `yaml:"title,omitempty"`
-		Journal    *string   `yaml:"journal,omitempty"`
-		Volume     *string   `yaml:"volume,omitempty"`
-		Issue      *string   `yaml:"issue,omitempty"`
-		Page       *string   `yaml:"page,omitempty"`
-		DOI        *string   `yaml:"doi,omitempty"`
-		Permalink  *string   `yaml:"permalink,omitempty"`
-		TimesCited *int      `yaml:"times_cited,omitempty"`
-		Keywords   *[]string `yaml:"keywords,omitempty"`
-		Rich       bool      `yaml:"rich"`
+		Title      *string  `yaml:"title,omitempty"`
+		Journal    *string  `yaml:"journal,omitempty"`
+		Volume     *string  `yaml:"volume,omitempty"`
+		Issue      *string  `yaml:"issue,omitempty"`
+		Page       *string  `yaml:"page,omitempty"`
+		DOI        *string  `yaml:"doi,omitempty"`
+		Permalink  *string  `yaml:"permalink,omitempty"`
+		TimesCited *int     `yaml:"times_cited,omitempty"`
+		Keywords   []string `yaml:"keywords,omitempty"`
+		Rich       bool     `yaml:"rich"`
 	}{
 		Title:      a.Title,
 		Journal:    a.Journal,
@@ -56,7 +59,7 @@ func frontMatter(a *models.Article) string {
 		DOI:        a.DOI,
 		Permalink:  a.Permalink,
 		TimesCited: a.TimesCited,
-		Keywords:   &keywords,
+		Keywords:   keywords,
 		Rich:       a.Rich,
 	}
 	data, err := yaml.Marshal(m)

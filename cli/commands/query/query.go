@@ -89,6 +89,9 @@ func New() *cli.Command {
 			if err != nil {
 				return fmt.Errorf("failed to create analysis service: %w", err)
 			}
+			defer func() {
+				_ = service.StoreBackend().Close()
+			}()
 			renderer, err := renderers.NewResultRendererWithFormat(c.String("format"))
 			if err != nil {
 				return fmt.Errorf("failed to create renderer: %w", err)
