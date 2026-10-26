@@ -101,6 +101,7 @@ func (c *Collection) CitationGraph() (gograph.Graph[string], error) {
 			continue
 		}
 		articleVertex := gograph.NewVertex(*articleKey)
+		graph.AddVertex(articleVertex)
 		for _, ref := range article.References {
 			refKey := ref.Key()
 			if refKey == nil {

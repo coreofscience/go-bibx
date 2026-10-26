@@ -177,7 +177,7 @@ func (c *RestyClient) ListArticlesByIDs(ctx context.Context, ids []string) ([]*W
 		joinedIDs := strings.Join(idChunk, "|")
 		queryParams := map[string]string{
 			"select":   strings.Join(selectFields, ","),
-			"filter":   fmt.Sprintf("ids.openalex:%s,type:types/article", joinedIDs),
+			"filter":   fmt.Sprintf("ids.openalex:%s", joinedIDs),
 			"per_page": fmt.Sprintf("%d", MaxIDsPerRequest),
 		}
 		return c.fetchWorks(ctx, queryParams)
