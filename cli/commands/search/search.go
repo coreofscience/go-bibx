@@ -121,9 +121,6 @@ func New() *cli.Command {
 			if err != nil {
 				return fmt.Errorf("failed to perform search: %w", err)
 			}
-			if err := renderer.RenderAnalysis(os.Stdout, analysis); err != nil {
-				return fmt.Errorf("failed to render results: %w", err)
-			}
 			if c.Bool("view") {
 				mux := viewer.New(analysis)
 				port := c.Int("port")
@@ -134,6 +131,10 @@ func New() *cli.Command {
 				}
 				if err := viewer.Serve(ctx, server); err != nil {
 					return fmt.Errorf("failed to start server: %w", err)
+				}
+			} else {
+				if err := renderer.RenderAnalysis(os.Stdout, analysis); err != nil {
+					return fmt.Errorf("failed to render results: %w", err)
 				}
 			}
 			return nil
