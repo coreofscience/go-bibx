@@ -91,6 +91,7 @@ func (a *Article) Merge(other *Article) *Article {
 		Permalink:  utils.Keep(a.Permalink, other.Permalink),
 		TimesCited: utils.Keep(a.TimesCited, other.TimesCited),
 		Keywords:   a.Keywords.Union(other.Keywords),
+		Abstract:   utils.Keep(a.Abstract, other.Abstract),
 		References: utils.KeepLongestSlice(a.References, other.References),
 		Rich:       a.Rich || other.Rich,
 	}

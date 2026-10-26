@@ -97,6 +97,44 @@ func TestLeiden_SingleNode(t *testing.T) {
 	assert.Equal(t, 0, partition["A"])
 }
 
+func TestLeiden_IsolatedNodesAndMultipleRuns(t *testing.T) {
+	t.Run("all isolated nodes stay in distinct communities", func(t *testing.T) {
+		g := gograph.New[string]()
+		g.AddVertexByLabel("A")
+		g.AddVertexByLabel("B")
+		g.AddVertexByLabel("C")
+
+		leiden := algorithms.NewLeiden(g)
+		partition := leiden.Run()
+
+		assert.Len(t, partition, 3)
+		assert.NotEqual(t, partition["A"], partition["B"])
+		assert.NotEqual(t, partition["B"], partition["C"])
+		assert.NotEqual(t, partition["A"], partition["C"])
+	})
+
+	t.Run("isolated node does not collapse into connected community and Run is idempotent on gamma", func(t *testing.T) {
+		g := gograph.New[string]()
+		for _, n := range []string{"A", "B", "C", "ISO"} {
+			g.AddVertexByLabel(n)
+		}
+		_, _ = g.AddEdge(g.GetVertexByID("A"), g.GetVertexByID("B"))
+		_, _ = g.AddEdge(g.GetVertexByID("B"), g.GetVertexByID("C"))
+		_, _ = g.AddEdge(g.GetVertexByID("C"), g.GetVertexByID("A"))
+
+		leiden := algorithms.NewLeiden(g)
+		p1 := leiden.Run()
+		p2 := leiden.Run()
+
+		for _, p := range []map[string]int{p1, p2} {
+			assert.Len(t, p, 4)
+			assert.Equal(t, p["A"], p["B"])
+			assert.Equal(t, p["B"], p["C"])
+			assert.NotEqual(t, p["A"], p["ISO"], "isolated node should not be merged into connected community")
+		}
+	})
+}
+
 func BenchmarkLeiden(b *testing.B) {
 	g := gograph.New[int]()
 	numNodes := 250

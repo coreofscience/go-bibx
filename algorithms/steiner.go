@@ -68,7 +68,7 @@ func NewPseudoSteiner[K comparable](graph gograph.Graph[K], opts ...PseudoSteine
 		topologicalIndex:      topologicalIndex,
 		shortestDistanceCache: make(map[K]map[K]float64),
 		shortestPathCache:     make(map[K]map[K][]K),
-		maxEffort:             1.5,
+		maxEffort:             3.0,
 		maxEffortExceeded:     3,
 	}
 	for _, opt := range opts {

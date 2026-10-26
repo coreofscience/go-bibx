@@ -68,7 +68,10 @@ func (l *Leiden[K]) Run() map[K]int {
 
 	isWeighted := l.graph.IsWeighted()
 	totalEdgeWeight := 0.0
-	nodeDegrees := make(map[K]float64)
+	nodeDegrees := make(map[K]float64, len(vertices))
+	for _, v := range vertices {
+		nodeDegrees[v.Label()] = 0.0
+	}
 	for _, e := range l.graph.AllEdges() {
 		w := 1.0
 		if isWeighted {
@@ -83,8 +86,12 @@ func (l *Leiden[K]) Run() map[K]int {
 	if m2 == 0 {
 		m2 = 1
 	}
-	l.gamma = l.gamma / m2
-	l.sizes = nodeDegrees
+	runner := &Leiden[K]{
+		graph: l.graph,
+		gamma: l.gamma / m2,
+		theta: l.theta,
+		sizes: nodeDegrees,
+	}
 
 	// We will track the assignment of the original K vertices to aggregate int nodes
 	// For the first iteration, partition is map[K]int
@@ -100,20 +107,20 @@ func (l *Leiden[K]) Run() map[K]int {
 	}
 
 	// Execute first iteration on K
-	newPartition, nextCommID := l.moveNodesFast(partition, nextCommID)
+	newPartition, nextCommID := runner.moveNodesFast(partition, nextCommID)
 
 	uniqueComms := make(map[int]struct{})
 	for _, c := range newPartition {
 		uniqueComms[c] = struct{}{}
 	}
-	if len(uniqueComms) == len(l.sizes) {
-		return l.normalizeResult(globalPartition)
+	if len(uniqueComms) == len(runner.sizes) {
+		return runner.normalizeResult(globalPartition)
 	}
 
-	refinedPartition, nextCommID := l.refinePartition(newPartition, nextCommID)
+	refinedPartition, nextCommID := runner.refinePartition(newPartition, nextCommID)
 
 	// Create int-based aggregate graph
-	intGraph, intSizes, intPartition, aggregateMap := l.aggregateGraph(refinedPartition, newPartition)
+	intGraph, intSizes, intPartition, aggregateMap := runner.aggregateGraph(refinedPartition, newPartition)
 
 	// Update global partition
 	for k := range globalPartition {
@@ -127,8 +134,8 @@ func (l *Leiden[K]) Run() map[K]int {
 	for !done {
 		intLeiden := &Leiden[int]{
 			graph: intGraph,
-			gamma: l.gamma,
-			theta: l.theta,
+			gamma: runner.gamma,
+			theta: runner.theta,
 			sizes: intSizes,
 		}
 
