@@ -136,6 +136,12 @@ func TestArticle_Merge(t *testing.T) {
 			other:   &models.Article{References: []*models.Article{{Label: "Ref1"}}},
 			want:    &models.Article{References: []*models.Article{{Label: "Ref1"}, {Label: "Ref2"}}},
 		},
+		{
+			name:    "Merge prefers rich article fields over unenriched stub",
+			article: &models.Article{Permalink: new("https://openalex.org/W1"), Rich: false},
+			other:   &models.Article{Permalink: new("https://publisher.example.com/1"), Rich: true},
+			want:    &models.Article{Permalink: new("https://publisher.example.com/1"), Rich: true},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

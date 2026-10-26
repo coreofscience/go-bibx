@@ -87,6 +87,9 @@ func NewRestyClient(options ...OpenAlexClientOption) *RestyClient {
 		SetRetryWaitTime(1 * time.Second).
 		SetRetryMaxWaitTime(10 * time.Second).
 		AddRetryConditions(func(r *resty.Response, err error) bool {
+			if r == nil {
+				return err != nil
+			}
 			return r.StatusCode() == 429 || r.StatusCode() >= 500
 		})
 	c := &RestyClient{
@@ -119,9 +122,10 @@ func getWorkFields() []string {
 // ListRecentArticles implements [Client]
 func (c *RestyClient) ListRecentArticles(ctx context.Context, query string, limit int) ([]*Work, error) {
 	selectFields := getWorkFields()
+	sanitizedQuery := strings.NewReplacer(",", " ", ":", " ").Replace(query)
 	queryFilter := fmt.Sprintf(
 		"title_and_abstract.search:%s",
-		strings.ReplaceAll(query, " ", "+"),
+		strings.Join(strings.Fields(sanitizedQuery), "+"),
 	)
 	filterParts := []string{
 		queryFilter,
@@ -185,27 +189,26 @@ func fetchParallel[I any](ctx context.Context, inputs []I, fetch func(context.Co
 		return nil, nil
 	}
 
+	type indexedInput struct {
+		index int
+		value I
+	}
+
 	group, ctx := errgroup.WithContext(ctx)
-	inputChan := make(chan I)
-	responses := make(chan *WorksResponse)
+	inputChan := make(chan indexedInput)
+	results := make([]*WorksResponse, len(inputs))
 
 	concurrency := min(MaxConcurrentRequests, len(inputs))
 	slog.DebugContext(ctx, "fetching in parallel", "numInputs", len(inputs), "concurrency", concurrency)
 
 	for range concurrency {
 		group.Go(func() error {
-			for input := range inputChan {
-				res, err := fetch(ctx, input)
+			for item := range inputChan {
+				res, err := fetch(ctx, item.value)
 				if err != nil {
 					return fmt.Errorf("error fetching works: %w", err)
 				}
-				if res != nil {
-					select {
-					case responses <- res:
-					case <-ctx.Done():
-						return ctx.Err()
-					}
-				}
+				results[item.index] = res
 			}
 			return nil
 		})
@@ -214,30 +217,27 @@ func fetchParallel[I any](ctx context.Context, inputs []I, fetch func(context.Co
 	waitGroup := sync.WaitGroup{}
 	waitGroup.Go(func() {
 		defer close(inputChan)
-		for _, input := range inputs {
+		for i, input := range inputs {
 			select {
-			case inputChan <- input:
+			case inputChan <- indexedInput{index: i, value: input}:
 			case <-ctx.Done():
 				return
 			}
 		}
 	})
 
-	var works []*Work
-	waitGroup.Go(func() {
-		for res := range responses {
-			if res != nil {
-				works = append(works, res.Works...)
-			}
-		}
-	})
-
 	err := group.Wait()
-	close(responses)
+	waitGroup.Wait()
 	if err != nil {
 		return nil, fmt.Errorf("error waiting for fetches to complete: %w", err)
 	}
-	waitGroup.Wait()
+
+	var works []*Work
+	for _, res := range results {
+		if res != nil {
+			works = append(works, res.Works...)
+		}
+	}
 
 	return works, nil
 }
@@ -342,9 +342,8 @@ func WorkToArticle(work *Work) *models.Article {
 // ReferenceToArticle transforms an OpenAlex ID to an Article.
 func ReferenceToArticle(reference string) *models.Article {
 	return &models.Article{
-		Label:     reference,
-		IDs:       collections.NewSet(fmt.Sprintf("openalex:%s", reference)),
-		Permalink: &reference,
-		Rich:      false,
+		Label: reference,
+		IDs:   collections.NewSet(fmt.Sprintf("openalex:%s", reference)),
+		Rich:  false,
 	}
 }
