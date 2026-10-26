@@ -269,6 +269,26 @@ func TestPseudoSteiner(t *testing.T) {
 		// Should contain exactly the 3 terminals without infinite recursion
 		assert.Equal(t, uint32(3), newGraph.Order())
 	})
+
+	t.Run("default maxEffort bridges common descendant and ancestor on unit-weight graph", func(t *testing.T) {
+		g := gograph.New[string](gograph.Directed(), gograph.Acyclic(), gograph.Weighted())
+
+		vA := gograph.NewVertex("A")
+		vB := gograph.NewVertex("B")
+		vC := gograph.NewVertex("C")
+
+		_, _ = g.AddEdge(vB, vA, gograph.WithEdgeWeight(1.0))
+		_, _ = g.AddEdge(vC, vA, gograph.WithEdgeWeight(1.0))
+
+		pseudoSteiner, err := algorithms.NewPseudoSteiner(g)
+		require.NoError(t, err)
+
+		newGraph, err := pseudoSteiner.Run([]string{"B", "C"})
+		require.NoError(t, err)
+		require.NotNil(t, newGraph)
+		assert.Equal(t, uint32(3), newGraph.Order())
+		assert.Equal(t, uint32(2), newGraph.Size())
+	})
 }
 
 func TestReverseSlices(t *testing.T) {

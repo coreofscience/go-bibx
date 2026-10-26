@@ -48,8 +48,33 @@ func (e *MarkdownRenderer) RenderResults(w io.Writer, results []*models.Result) 
 
 // RenderAnalysis implements [Renderer].
 func (e *MarkdownRenderer) RenderAnalysis(w io.Writer, analysis *models.Analysis) error {
+	if analysis == nil {
+		return nil
+	}
+	nodeByID := make(map[string]*models.Article, len(analysis.Nodes))
 	for _, node := range analysis.Nodes {
-		if err := e.Render(w, node.Article, e.format); err != nil {
+		if node != nil && node.Article != nil {
+			nodeByID[node.ID] = node.Article
+		}
+	}
+	refsBySource := make(map[string][]*models.Article)
+	for _, link := range analysis.Links {
+		if link == nil {
+			continue
+		}
+		if targetArt, ok := nodeByID[link.Target]; ok {
+			refsBySource[link.Source] = append(refsBySource[link.Source], targetArt)
+		}
+	}
+	for _, node := range analysis.Nodes {
+		if node == nil || node.Article == nil {
+			continue
+		}
+		art := node.Article
+		if len(art.References) == 0 && len(refsBySource[node.ID]) > 0 {
+			art = art.Clone(models.WithReferences(refsBySource[node.ID]))
+		}
+		if err := e.Render(w, art, e.format); err != nil {
 			return err
 		}
 	}

@@ -96,6 +96,17 @@ func TestInquireTool(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, res.IsError)
 		assert.Contains(t, res.Content[0].(*mcp.TextContent).Text, "limit must be less than or equal to 1000")
+
+		resNeg, err := client.CallTool(t.Context(), &mcp.CallToolParams{
+			Name: "inquire",
+			Arguments: map[string]any{
+				"query": "graph algorithms",
+				"limit": -1,
+			},
+		})
+		require.NoError(t, err)
+		assert.True(t, resNeg.IsError)
+		assert.Contains(t, resNeg.Content[0].(*mcp.TextContent).Text, "limit must be greater than 0")
 	})
 
 	t.Run("service failure returns error", func(t *testing.T) {

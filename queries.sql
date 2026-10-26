@@ -16,8 +16,7 @@ WHERE name = ?;
 -- name: ListCollections :many
 SELECT *
 FROM collections
-WHERE id > ?
-ORDER BY id
+ORDER BY created_at DESC, id DESC
 LIMIT ?;
 
 -- name: CreateCollection :exec
@@ -34,6 +33,20 @@ INSERT INTO collections (
 -- name: DeleteCollectionById :exec
 DELETE FROM collections
 WHERE id = ?;
+
+-- name: UpdateCollectionName :exec
+UPDATE collections
+SET name = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?;
+
+-- name: DeleteNodesByCollectionID :exec
+DELETE FROM nodes
+WHERE collection_id = ?;
+
+-- name: DeleteLinksByCollectionID :exec
+DELETE FROM links
+WHERE collection_id = ?;
 
 -- name: UpsertArticle :one
 INSERT INTO articles (
@@ -70,19 +83,6 @@ ON CONFLICT(label) DO UPDATE SET
     keywords=COALESCE(excluded.keywords, articles.keywords),
     ids=COALESCE(excluded.ids, articles.ids)
 RETURNING id;
-
--- name: DeleteArticleFTS :exec
-DELETE FROM articles_fts
-WHERE article_id = ?;
-
--- name: CreateArticleFTS :exec
-INSERT INTO articles_fts (
-    article_id,
-    title,
-    abstract,
-    keywords,
-    authors
-) VALUES (?, ?, ?, ?, ?);
 
 -- name: UpsertNode :one
 INSERT INTO nodes (
@@ -178,8 +178,8 @@ SELECT
     a.id, a.label, a.title, a.journal, a.year, a.volume, a.issue, a.page,
     a.doi, a.permalink, a.times_cited, a.abstract, a.rich,
     a.authors, a.keywords, a.ids
-FROM articles a
-JOIN articles_fts(?) fts ON a.id = fts.article_id
+FROM articles_fts(?) fts
+JOIN articles a ON a.rowid = fts.rowid
 JOIN nodes n ON n.article_id = a.id
 WHERE n.collection_id = ?
 ORDER BY bm25(articles_fts)

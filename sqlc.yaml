@@ -15,8 +15,6 @@ sql:
           pointer: true
           type: UUID
         nullable: true
-      - column: articles_fts.article_id
-        go_type: uuid.UUID
       - column: collections.parameters
         go_type:
           slice: true

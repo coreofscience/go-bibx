@@ -55,7 +55,7 @@ func TestOpenAlexAnalysisService_StoreAndSearch(t *testing.T) {
 	oaClient.EXPECT().
 		ListRecentArticles(mock.Anything, mock.Anything, mock.Anything).
 		Return(worksMapToSlice(w1, w2, w3, w4), nil).
-		Times(3)
+		Times(4)
 	oaClient.EXPECT().
 		ListArticlesByIDs(mock.Anything, mock.Anything).
 		RunAndReturn(func(ctx context.Context, ids []string) ([]*openalex.Work, error) {
@@ -131,6 +131,76 @@ func TestOpenAlexAnalysisService_StoreAndSearch(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, cachedRes.IsNew)
 	assert.Equal(t, namedRes.Collection.ID, cachedRes.Collection.ID)
+
+	// Force re-run with updated name updates the existing collection's name
+	renamedRes, err := svc.StoreWithOptions(context.Background(), "named query", 10, services.StoreOptions{
+		Force: true,
+		Name:  "renamed-alias",
+	})
+	require.NoError(t, err)
+	assert.True(t, renamedRes.IsNew)
+	assert.Equal(t, namedRes.Collection.ID, renamedRes.Collection.ID)
+	require.NotNil(t, renamedRes.Collection.Name)
+	assert.Equal(t, "renamed-alias", *renamedRes.Collection.Name)
+}
+
+func TestOpenAlexAnalysisService_ReCleansAfterEnrichDiscardsMissingReferences(t *testing.T) {
+	// W1 and W2 cite W3 (surviving initial Clean), and W4 & W5 only connect to the giant component via W_MISSING.
+	// When enrich discards W_MISSING, re-running Clean() removes the now-disconnected W4 & W5 and dangling nodes.
+	w1 := &openalex.Work{
+		ID:              "https://openalex.org/W1",
+		Title:           new("Paper 1"),
+		IDs:             map[string]string{"openalex": "https://openalex.org/W1"},
+		ReferencedWorks: []string{"https://openalex.org/W3", "https://openalex.org/W_MISSING"},
+	}
+	w2 := &openalex.Work{
+		ID:              "https://openalex.org/W2",
+		Title:           new("Paper 2"),
+		IDs:             map[string]string{"openalex": "https://openalex.org/W2"},
+		ReferencedWorks: []string{"https://openalex.org/W3"},
+	}
+	w3 := &openalex.Work{
+		ID:    "https://openalex.org/W3",
+		Title: new("Paper 3"),
+		IDs:   map[string]string{"openalex": "https://openalex.org/W3"},
+	}
+	w4 := &openalex.Work{
+		ID:              "https://openalex.org/W4",
+		Title:           new("Isolated After Enrich"),
+		IDs:             map[string]string{"openalex": "https://openalex.org/W4"},
+		ReferencedWorks: []string{"https://openalex.org/W_MISSING"},
+	}
+
+	oaClient := openalexmocks.NewMockClient(t)
+	oaClient.EXPECT().
+		ListRecentArticles(mock.Anything, mock.Anything, mock.Anything).
+		Return(worksMapToSlice(w1, w2, w3, w4), nil).
+		Once()
+	oaClient.EXPECT().
+		ListArticlesByIDs(mock.Anything, mock.Anything).
+		Return([]*openalex.Work{}, nil). // W_MISSING is not returned by OpenAlex
+		Once()
+
+	tempDir := t.TempDir()
+	store, err := storage.NewSQLiteStore(filepath.Join(tempDir, "reclean_test.db"))
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, store.Close())
+	}()
+
+	svc := services.NewOpenAlexAnalysisService(oaClient, store)
+	col, err := svc.Store(context.Background(), "reclean query", 10)
+	require.NoError(t, err)
+	require.NotNil(t, col)
+	// W4 became disconnected after W_MISSING was discarded during enrichment, so only W1, W2, W3 remain
+	assert.Equal(t, 3, col.ArticleCount)
+
+	loaded, err := store.LoadAnalysis(context.Background(), col.ID)
+	require.NoError(t, err)
+	for _, n := range loaded.Nodes {
+		assert.NotEmpty(t, n.Category)
+		assert.NotEqual(t, "openalex:https://openalex.org/W4", n.ID)
+	}
 }
 
 func worksMapToSlice(works ...*openalex.Work) []*openalex.Work {

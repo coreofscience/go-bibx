@@ -119,10 +119,28 @@ func TestArticle_Merge(t *testing.T) {
 			want:    &models.Article{Keywords: collections.NewSet("keyword1", "keyword2", "keyword3", "keyword4")},
 		},
 		{
+			name:    "Merge keeps the abstract if present in receiver",
+			article: &models.Article{Abstract: new("Abstract A")},
+			other:   &models.Article{},
+			want:    &models.Article{Abstract: new("Abstract A")},
+		},
+		{
+			name:    "Merge keeps the abstract if present in other",
+			article: &models.Article{},
+			other:   &models.Article{Abstract: new("Abstract B")},
+			want:    &models.Article{Abstract: new("Abstract B")},
+		},
+		{
 			name:    "Keeps the longest list of references",
 			article: &models.Article{References: []*models.Article{{Label: "Ref1"}, {Label: "Ref2"}}},
 			other:   &models.Article{References: []*models.Article{{Label: "Ref1"}}},
 			want:    &models.Article{References: []*models.Article{{Label: "Ref1"}, {Label: "Ref2"}}},
+		},
+		{
+			name:    "Merge prefers rich article fields over unenriched stub",
+			article: &models.Article{Permalink: new("https://openalex.org/W1"), Rich: false},
+			other:   &models.Article{Permalink: new("https://publisher.example.com/1"), Rich: true},
+			want:    &models.Article{Permalink: new("https://publisher.example.com/1"), Rich: true},
 		},
 	}
 	for _, tt := range tests {

@@ -31,8 +31,8 @@ func New() *cli.Command {
 				Usage:   "number of initial results to fetch",
 				Value:   200,
 				Validator: func(value int) error {
-					if value < 0 {
-						return fmt.Errorf("limit must be greater than or equal to 0")
+					if value < 1 {
+						return fmt.Errorf("limit must be greater than 0")
 					}
 					if value > 1000 {
 						return fmt.Errorf("limit must be less than or equal to 1000")
@@ -69,6 +69,9 @@ func New() *cli.Command {
 			if err != nil {
 				return fmt.Errorf("failed to create analysis service: %w", err)
 			}
+			defer func() {
+				_ = analysisService.StoreBackend().Close()
+			}()
 
 			query := c.StringArg("query")
 			if query == "" {

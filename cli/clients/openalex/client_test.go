@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/coreofscience/go-bibx/cli/clients/openalex"
 	"github.com/stretchr/testify/assert"
@@ -136,4 +137,56 @@ func TestListRecentArticles(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "503 Service Unavailable")
 	})
+
+	t.Run("preserves page order when later pages finish first and sanitizes filter delimiters", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			filter := r.URL.Query().Get("filter")
+			assert.Contains(t, filter, "title_and_abstract.search:covid+19+review+study")
+
+			page := r.URL.Query().Get("page")
+			if page == "1" {
+				// Delay page 1 so page 2 completes first
+				time.Sleep(30 * time.Millisecond)
+			}
+
+			works := make([]*openalex.Work, openalex.MaxWorksPerPage)
+			for i := range openalex.MaxWorksPerPage {
+				works[i] = &openalex.Work{
+					ID: fmt.Sprintf("W-p%s-%d", page, i),
+				}
+			}
+			w.Header().Set("Content-Type", "application/json")
+			err := json.NewEncoder(w).Encode(openalex.WorksResponse{Works: works})
+			require.NoError(t, err)
+		}))
+		defer server.Close()
+
+		client := openalex.NewRestyClient(openalex.WithBaseURL(server.URL))
+		works, err := client.ListRecentArticles(context.Background(), "covid: 19, review study", 250)
+		require.NoError(t, err)
+		require.Len(t, works, 250)
+		// First 200 items must be from page 1, next 50 from page 2
+		assert.Equal(t, "W-p1-0", works[0].ID)
+		assert.Equal(t, "W-p1-199", works[199].ID)
+		assert.Equal(t, "W-p2-0", works[200].ID)
+		assert.Equal(t, "W-p2-49", works[249].ID)
+	})
+}
+
+func TestReferenceToArticle_DoesNotShadowRichPermalink(t *testing.T) {
+	stub := openalex.ReferenceToArticle("https://openalex.org/W999")
+	assert.Nil(t, stub.Permalink)
+
+	landingURL := "https://publisher.example.com/paper"
+	rich := openalex.WorkToArticle(&openalex.Work{
+		ID:  "https://openalex.org/W999",
+		IDs: map[string]string{"openalex": "https://openalex.org/W999"},
+		PrimaryLocation: &openalex.WorkLocation{
+			LandingPageURL: &landingURL,
+		},
+	})
+
+	merged := stub.Merge(rich)
+	require.NotNil(t, merged.Permalink)
+	assert.Equal(t, landingURL, *merged.Permalink)
 }

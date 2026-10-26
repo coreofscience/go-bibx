@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/coreofscience/go-bibx/internal/utils"
@@ -59,7 +59,7 @@ func New() *cli.Command {
 						},
 					},
 					GetSessionID: func() string {
-						return uuid.Must(uuid.NewV7()).String()
+						return uuid.NewV7().String()
 					},
 				},
 			)

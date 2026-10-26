@@ -5,14 +5,14 @@ CREATE TABLE collections (
     query         TEXT NOT NULL,
     result_limit  INTEGER NOT NULL,
     parameters    JSON,
-    name          TEXT,
+    name          TEXT UNIQUE,
     article_count INTEGER DEFAULT 0,
     created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_collections_created_at ON collections(created_at DESC);
-CREATE INDEX idx_collections_name ON collections(name);
+CREATE INDEX idx_collections_created_at ON collections(created_at DESC, id DESC);
+CREATE UNIQUE INDEX idx_collections_name ON collections(name);
 
 -- Articles Table (Normalized Bibliographic Data)
 CREATE TABLE articles (
@@ -75,10 +75,31 @@ CREATE INDEX idx_links_collection ON links(collection_id);
 
 -- FTS5 Full-Text Search Virtual Table
 CREATE VIRTUAL TABLE articles_fts USING fts5(
-    article_id UNINDEXED,
     title,
     abstract,
     keywords,
     authors,
+    content = 'articles',
+    content_rowid = 'rowid',
     tokenize = 'porter unicode61'
 );
+
+-- Keep FTS index updated on INSERT
+CREATE TRIGGER articles_ai AFTER INSERT ON articles BEGIN
+    INSERT INTO articles_fts(rowid, title, abstract, keywords, authors)
+    VALUES (new.rowid, new.title, new.abstract, new.keywords, new.authors);
+END;
+
+-- Keep FTS index updated on DELETE
+CREATE TRIGGER articles_ad AFTER DELETE ON articles BEGIN
+    INSERT INTO articles_fts(articles_fts, rowid, title, abstract, keywords, authors)
+    VALUES ('delete', old.rowid, old.title, old.abstract, old.keywords, old.authors);
+END;
+
+-- Keep FTS index updated on UPDATE
+CREATE TRIGGER articles_au AFTER UPDATE ON articles BEGIN
+    INSERT INTO articles_fts(articles_fts, rowid, title, abstract, keywords, authors)
+    VALUES ('delete', old.rowid, old.title, old.abstract, old.keywords, old.authors);
+    INSERT INTO articles_fts(rowid, title, abstract, keywords, authors)
+    VALUES (new.rowid, new.title, new.abstract, new.keywords, new.authors);
+END;

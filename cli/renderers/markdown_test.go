@@ -84,7 +84,33 @@ func TestMarkdownRenderer_MarkdownFormat(t *testing.T) {
 
 	var buf bytes.Buffer
 	err = renderer.Render(&buf, article, "markdown")
-	assert.NoError(t, err)
+	require.NoError(t, err)
+	assert.NotContains(t, buf.String(), "keywords: []")
+
+	year := 2024
+	refArt := &models.Article{
+		Label:   "openalex:W2",
+		Title:   new("Referenced Paper"),
+		Authors: []string{"Doe, Jane"},
+		Journal: new("Nature"),
+		Year:    &year,
+		Rich:    true,
+	}
+	analysis := &models.Analysis{
+		Nodes: []*models.Node{
+			{ID: "openalex:W1", Article: article},
+			{ID: "openalex:W2", Article: refArt},
+		},
+		Links: []*models.Link{
+			{Source: "openalex:W1", Target: "openalex:W2", Weight: 1.0},
+		},
+	}
+
+	buf.Reset()
+	err = renderer.RenderAnalysis(&buf, analysis)
+	require.NoError(t, err)
+	assert.Contains(t, buf.String(), "## References")
+	assert.Contains(t, buf.String(), "Referenced Paper")
 }
 
 func TestMarkdownRenderer_ReferenceFormat(t *testing.T) {

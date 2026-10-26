@@ -109,3 +109,17 @@ func TestCollection_Keep_NilKey(t *testing.T) {
 	require.NotNil(t, kept)
 	assert.Equal(t, 1, kept.Len())
 }
+
+func TestCollection_CitationGraph_IncludesArticlesWithoutReferences(t *testing.T) {
+	art := &models.Article{
+		Label: "isolated",
+		IDs:   collections.NewSet("openalex:W1"),
+	}
+	c, err := models.NewCollection(models.Articles{art})
+	require.NoError(t, err)
+
+	graph, err := c.CitationGraph()
+	require.NoError(t, err)
+	assert.Equal(t, uint32(1), graph.Order())
+	assert.NotNil(t, graph.GetVertexByID("openalex:W1"))
+}

@@ -77,6 +77,9 @@ func (a *Article) Merge(other *Article) *Article {
 	if other == nil {
 		return a
 	}
+	if !a.Rich && other.Rich {
+		return other.Merge(a)
+	}
 	merged := &Article{
 		Label:      utils.KeepLongestString(a.Label, other.Label),
 		IDs:        a.IDs.Union(other.IDs),
@@ -91,6 +94,7 @@ func (a *Article) Merge(other *Article) *Article {
 		Permalink:  utils.Keep(a.Permalink, other.Permalink),
 		TimesCited: utils.Keep(a.TimesCited, other.TimesCited),
 		Keywords:   a.Keywords.Union(other.Keywords),
+		Abstract:   utils.Keep(a.Abstract, other.Abstract),
 		References: utils.KeepLongestSlice(a.References, other.References),
 		Rich:       a.Rich || other.Rich,
 	}

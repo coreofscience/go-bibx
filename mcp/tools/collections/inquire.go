@@ -97,7 +97,7 @@ func (i *Inquire) Handle(
 	limit := DefaultLimit
 	if input.Limit != 0 {
 		if input.Limit < 0 {
-			return nil, nil, errors.New("limit must be greater than or equal to 0")
+			return nil, nil, errors.New("limit must be greater than 0")
 		}
 		if input.Limit > 1000 {
 			return nil, nil, errors.New("limit must be less than or equal to 1000")

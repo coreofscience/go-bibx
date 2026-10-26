@@ -148,6 +148,10 @@ func (s *OpenAlexAnalysisService) StoreWithOptions(
 	if err != nil {
 		return nil, fmt.Errorf("failed to enrich collection: %w", err)
 	}
+	collection, err = collection.Clean()
+	if err != nil {
+		return nil, fmt.Errorf("failed to clean enriched collection: %w", err)
+	}
 
 	graph, err := collection.CitationGraph()
 	if err != nil {
@@ -172,10 +176,14 @@ func (s *OpenAlexAnalysisService) StoreWithOptions(
 			continue
 		}
 		key := *articleKey
+		category := result.Categories[key]
+		if category == "" {
+			category = algorithms.CategoryNone
+		}
 		nodes = append(nodes, &models.Node{
 			ID:        key,
 			Article:   article,
-			Category:  models.Category(result.Categories[key]),
+			Category:  models.Category(category),
 			Rootness:  result.Rootness[key],
 			Trunkness: result.Trunkness[key],
 			Leafness:  result.Leafness[key],
@@ -208,14 +216,24 @@ func (s *OpenAlexAnalysisService) StoreWithOptions(
 		node.Community = communities[node.ID]
 	}
 
+	var colName *string
+	if trimmed := strings.TrimSpace(opts.Name); trimmed != "" {
+		colName = &trimmed
+	}
+
 	colID := uuid.NewV7()
 	if existing != nil {
 		colID = existing.ID
-	} else {
-		var colName *string
-		if trimmed := strings.TrimSpace(opts.Name); trimmed != "" {
-			colName = &trimmed
+		if colName != nil {
+			if namer, ok := s.store.(interface {
+				UpdateCollectionName(ctx context.Context, id uuid.UUID, name *string) error
+			}); ok {
+				if err := namer.UpdateCollectionName(ctx, colID, colName); err != nil {
+					return nil, fmt.Errorf("failed to update collection name: %w", err)
+				}
+			}
 		}
+	} else {
 		col := &storage.Collection{
 			ID:           colID,
 			Name:         colName,

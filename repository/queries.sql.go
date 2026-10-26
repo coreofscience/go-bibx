@@ -12,35 +12,6 @@ import (
 	"uuid"
 )
 
-const createArticleFTS = `-- name: CreateArticleFTS :exec
-INSERT INTO articles_fts (
-    article_id,
-    title,
-    abstract,
-    keywords,
-    authors
-) VALUES (?, ?, ?, ?, ?)
-`
-
-type CreateArticleFTSParams struct {
-	ArticleID uuid.UUID
-	Title     string
-	Abstract  string
-	Keywords  string
-	Authors   string
-}
-
-func (q *Queries) CreateArticleFTS(ctx context.Context, arg CreateArticleFTSParams) error {
-	_, err := q.db.ExecContext(ctx, createArticleFTS,
-		arg.ArticleID,
-		arg.Title,
-		arg.Abstract,
-		arg.Keywords,
-		arg.Authors,
-	)
-	return err
-}
-
 const createCollection = `-- name: CreateCollection :exec
 INSERT INTO collections (
     id,
@@ -76,16 +47,6 @@ func (q *Queries) CreateCollection(ctx context.Context, arg CreateCollectionPara
 	return err
 }
 
-const deleteArticleFTS = `-- name: DeleteArticleFTS :exec
-DELETE FROM articles_fts
-WHERE article_id = ?
-`
-
-func (q *Queries) DeleteArticleFTS(ctx context.Context, articleID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteArticleFTS, articleID)
-	return err
-}
-
 const deleteCollectionById = `-- name: DeleteCollectionById :exec
 DELETE FROM collections
 WHERE id = ?
@@ -93,6 +54,26 @@ WHERE id = ?
 
 func (q *Queries) DeleteCollectionById(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, deleteCollectionById, id)
+	return err
+}
+
+const deleteLinksByCollectionID = `-- name: DeleteLinksByCollectionID :exec
+DELETE FROM links
+WHERE collection_id = ?
+`
+
+func (q *Queries) DeleteLinksByCollectionID(ctx context.Context, collectionID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteLinksByCollectionID, collectionID)
+	return err
+}
+
+const deleteNodesByCollectionID = `-- name: DeleteNodesByCollectionID :exec
+DELETE FROM nodes
+WHERE collection_id = ?
+`
+
+func (q *Queries) DeleteNodesByCollectionID(ctx context.Context, collectionID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteNodesByCollectionID, collectionID)
 	return err
 }
 
@@ -168,18 +149,12 @@ func (q *Queries) GetCollectionByName(ctx context.Context, name sql.NullString) 
 const listCollections = `-- name: ListCollections :many
 SELECT id, query_hash, "query", result_limit, parameters, name, article_count, created_at, updated_at
 FROM collections
-WHERE id > ?
-ORDER BY id
+ORDER BY created_at DESC, id DESC
 LIMIT ?
 `
 
-type ListCollectionsParams struct {
-	ID    uuid.UUID
-	Limit int64
-}
-
-func (q *Queries) ListCollections(ctx context.Context, arg ListCollectionsParams) ([]Collection, error) {
-	rows, err := q.db.QueryContext(ctx, listCollections, arg.ID, arg.Limit)
+func (q *Queries) ListCollections(ctx context.Context, limit int64) ([]Collection, error) {
+	rows, err := q.db.QueryContext(ctx, listCollections, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -570,8 +545,8 @@ SELECT
     a.id, a.label, a.title, a.journal, a.year, a.volume, a.issue, a.page,
     a.doi, a.permalink, a.times_cited, a.abstract, a.rich,
     a.authors, a.keywords, a.ids
-FROM articles a
-JOIN articles_fts(?) fts ON a.id = fts.article_id
+FROM articles_fts(?) fts
+JOIN articles a ON a.rowid = fts.rowid
 JOIN nodes n ON n.article_id = a.id
 WHERE n.collection_id = ?
 ORDER BY bm25(articles_fts)
@@ -673,6 +648,23 @@ type UpdateArticleCountParams struct {
 
 func (q *Queries) UpdateArticleCount(ctx context.Context, arg UpdateArticleCountParams) error {
 	_, err := q.db.ExecContext(ctx, updateArticleCount, arg.CollectionID, arg.ID)
+	return err
+}
+
+const updateCollectionName = `-- name: UpdateCollectionName :exec
+UPDATE collections
+SET name = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?
+`
+
+type UpdateCollectionNameParams struct {
+	Name sql.NullString
+	ID   uuid.UUID
+}
+
+func (q *Queries) UpdateCollectionName(ctx context.Context, arg UpdateCollectionNameParams) error {
+	_, err := q.db.ExecContext(ctx, updateCollectionName, arg.Name, arg.ID)
 	return err
 }
 

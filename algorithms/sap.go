@@ -120,7 +120,7 @@ func (s *Sap) Run() (*SapResult, error) {
 func (s *Sap) computeRootness() map[string]float64 {
 	potentialRoots := make([]property, 0, s.roots)
 	for _, vertex := range s.graph.GetAllVertices() {
-		if vertex.OutDegree() == 0 {
+		if vertex.OutDegree() == 0 && vertex.InDegree() > 0 {
 			potentialRoots = append(potentialRoots, property{
 				label: vertex.Label(),
 				prop:  float64(vertex.InDegree()),
@@ -148,10 +148,10 @@ func (s *Sap) computeLeafness(
 		if vertex.InDegree() > 0 {
 			continue
 		}
-		if connections, ok := rootConnections[vertex.Label()]; ok {
+		if connections := rootConnections[vertex.Label()]; connections > 0 {
 			potentialLeaves = append(potentialLeaves, property{
 				label: vertex.Label(),
-				prop:  float64(connections),
+				prop:  connections,
 			})
 		}
 	}
@@ -168,18 +168,18 @@ func (s *Sap) computeLeafness(
 
 func (s *Sap) computeRootConnections(
 	rootness map[string]float64,
-) map[string]int64 {
+) map[string]float64 {
 	if len(rootness) == 0 {
 		return nil
 	}
-	rootConnections := make(map[string]int64)
+	rootConnections := make(map[string]float64)
 	for label := range rootness {
 		if value, ok := rootness[label]; ok && value > 0 {
 			rootConnections[label] = 1
 		}
 	}
 	for _, vertex := range s.order {
-		connections := int64(0)
+		connections := float64(0)
 		neighbors := vertex.Neighbors()
 		if len(neighbors) == 0 {
 			continue
@@ -189,26 +189,28 @@ func (s *Sap) computeRootConnections(
 				connections += existing
 			}
 		}
-		rootConnections[vertex.Label()] = connections
+		if connections > 0 {
+			rootConnections[vertex.Label()] = connections
+		}
 	}
 	return rootConnections
 }
 
 func (s *Sap) computeLeafConnections(
 	leafness map[string]float64,
-) map[string]int64 {
+) map[string]float64 {
 	if len(leafness) == 0 {
 		slog.Debug("no leafness to compute leaf connections")
 		return nil
 	}
-	leafConnections := make(map[string]int64)
+	leafConnections := make(map[string]float64)
 	for label := range leafness {
 		if value, ok := leafness[label]; ok && value > 0 {
 			leafConnections[label] = 1
 		}
 	}
 	for _, vertex := range s.invertedOrder {
-		connections := int64(0)
+		connections := float64(0)
 		neighbors := vertex.Neighbors()
 		if len(neighbors) == 0 {
 			continue
@@ -218,7 +220,9 @@ func (s *Sap) computeLeafConnections(
 				connections += existing
 			}
 		}
-		leafConnections[vertex.Label()] = connections
+		if connections > 0 {
+			leafConnections[vertex.Label()] = connections
+		}
 	}
 	return leafConnections
 }
@@ -247,7 +251,9 @@ func (s *Sap) computeRawSap(
 				vertexRawSap += existing
 			}
 		}
-		rawSap[vertex.Label()] = vertexRawSap
+		if vertexRawSap > 0 {
+			rawSap[vertex.Label()] = vertexRawSap
+		}
 	}
 	return rawSap
 }
@@ -277,7 +283,9 @@ func (s *Sap) computeElaborateSap(
 				vertexElaborateSap += existing
 			}
 		}
-		elaborateSap[vertex.Label()] = vertexElaborateSap
+		if vertexElaborateSap > 0 {
+			elaborateSap[vertex.Label()] = vertexElaborateSap
+		}
 	}
 	return elaborateSap
 }
@@ -297,8 +305,11 @@ func (s *Sap) computeSap(
 	slog.Debug("computing elaborate sap", "count", len(elaborateSap))
 	sap := make(map[string]float64)
 	for label := range rawSap {
-		sap[label] = (float64(leafConnections[label])*rawSap[label] +
-			float64(rootConnections[label])*elaborateSap[label])
+		score := leafConnections[label]*rawSap[label] +
+			rootConnections[label]*elaborateSap[label]
+		if score > 0 {
+			sap[label] = score
+		}
 	}
 	return sap
 }
@@ -311,6 +322,9 @@ func (s *Sap) computeTrunkness(
 	slog.Debug("computing trunkness", "count", len(sap))
 	potentialTrunk := make([]property, 0, len(sap))
 	for label, prop := range sap {
+		if prop <= 0 {
+			continue
+		}
 		if _, ok := leafness[label]; ok {
 			continue
 		}

@@ -40,6 +40,15 @@ func TestViewer_Endpoints(t *testing.T) {
 		assert.Contains(t, rec.Body.String(), "<html")
 	})
 
+	t.Run("GET /unknown returns 404", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/unknown", nil)
+		rec := httptest.NewRecorder()
+
+		mux.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusNotFound, rec.Code)
+	})
+
 	t.Run("GET /collection.json.gz returns compressed analysis", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/collection.json.gz", nil)
 		rec := httptest.NewRecorder()
