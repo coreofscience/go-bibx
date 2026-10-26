@@ -1,0 +1,23 @@
+package commands
+
+import (
+	"github.com/coreofscience/go-bibx/internal/cli/commands/collection"
+	"github.com/coreofscience/go-bibx/internal/cli/commands/inquire"
+	"github.com/coreofscience/go-bibx/internal/cli/commands/mcp"
+	"github.com/coreofscience/go-bibx/internal/cli/commands/query"
+	"github.com/coreofscience/go-bibx/internal/cli/commands/search"
+	"github.com/coreofscience/go-bibx/internal/cli/commands/view"
+	"github.com/urfave/cli/v3"
+)
+
+// New returns the full slice of CLI subcommands supported by bibx.
+func New() []*cli.Command {
+	return []*cli.Command{
+		collection.New(),
+		inquire.New(),
+		query.New(),
+		search.New(),
+		view.New(),
+		mcp.New(),
+	}
+}

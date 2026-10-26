@@ -24,7 +24,7 @@ At its core, `go-bibx` implements the **SAP algorithm** (`algorithms/sap.go`), w
 
 - **Multi-Collection SQLite Storage**: Persistent storage in `.bibx/bibx.db` powered by a pure-Go driver (`modernc.org/sqlite`) with embedded database migrations. Multiple inquiries can coexist in a single database.
 - **Query Idempotency**: Deterministic query hashing prevents redundant OpenAlex API calls and recalculations when re-running identical inquiries.
-- **Bring Your Own Storage (BYOS)**: The public `storage` package exposes standard interfaces (`storage.Store`), allowing `go-bibx` to be integrated with custom databases or storage backends.
+- **Clean 3-Tier Architecture**: Built with clear architectural boundaries separating public data persistence (`repository`), domain services (`services`), and internal presentation/delivery (`internal/cli`, `internal/mcp`).
 - **Inquire**: Fetch literature and citation networks directly from the OpenAlex API and run SAP and community detection algorithms.
 - **Collection Management**: Inspect, list, and delete inquiry collections by UUIDv7 or human-readable name aliases.
 - **Visualize**: Interactive, browser-based graph exploration of any collection.
@@ -140,9 +140,9 @@ bibx view --collection transformers --port 8080
 
 Open [http://localhost:8080](http://localhost:8080) to explore the interactive citation graph.
 
-## Library Usage (BYOS)
+## Library Usage
 
-`go-bibx` can be imported as a Go library. The public `storage` package allows using the embedded SQLite implementation or plugging in a custom `storage.Store`:
+`go-bibx` can be imported as a Go library. The public `repository` and `services` packages provide easy access to the database lifecycle and domain services:
 
 ```go
 package main
@@ -151,21 +151,25 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/coreofscience/go-bibx/storage"
+	"github.com/coreofscience/go-bibx/repository"
+	"github.com/coreofscience/go-bibx/services"
 )
 
 func main() {
 	ctx := context.Background()
 
-	// Open or create SQLite store with embedded migrations
-	store, err := storage.NewSQLiteStore(".bibx/bibx.db")
+	// Open or create SQLite database with embedded migrations
+	db, err := repository.OpenAndMigrateSQLite(".bibx/bibx.db")
 	if err != nil {
 		panic(err)
 	}
-	defer store.Close()
+	defer db.Close()
+
+	// Initialize collection service
+	collectionService := services.NewCollectionService(db)
 
 	// List collections
-	collections, err := store.ListCollections(ctx)
+	collections, err := collectionService.List(ctx)
 	if err != nil {
 		panic(err)
 	}

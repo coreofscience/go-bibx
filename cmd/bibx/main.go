@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/coreofscience/go-bibx/cli/commands"
+	"github.com/coreofscience/go-bibx/internal/cli/commands"
 	"github.com/coreofscience/go-bibx/internal/utils"
 	"github.com/urfave/cli/v3"
 )
