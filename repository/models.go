@@ -31,11 +31,10 @@ type Article struct {
 }
 
 type ArticlesFt struct {
-	ArticleID uuid.UUID
-	Title     string
-	Abstract  string
-	Keywords  string
-	Authors   string
+	Title    string
+	Abstract string
+	Keywords string
+	Authors  string
 }
 
 type Collection struct {

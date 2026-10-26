@@ -12,35 +12,6 @@ import (
 	"uuid"
 )
 
-const createArticleFTS = `-- name: CreateArticleFTS :exec
-INSERT INTO articles_fts (
-    article_id,
-    title,
-    abstract,
-    keywords,
-    authors
-) VALUES (?, ?, ?, ?, ?)
-`
-
-type CreateArticleFTSParams struct {
-	ArticleID uuid.UUID
-	Title     string
-	Abstract  string
-	Keywords  string
-	Authors   string
-}
-
-func (q *Queries) CreateArticleFTS(ctx context.Context, arg CreateArticleFTSParams) error {
-	_, err := q.db.ExecContext(ctx, createArticleFTS,
-		arg.ArticleID,
-		arg.Title,
-		arg.Abstract,
-		arg.Keywords,
-		arg.Authors,
-	)
-	return err
-}
-
 const createCollection = `-- name: CreateCollection :exec
 INSERT INTO collections (
     id,
@@ -73,16 +44,6 @@ func (q *Queries) CreateCollection(ctx context.Context, arg CreateCollectionPara
 		arg.Name,
 		arg.ArticleCount,
 	)
-	return err
-}
-
-const deleteArticleFTS = `-- name: DeleteArticleFTS :exec
-DELETE FROM articles_fts
-WHERE article_id = ?
-`
-
-func (q *Queries) DeleteArticleFTS(ctx context.Context, articleID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteArticleFTS, articleID)
 	return err
 }
 
@@ -584,8 +545,8 @@ SELECT
     a.id, a.label, a.title, a.journal, a.year, a.volume, a.issue, a.page,
     a.doi, a.permalink, a.times_cited, a.abstract, a.rich,
     a.authors, a.keywords, a.ids
-FROM articles a
-JOIN articles_fts(?) fts ON a.id = fts.article_id
+FROM articles_fts(?) fts
+JOIN articles a ON a.rowid = fts.rowid
 JOIN nodes n ON n.article_id = a.id
 WHERE n.collection_id = ?
 ORDER BY bm25(articles_fts)
@@ -741,7 +702,7 @@ ON CONFLICT(label) DO UPDATE SET
     authors=COALESCE(excluded.authors, articles.authors),
     keywords=COALESCE(excluded.keywords, articles.keywords),
     ids=COALESCE(excluded.ids, articles.ids)
-RETURNING id, title, abstract, keywords, authors
+RETURNING id
 `
 
 type UpsertArticleParams struct {
@@ -763,15 +724,7 @@ type UpsertArticleParams struct {
 	Ids        []byte
 }
 
-type UpsertArticleRow struct {
-	ID       uuid.UUID
-	Title    sql.NullString
-	Abstract sql.NullString
-	Keywords []byte
-	Authors  []byte
-}
-
-func (q *Queries) UpsertArticle(ctx context.Context, arg UpsertArticleParams) (UpsertArticleRow, error) {
+func (q *Queries) UpsertArticle(ctx context.Context, arg UpsertArticleParams) (uuid.UUID, error) {
 	row := q.db.QueryRowContext(ctx, upsertArticle,
 		arg.ID,
 		arg.Label,
@@ -790,15 +743,9 @@ func (q *Queries) UpsertArticle(ctx context.Context, arg UpsertArticleParams) (U
 		arg.Keywords,
 		arg.Ids,
 	)
-	var i UpsertArticleRow
-	err := row.Scan(
-		&i.ID,
-		&i.Title,
-		&i.Abstract,
-		&i.Keywords,
-		&i.Authors,
-	)
-	return i, err
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const upsertLink = `-- name: UpsertLink :exec

@@ -430,6 +430,13 @@ func TestSQLiteStore_AnalysisPersistenceAndQuery(t *testing.T) {
 	require.Len(t, authorAfterUpsert, 1)
 	assert.Equal(t, "openalex:W1", authorAfterUpsert[0].ID)
 
+	// Verify FTS5 delete trigger (articles_ad) removes deleted articles from index
+	_, err = store.DB().ExecContext(ctx, "DELETE FROM articles WHERE label = ?", "openalex:W2")
+	require.NoError(t, err)
+	kwAfterDelete, err := store.Search(ctx, colID, "bridges", 10)
+	require.NoError(t, err)
+	assert.Empty(t, kwAfterDelete)
+
 	// 11. Verify DeleteCollection cascades and removes nodes/links
 	require.NoError(t, store.DeleteCollection(ctx, colID))
 	_, err = store.LoadAnalysis(ctx, colID)

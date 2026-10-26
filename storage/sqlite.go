@@ -349,7 +349,7 @@ func persistNode(
 		idsJSON, _ = json.Marshal(art.IDs.Items())
 	}
 
-	upsertedArt, err := qtx.UpsertArticle(ctx, repository.UpsertArticleParams{
+	resolvedArtID, err := qtx.UpsertArticle(ctx, repository.UpsertArticleParams{
 		ID:         uuid.NewV7(),
 		Label:      art.Label,
 		Title:      toNullString(art.Title),
@@ -369,44 +369,6 @@ func persistNode(
 	})
 	if err != nil {
 		return uuid.Nil(), fmt.Errorf("failed to upsert article %s: %w", art.Label, err)
-	}
-
-	resolvedArtID := upsertedArt.ID
-	if err := qtx.DeleteArticleFTS(ctx, resolvedArtID); err != nil {
-		return uuid.Nil(), fmt.Errorf("failed to clean fts for article %s: %w", art.Label, err)
-	}
-
-	titleStr := ""
-	if upsertedArt.Title.Valid {
-		titleStr = upsertedArt.Title.String
-	}
-	abstractStr := ""
-	if upsertedArt.Abstract.Valid {
-		abstractStr = upsertedArt.Abstract.String
-	}
-	keywordsStr := ""
-	if len(upsertedArt.Keywords) > 0 {
-		var kwList []string
-		if err := json.Unmarshal(upsertedArt.Keywords, &kwList); err == nil {
-			keywordsStr = strings.Join(kwList, " ")
-		}
-	}
-	authorsStr := ""
-	if len(upsertedArt.Authors) > 0 {
-		var authorList []string
-		if err := json.Unmarshal(upsertedArt.Authors, &authorList); err == nil {
-			authorsStr = strings.Join(authorList, " ")
-		}
-	}
-
-	if err := qtx.CreateArticleFTS(ctx, repository.CreateArticleFTSParams{
-		ArticleID: resolvedArtID,
-		Title:     titleStr,
-		Abstract:  abstractStr,
-		Keywords:  keywordsStr,
-		Authors:   authorsStr,
-	}); err != nil {
-		return uuid.Nil(), fmt.Errorf("failed to index fts for article %s: %w", art.Label, err)
 	}
 
 	resolvedNodeID, err := qtx.UpsertNode(ctx, repository.UpsertNodeParams{

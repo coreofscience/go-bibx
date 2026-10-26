@@ -82,20 +82,7 @@ ON CONFLICT(label) DO UPDATE SET
     authors=COALESCE(excluded.authors, articles.authors),
     keywords=COALESCE(excluded.keywords, articles.keywords),
     ids=COALESCE(excluded.ids, articles.ids)
-RETURNING id, title, abstract, keywords, authors;
-
--- name: DeleteArticleFTS :exec
-DELETE FROM articles_fts
-WHERE article_id = ?;
-
--- name: CreateArticleFTS :exec
-INSERT INTO articles_fts (
-    article_id,
-    title,
-    abstract,
-    keywords,
-    authors
-) VALUES (?, ?, ?, ?, ?);
+RETURNING id;
 
 -- name: UpsertNode :one
 INSERT INTO nodes (
@@ -191,8 +178,8 @@ SELECT
     a.id, a.label, a.title, a.journal, a.year, a.volume, a.issue, a.page,
     a.doi, a.permalink, a.times_cited, a.abstract, a.rich,
     a.authors, a.keywords, a.ids
-FROM articles a
-JOIN articles_fts(?) fts ON a.id = fts.article_id
+FROM articles_fts(?) fts
+JOIN articles a ON a.rowid = fts.rowid
 JOIN nodes n ON n.article_id = a.id
 WHERE n.collection_id = ?
 ORDER BY bm25(articles_fts)
