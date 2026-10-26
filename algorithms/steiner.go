@@ -227,21 +227,6 @@ func (q *PseudoSteiner[K]) computeSSSP(a K) {
 	q.ssspParent[a] = parent
 }
 
-func (q *PseudoSteiner[K]) shortestDistance(a, b K) float64 {
-	indexA, okA := q.topologicalIndex[a]
-	indexB, okB := q.topologicalIndex[b]
-	if !okA || !okB || indexA >= indexB {
-		return math.Inf(1)
-	}
-
-	q.computeSSSP(a)
-
-	if d, ok := q.ssspDist[a][b]; ok {
-		return d
-	}
-	return math.Inf(1)
-}
-
 func (q *PseudoSteiner[K]) shortestPath(a, b K) (float64, []K) {
 	indexA, okA := q.topologicalIndex[a]
 	indexB, okB := q.topologicalIndex[b]
@@ -424,29 +409,3 @@ func sortedPairs[K any](items []K) iter.Seq2[K, K] {
 	}
 }
 
-func allPairs[K any](items []K) iter.Seq2[K, K] {
-	return func(yield func(K, K) bool) {
-		for i := range items {
-			for j := range items {
-				if i == j {
-					continue
-				}
-				if !yield(items[i], items[j]) {
-					return
-				}
-			}
-		}
-	}
-}
-
-func cartesianProduct[T any](a, b []T) iter.Seq2[T, T] {
-	return func(yield func(T, T) bool) {
-		for _, x := range a {
-			for _, y := range b {
-				if !yield(x, y) {
-					return
-				}
-			}
-		}
-	}
-}
