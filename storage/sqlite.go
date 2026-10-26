@@ -3,12 +3,9 @@ package storage
 import (
 	"context"
 	"database/sql"
-	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 	"uuid"
@@ -16,40 +13,8 @@ import (
 	"github.com/coreofscience/go-bibx/internal/collections"
 	"github.com/coreofscience/go-bibx/models"
 	"github.com/coreofscience/go-bibx/repository"
-	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/sqlite"
-	"github.com/golang-migrate/migrate/v4/source/iofs"
 	_ "modernc.org/sqlite" // Pure-Go SQLite driver
 )
-
-//go:embed migrations/*.sql
-var migrationsFS embed.FS
-
-// runMigrations executes all pending embedded migrations against the database.
-func runMigrations(db *sql.DB) error {
-	sourceDriver, err := iofs.New(migrationsFS, "migrations")
-	if err != nil {
-		return fmt.Errorf("failed to create migration source driver: %w", err)
-	}
-
-	dbDriver, err := sqlite.WithInstance(db, &sqlite.Config{
-		MigrationsTable: "schema_migrations",
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create sqlite migration driver: %w", err)
-	}
-
-	m, err := migrate.NewWithInstance("iofs", sourceDriver, "sqlite", dbDriver)
-	if err != nil {
-		return fmt.Errorf("failed to initialize migrate instance: %w", err)
-	}
-
-	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		return fmt.Errorf("failed to apply migrations: %w", err)
-	}
-
-	return nil
-}
 
 // SQLiteStore implements [Store] backed by a pure-Go SQLite database and [repository.Queries].
 type SQLiteStore struct {
@@ -58,39 +23,11 @@ type SQLiteStore struct {
 }
 
 // NewSQLiteStore opens or creates a SQLite database at the specified path,
-// ensures its parent directory exists, applies WAL mode and foreign key constraints,
-// runs embedded migrations, and returns an initialized [*SQLiteStore].
+// applies WAL mode and foreign key constraints, runs embedded migrations, and returns an initialized [*SQLiteStore].
 func NewSQLiteStore(path string) (*SQLiteStore, error) {
-	cleanPath := path
-	if after, ok := strings.CutPrefix(cleanPath, "file:"); ok {
-		cleanPath = after
-		if idx := strings.Index(cleanPath, "?"); idx != -1 {
-			cleanPath = cleanPath[:idx]
-		}
-	}
-
-	if cleanPath != ":memory:" && cleanPath != "" {
-		dir := filepath.Dir(cleanPath)
-		if dir != "" && dir != "." {
-			if err := os.MkdirAll(dir, 0755); err != nil {
-				return nil, fmt.Errorf("failed to create database directory: %w", err)
-			}
-		}
-	}
-
-	db, err := sql.Open("sqlite", path)
+	db, err := repository.OpenAndMigrateSQLite(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open sqlite database: %w", err)
-	}
-
-	if _, err := db.Exec("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;"); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("failed to set sqlite pragmas: %w", err)
-	}
-
-	if err := runMigrations(db); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("failed to run database migrations: %w", err)
+		return nil, fmt.Errorf("failed to open and migrate sqlite database: %w", err)
 	}
 
 	return &SQLiteStore{
@@ -103,7 +40,7 @@ func NewSQLiteStore(path string) (*SQLiteStore, error) {
 // If runMigration is true, it executes pending embedded migrations.
 func NewSQLiteStoreWithDB(db *sql.DB, runMigration bool) (*SQLiteStore, error) {
 	if runMigration {
-		if err := runMigrations(db); err != nil {
+		if err := repository.Migrate(db); err != nil {
 			return nil, fmt.Errorf("failed to run database migrations: %w", err)
 		}
 	}

@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/coreofscience/go-bibx/cli/clients/openalex"
+	"github.com/coreofscience/go-bibx/clients/openalex"
 	"github.com/coreofscience/go-bibx/cli/services"
-	openalexmocks "github.com/coreofscience/go-bibx/internal/mocks/cli/clients/openalex"
+	openalexmocks "github.com/coreofscience/go-bibx/internal/mocks/clients/openalex"
 	"github.com/coreofscience/go-bibx/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

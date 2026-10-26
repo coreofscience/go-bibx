@@ -9,7 +9,7 @@ import (
 	"uuid"
 
 	"github.com/coreofscience/go-bibx/algorithms"
-	"github.com/coreofscience/go-bibx/cli/clients/openalex"
+	"github.com/coreofscience/go-bibx/clients/openalex"
 	"github.com/coreofscience/go-bibx/internal/graphs"
 	"github.com/coreofscience/go-bibx/models"
 	"github.com/coreofscience/go-bibx/storage"

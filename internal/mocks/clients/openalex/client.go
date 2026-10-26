@@ -7,7 +7,7 @@ package openalexmocks
 import (
 	"context"
 
-	"github.com/coreofscience/go-bibx/cli/clients/openalex"
+	"github.com/coreofscience/go-bibx/clients/openalex"
 	mock "github.com/stretchr/testify/mock"
 )
 

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"uuid"
 
-	"github.com/coreofscience/go-bibx/cli/clients/openalex"
+	"github.com/coreofscience/go-bibx/clients/openalex"
 	"github.com/coreofscience/go-bibx/cli/services"
 	mcpmodels "github.com/coreofscience/go-bibx/mcp/models"
 	"github.com/coreofscience/go-bibx/models"

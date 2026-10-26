@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/coreofscience/go-bibx/cli/clients/openalex"
+	"github.com/coreofscience/go-bibx/clients/openalex"
 	"github.com/coreofscience/go-bibx/cli/services"
 	"github.com/coreofscience/go-bibx/mcp/models"
 	"github.com/coreofscience/go-bibx/storage"
