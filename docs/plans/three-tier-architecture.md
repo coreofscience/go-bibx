@@ -250,53 +250,53 @@ type AnalysisService interface {
 
 ## Step-by-Step Migration Plan
 
-### Phase 1: Tier 1 Migration (`repository` & `clients/openalex`)
+### Phase 1: Tier 1 Migration (`repository` & `clients/openalex`) [COMPLETED]
 
-#### [MOVE] `storage/migrations/*` -> `repository/migrations/*`
+#### [x] [MOVE] `storage/migrations/*` -> `repository/migrations/*`
 - Move `000001_init_schema.up.sql` and `000001_init_schema.down.sql` into `repository/migrations/`.
 
-#### [MODIFY] [sqlc.yaml](file:///home/oscar/Code/coreofscience/go-bibx/sqlc.yaml)
+#### [x] [MODIFY] [sqlc.yaml](file:///home/oscar/Code/coreofscience/go-bibx/sqlc.yaml)
 - Update `schema: ./storage/migrations` to `schema: ./repository/migrations`.
 
-#### [NEW] `repository/sqlite.go` & `repository/sqlite_test.go`
+#### [x] [NEW] `repository/sqlite.go` & `repository/sqlite_test.go`
 - Move `migrationsFS`, `runMigrations` (exported as `Migrate(db *sql.DB) error`), and SQLite connection initialization (`OpenSQLite(path string) (*sql.DB, error)`, `OpenAndMigrateSQLite(path string) (*sql.DB, error)`) from `storage/sqlite.go` into `repository/sqlite.go`.
 - Move migration and directory-creation tests (`TestNewSQLiteStore_Migrations`, `TestNewSQLiteStore_CreatesParentDirectories`) from `storage/sqlite_test.go` to `repository/sqlite_test.go`.
 
-#### [MOVE] `cli/clients/openalex/*` -> `clients/openalex/*`
+#### [x] [MOVE] `cli/clients/openalex/*` -> `clients/openalex/*`
 - Move `client.go`, `client_test.go`, and `models.go` to `clients/openalex/`.
 - Remove empty `cli/clients/` directory.
 
 ---
 
-### Phase 2: Tier 2 Migration (`services` Package)
+### Phase 2: Tier 2 Migration (`services` Package) [COMPLETED]
 
-#### [NEW] `services/collection.go` & `services/collection_test.go`
+#### [x] [NEW] `services/collection.go` & `services/collection_test.go`
 - Define `Collection`, `ErrCollectionNotFound`, `ErrCollectionExists`, `NormalizeQuery`, `ComputeQueryHash`, `UUIDToBytes`, `ScanUUID`.
 - Define `CollectionService` interface and `SQLiteCollectionService` implementation using `*repository.Queries`.
 - Implement `FindByHash`, `FindByID`, `FindByName`, `Resolve`, `List`, `Create`, `UpdateName`, and `Delete`.
 - Migrate collection CRUD, query hash, and resolution tests from `storage/sqlite_test.go` and `storage/store_test.go` to `services/collection_test.go`.
 
-#### [NEW] `services/analysis.go` & `services/analysis_test.go`
+#### [x] [NEW] `services/analysis.go` & `services/analysis_test.go`
 - Move `cli/services/analysis.go` to `services/analysis.go`.
 - Merge `StoreAnalysis`, `LoadAnalysis` / `LoadAnalysisByID`, `QueryCategory`, `Search` (FTS5 + Pseudo-Steiner), and article/node/link persistence helpers (`persistNode`, `persistLinks`, `buildArticle`, `cleanFTS5Query`) from `storage/sqlite.go` into `services/analysis.go`.
 - Define the `AnalysisService` interface and `OpenAlexAnalysisService` struct.
 - Migrate and combine unit and integration tests from `storage/sqlite_test.go` (analysis persistence, FTS5 search, category queries) and `cli/services/analysis_test.go` (OpenAlex inquiry, idempotency, enrichment, re-cleaning) into `services/analysis_test.go`.
 
-#### [DELETE] `storage/` & `cli/services/`
+#### [x] [DELETE] `storage/` & `cli/services/`
 - Delete `storage/store.go`, `storage/store_test.go`, `storage/sqlite.go`, `storage/sqlite_test.go`.
 - Delete `cli/services/analysis.go` and `cli/services/analysis_test.go`.
 
 ---
 
-### Phase 3: Tier 3 Migration (`internal/cli` & `internal/mcp`)
+### Phase 3: Tier 3 Migration (`internal/cli` & `internal/mcp`) [COMPLETED]
 
-#### [MOVE] `cli/*` -> `internal/cli/*`
+#### [x] [MOVE] `cli/*` -> `internal/cli/*`
 - Move `cli/commands`, `cli/renderers`, and `cli/servers` to `internal/cli/`.
 - Remove the top-level `cli/` directory.
 - Update imports in [main.go](file:///home/oscar/Code/coreofscience/go-bibx/cmd/bibx/main.go) and across `internal/cli/...`.
 - Refactor CLI command handlers (`collection`, `inquire`, `query`, `search`, `view`, `mcp`) to initialize `*sql.DB` via `repository.OpenSQLite` and invoke `services.CollectionService` / `services.AnalysisService`.
 
-#### [MOVE] `mcp/*` -> `internal/mcp/*`
+#### [x] [MOVE] `mcp/*` -> `internal/mcp/*`
 - Move `mcp/models`, `mcp/resources`, `mcp/tools`, and `mcp/test` to `internal/mcp/`.
 - Remove the top-level `mcp/` directory.
 - Update `internal/mcp/models/collection.go` to reference `*services.Collection`.
@@ -306,14 +306,14 @@ type AnalysisService interface {
 
 ---
 
-### Phase 4: Mocks, Tooling & Documentation Cleanup
+### Phase 4: Mocks, Tooling & Documentation Cleanup [COMPLETED]
 
-#### [MODIFY] `internal/mocks/`
+#### [x] [MODIFY] `internal/mocks/`
 - Re-run `mockery` (or update mock packages) to reflect the new package paths:
   - Remove `internal/mocks/storage` and `internal/mocks/cli/...` and `internal/mocks/mcp/...`.
   - Generate mocks for `clients/openalex`, `services` (`CollectionService`, `AnalysisService`), `internal/cli/renderers`, and `internal/mcp/tools/...` as needed.
 
-#### [MODIFY] Documentation
+#### [x] [MODIFY] Documentation
 - Update `README.md` or `CONTRIBUTING.md` if any package paths or architecture notes are referenced.
 
 ---
