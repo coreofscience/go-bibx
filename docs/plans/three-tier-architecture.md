@@ -27,18 +27,23 @@ This migration establishes a strict 3-tier architecture where **Tier 1** and **T
 
 - **Layer 1 (`repository` & `clients/openalex`) — Public:**
   - `storage/migrations/` moves to `repository/migrations/`.
-  - `repository/sqlite.go` owns opening/configuring the `*sql.DB` (WAL mode, foreign keys, parent directory creation) and running embedded migrations via `repository.OpenSQLite(dbPath)` and `repository.Migrate(db)`.
+  - `repository/sqlite.go` owns opening/configuring the `*sql.DB` (WAL mode, foreign keys, parent directory creation) and provides migration support:
+    - `OpenSQLite(path string) (*sql.DB, error)`: Opens SQLite, ensures directory exists, and sets pragmas.
+    - `Migrate(db *sql.DB) error`: Applies embedded migrations using `golang-migrate`.
+    - `OpenAndMigrateSQLite(path string) (*sql.DB, error)`: Convenience function that opens and applies migrations automatically.
   - `cli/clients/openalex` moves to `clients/openalex`.
 - **Layer 2 (`services`) — Public:**
   - `storage/` (`storage.Store` and `storage.SQLiteStore`) is removed. Its SQLite query execution and entity mapping move directly into `services/`, backed by `*sql.DB` and `*repository.Queries`.
-  - Split into two cohesive services in `services/`:
+  - Split into two independent services in `services/` (with **zero** inter-service dependencies):
     1. **`CollectionService`**: Manages collection lifecycle and lookup (`List`, `FindByID`, `FindByName`, `FindByHash`, `Resolve`, `Create`, `UpdateName`, `Delete`).
-    2. **`AnalysisService`**: Manages literature inquiry, graph algorithms (SAP, Leiden, Pseudo-Steiner), and analysis persistence/queries (`Inquire`, `Load`, `QueryCategory`, `Search`).
+    2. **`AnalysisService`**: Manages literature inquiry, graph algorithms (SAP, Leiden, Pseudo-Steiner), and analysis persistence/queries (`Inquire`, `StoreAnalysis`, `LoadAnalysis`, `QueryCategory`, `Search`).
+    - `AnalysisService` interacts directly with `*repository.Queries` and `*sql.DB` for collection metadata and analysis persistence without depending on `CollectionService`.
   - `storage.Collection` moves to `models/` (or `services/`) as `models.CollectionRecord` (or `services.Collection`) alongside `ErrCollectionNotFound` and `ErrCollectionExists`, keeping `models.Collection` (the in-memory citation graph builder) distinct or clearly named.
 - **Layer 3 (`internal/cli` & `internal/mcp`) — Internal:**
   - `cli/commands`, `cli/renderers`, and `cli/servers/viewer` move under `internal/cli/`.
   - `mcp/` (`mcp/models`, `mcp/resources`, `mcp/tools`, `mcp/test`) moves under `internal/mcp/`.
   - Both CLI commands and MCP tools/resources depend exclusively on Tier 2 (`services` and `models`), never directly on `storage` or `repository`.
+  - Presentation layer orchestrates both `CollectionService` and `AnalysisService` independently.
 
 ---
 
@@ -73,7 +78,6 @@ flowchart TD
     MCP --> ColSvc
     MCP --> AnaSvc
     ColSvc --> Repo
-    AnaSvc --> ColSvc
     AnaSvc --> Repo
     AnaSvc --> OAClient
     ColSvc --> Domain
@@ -131,8 +135,9 @@ flowchart TD
 - **Migrations**: Move `storage/migrations/*.sql` to `repository/migrations/*.sql`.
 - **Update `sqlc.yaml`**: Point `schema` to `./repository/migrations`.
 - **Database Initialization (`repository/sqlite.go`)**:
-  - `OpenSQLite(path string) (*sql.DB, error)`: Handles `file:` URI parsing, creates parent directories (`0755`), opens the `modernc.org/sqlite` connection, sets `PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;`, and runs embedded migrations.
-  - `Migrate(db *sql.DB) error`: Runs embedded SQL migrations using `golang-migrate`.
+  - `OpenSQLite(path string) (*sql.DB, error)`: Handles `file:` URI parsing, creates parent directories (`0755`), opens the `modernc.org/sqlite` connection, and sets `PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;`. It does **not** automatically apply migrations, leaving migration control explicit and decoupled.
+  - `Migrate(db *sql.DB) error`: Runs embedded SQL migrations against `db` using `golang-migrate`.
+  - `OpenAndMigrateSQLite(path string) (*sql.DB, error)`: Convenience wrapper combining `OpenSQLite` and `Migrate` for typical CLI/daemon usage.
 
 #### `clients/openalex` Package
 
@@ -178,7 +183,7 @@ type CollectionService interface {
 
 #### `AnalysisService` (`services/analysis.go`)
 
-Combines the graph persistence/query methods from `storage.SQLiteStore` (`StoreAnalysis`, `LoadAnalysis`, `QueryCategory`, `Search`) and the orchestration logic from `cli/services.OpenAlexAnalysisService`:
+Combines the graph persistence/query methods from `storage.SQLiteStore` (`StoreAnalysis`, `LoadAnalysis`, `QueryCategory`, `Search`) and the orchestration logic from `cli/services.OpenAlexAnalysisService`, without depending on `CollectionService`:
 
 ```go
 type InquireOptions struct {
@@ -194,22 +199,23 @@ type InquireResult struct {
 type AnalysisService interface {
 	Inquire(ctx context.Context, query string, limit int, opts InquireOptions) (*InquireResult, error)
 	StoreAnalysis(ctx context.Context, collectionID uuid.UUID, a *models.Analysis) error
-	LoadAnalysis(ctx context.Context, target string) (*models.Analysis, *Collection, error)
-	LoadAnalysisByID(ctx context.Context, collectionID uuid.UUID) (*models.Analysis, error)
-	Query(ctx context.Context, category string, limit int, target string) ([]*models.Result, *Collection, error)
-	Search(ctx context.Context, query string, limit int, target string) (*models.Analysis, *Collection, error)
+	LoadAnalysis(ctx context.Context, collectionID uuid.UUID) (*models.Analysis, error)
+	QueryCategory(ctx context.Context, collectionID uuid.UUID, category string, limit int) ([]*models.Result, error)
+	Search(ctx context.Context, collectionID uuid.UUID, query string, limit int) (*models.Analysis, error)
 }
 ```
 
 - Concrete implementation `OpenAlexAnalysisService` holds:
   - `db *sql.DB` (for transactional `BeginTx` in `StoreAnalysis`)
   - `queries *repository.Queries`
-  - `collections CollectionService`
   - `openalexClient openalex.Client`
 - Constructors:
-  - `NewAnalysisService(db *sql.DB, oaClient openalex.Client, collections CollectionService) *OpenAlexAnalysisService`
-  - Helper factory `OpenServices(dbPath string) (*sql.DB, *SQLiteCollectionService, *OpenAlexAnalysisService, error)` (or a lightweight container/provider) to avoid boilerplate in CLI commands and MCP server startup.
-- Notice how passing `target string` (or resolving via `s.collections.Resolve(ctx, target)`) inside `AnalysisService.Query`, `AnalysisService.Search`, and `AnalysisService.LoadAnalysis` eliminates duplicated collection resolution code across `cli/commands/query`, `cli/commands/search`, `cli/commands/view`, `mcp/tools/analysis/tos`, and `mcp/tools/analysis/search`.
+  - `NewAnalysisService(db *sql.DB, oaClient openalex.Client) *OpenAlexAnalysisService`
+  - `NewAnalysisServiceWithQueries(db *sql.DB, queries *repository.Queries, oaClient openalex.Client) *OpenAlexAnalysisService`
+- Notice that `AnalysisService` operates cleanly on explicit domain IDs (`collectionID uuid.UUID`), remaining completely decoupled from `CollectionService`. Target string resolution (ID, alias, or latest) belongs to `CollectionService.Resolve(ctx, target)`:
+  - When the CLI or MCP server receives a user target string, it calls `collectionService.Resolve(ctx, target)` to obtain the `*services.Collection`, and then passes `collection.ID` to `analysisService.LoadAnalysis`, `analysisService.QueryCategory`, or `analysisService.Search`.
+  - In `Inquire`, `AnalysisService` uses `*repository.Queries` directly to check for existing queries by hash or create/update the collection record in the same database transaction.
+  - This keeps both services focused and independently testable with no circular or horizontal coupling.
 
 ---
 
@@ -221,9 +227,10 @@ type AnalysisService interface {
 - Move `cli/renderers/...` -> `internal/cli/renderers/...`
 - Move `cli/servers/viewer/...` -> `internal/cli/servers/viewer/...`
 - Update each CLI command action:
-  - `collection list`, `collection show`, `collection delete`: Open DB via `repository.OpenSQLite(dbPath)` and use `services.NewCollectionService(db)`.
-  - `inquire`, `query`, `search`, `view`: Open DB via `repository.OpenSQLite(dbPath)` and use `services.NewAnalysisService(...)`.
-  - `mcp`: Open DB via `repository.OpenSQLite(dbPath)`, instantiate `CollectionService` and `AnalysisService`, and register MCP tools and resources.
+  - `collection list`, `collection show`, `collection delete`: Open DB via `repository.OpenAndMigrateSQLite(dbPath)` and use `services.NewCollectionService(db)`.
+  - `inquire`: Open DB via `repository.OpenAndMigrateSQLite(dbPath)` and use `services.NewAnalysisService(db, oaClient)`.
+  - `query`, `search`, `view`: Open DB, resolve target with `collectionService.Resolve(ctx, target)`, and call `analysisService.QueryCategory` / `analysisService.Search` / `analysisService.LoadAnalysis`.
+  - `mcp`: Open DB via `repository.OpenAndMigrateSQLite(dbPath)`, instantiate `CollectionService` and `AnalysisService`, and register MCP tools and resources.
 
 #### `internal/mcp`
 
@@ -235,7 +242,8 @@ type AnalysisService interface {
 - Move `mcp/tools/...` -> `internal/mcp/tools/...`
   - `tools.Register(server, collectionService, analysisService)`
   - `collections.List` and `collections.Show` depend on `services.CollectionService`.
-  - `collections.Inquire`, `analysis.Tos`, and `analysis.Search` depend on `services.AnalysisService` (eliminating the dual `service` + `store` fields in `Tos` and `Search`).
+  - `collections.Inquire` depends on `services.AnalysisService`.
+  - `analysis.Tos` and `analysis.Search` accept both `services.CollectionService` (to resolve `target` string) and `services.AnalysisService` (to execute category queries and graph searches) as independent dependencies.
 - Move `mcp/test/...` -> `internal/mcp/test/...`
 
 ---
@@ -251,7 +259,7 @@ type AnalysisService interface {
 - Update `schema: ./storage/migrations` to `schema: ./repository/migrations`.
 
 #### [NEW] `repository/sqlite.go` & `repository/sqlite_test.go`
-- Move `migrationsFS`, `runMigrations` (exported as `Migrate(db *sql.DB) error`), and SQLite connection initialization (`OpenSQLite(path string) (*sql.DB, error)`) from `storage/sqlite.go` into `repository/sqlite.go`.
+- Move `migrationsFS`, `runMigrations` (exported as `Migrate(db *sql.DB) error`), and SQLite connection initialization (`OpenSQLite(path string) (*sql.DB, error)`, `OpenAndMigrateSQLite(path string) (*sql.DB, error)`) from `storage/sqlite.go` into `repository/sqlite.go`.
 - Move migration and directory-creation tests (`TestNewSQLiteStore_Migrations`, `TestNewSQLiteStore_CreatesParentDirectories`) from `storage/sqlite_test.go` to `repository/sqlite_test.go`.
 
 #### [MOVE] `cli/clients/openalex/*` -> `clients/openalex/*`
