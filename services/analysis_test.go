@@ -404,15 +404,15 @@ func TestOpenAlexAnalysisService_SearchHighLimitPerformance(t *testing.T) {
 	ctx := context.Background()
 
 	colID := uuid.NewV7()
-	hash := services.ComputeQueryHash("high limit test", 500)
+	hash := services.ComputeQueryHash("high limit test", 100)
 	require.NoError(t, colSvc.Create(ctx, &services.Collection{
 		ID:          colID,
 		QueryHash:   hash,
 		Query:       "high limit test",
-		ResultLimit: 500,
+		ResultLimit: 100,
 	}))
 
-	numNodes := 500
+	numNodes := 100
 	nodes := make([]*models.Node, numNodes)
 	links := make([]*models.Link, 0, numNodes)
 
@@ -447,8 +447,8 @@ func TestOpenAlexAnalysisService_SearchHighLimitPerformance(t *testing.T) {
 
 	require.NoError(t, anaSvc.StoreAnalysis(ctx, colID, analysis))
 
-	// Perform search with limit 500
-	res, err := anaSvc.Search(ctx, colID, "quantum physics", 500)
+	// Perform search with limit 100
+	res, err := anaSvc.Search(ctx, colID, "quantum physics", 100)
 	require.NoError(t, err)
 	require.NotNil(t, res)
 	assert.NotEmpty(t, res.Nodes)

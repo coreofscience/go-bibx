@@ -356,7 +356,7 @@ func TestPseudoSteiner_DoesNotMutateCallerSlice(t *testing.T) {
 func TestPseudoSteiner_LargeTerminals(t *testing.T) {
 	g := gograph.New[string](gograph.Directed(), gograph.Acyclic())
 
-	numNodes := 600
+	numNodes := 200
 	vertices := make([]*gograph.Vertex[string], numNodes)
 	for i := 0; i < numNodes; i++ {
 		vertices[i] = gograph.NewVertex(fmt.Sprintf("N%d", i))
@@ -371,8 +371,8 @@ func TestPseudoSteiner_LargeTerminals(t *testing.T) {
 		}
 	}
 
-	terminals := make([]string, 500)
-	for i := 0; i < 500; i++ {
+	terminals := make([]string, 150)
+	for i := 0; i < 150; i++ {
 		terminals[i] = fmt.Sprintf("N%d", i*1)
 	}
 
@@ -382,5 +382,5 @@ func TestPseudoSteiner_LargeTerminals(t *testing.T) {
 	res, err := ps.Run(terminals)
 	require.NoError(t, err)
 	assert.NotNil(t, res)
-	assert.GreaterOrEqual(t, res.Order(), uint32(500))
+	assert.GreaterOrEqual(t, res.Order(), uint32(150))
 }

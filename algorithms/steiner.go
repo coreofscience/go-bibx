@@ -110,11 +110,31 @@ func (q *PseudoSteiner[K]) Run(terminals []K) (gograph.Graph[K], error) {
 	for _, terminal := range terminals {
 		metaGraph.AddVertex(gograph.NewVertex(terminal))
 	}
+	// Compute SSSP for each terminal only once
+	for _, a := range terminals {
+		q.computeSSSP(a)
+	}
+
 	for a, b := range sortedPairs(terminals) {
-		dist := q.shortestDistance(a, b)
+		dist, path := q.shortestPath(a, b)
 		if math.IsInf(dist, 1) {
 			continue
 		}
+		// If the shortest path between terminals a and b contains any intermediate terminal,
+		// the sub-path edges between adjacent terminals already cover it with equal or smaller weights.
+		containsIntermediateTerminal := false
+		if len(path) > 2 {
+			for _, node := range path[1 : len(path)-1] {
+				if _, ok := terminalSet[node]; ok {
+					containsIntermediateTerminal = true
+					break
+				}
+			}
+		}
+		if containsIntermediateTerminal {
+			continue
+		}
+
 		_, err := metaGraph.AddEdge(
 			gograph.NewVertex(a),
 			gograph.NewVertex(b),
