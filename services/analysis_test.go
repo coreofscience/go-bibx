@@ -390,6 +390,70 @@ func TestOpenAlexAnalysisService_AnalysisPersistenceAndQuery(t *testing.T) {
 	require.NotEmpty(t, kwResults.Nodes)
 }
 
+func TestOpenAlexAnalysisService_SearchHighLimitPerformance(t *testing.T) {
+	tempDir := t.TempDir()
+	db, err := repository.OpenAndMigrateSQLite(filepath.Join(tempDir, "high_limit_test.db"))
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, db.Close())
+	}()
+
+	colSvc := services.NewCollectionService(db)
+	oaClient := openalexmocks.NewMockClient(t)
+	anaSvc := services.NewAnalysisService(db, oaClient)
+	ctx := context.Background()
+
+	colID := uuid.NewV7()
+	hash := services.ComputeQueryHash("high limit test", 500)
+	require.NoError(t, colSvc.Create(ctx, &services.Collection{
+		ID:          colID,
+		QueryHash:   hash,
+		Query:       "high limit test",
+		ResultLimit: 500,
+	}))
+
+	numNodes := 500
+	nodes := make([]*models.Node, numNodes)
+	links := make([]*models.Link, 0, numNodes)
+
+	for i := 0; i < numNodes; i++ {
+		lbl := filepath.Join("W", uuid.NewV7().String())
+		title := "Graph Paper " + lbl
+		abstract := "Topic research on quantum computing and physics"
+		nodes[i] = &models.Node{
+			ID:        lbl,
+			Category:  models.CategoryTrunk,
+			Trunkness: 0.5,
+			Article: &models.Article{
+				Label:    lbl,
+				Title:    &title,
+				Abstract: &abstract,
+				Rich:     true,
+			},
+		}
+		if i > 0 {
+			links = append(links, &models.Link{
+				Source: lbl,
+				Target: nodes[i-1].ID,
+				Weight: 1.0,
+			})
+		}
+	}
+
+	analysis := &models.Analysis{
+		Nodes: nodes,
+		Links: links,
+	}
+
+	require.NoError(t, anaSvc.StoreAnalysis(ctx, colID, analysis))
+
+	// Perform search with limit 500
+	res, err := anaSvc.Search(ctx, colID, "quantum physics", 500)
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	assert.NotEmpty(t, res.Nodes)
+}
+
 func worksMapToSlice(works ...*openalex.Work) []*openalex.Work {
 	return works
 }

@@ -1,6 +1,7 @@
 package algorithms_test
 
 import (
+	"fmt"
 	"slices"
 	"testing"
 
@@ -350,4 +351,36 @@ func TestPseudoSteiner_DoesNotMutateCallerSlice(t *testing.T) {
 	res2, err := ps.Run(input)
 	require.NoError(t, err)
 	assert.NotNil(t, res2)
+}
+
+func TestPseudoSteiner_LargeTerminals(t *testing.T) {
+	g := gograph.New[string](gograph.Directed(), gograph.Acyclic())
+
+	numNodes := 600
+	vertices := make([]*gograph.Vertex[string], numNodes)
+	for i := 0; i < numNodes; i++ {
+		vertices[i] = gograph.NewVertex(fmt.Sprintf("N%d", i))
+		g.AddVertex(vertices[i])
+	}
+
+	// Create DAG edges
+	for i := 0; i < numNodes-1; i++ {
+		_, _ = g.AddEdge(vertices[i], vertices[i+1])
+		if i+5 < numNodes {
+			_, _ = g.AddEdge(vertices[i], vertices[i+5])
+		}
+	}
+
+	terminals := make([]string, 500)
+	for i := 0; i < 500; i++ {
+		terminals[i] = fmt.Sprintf("N%d", i*1)
+	}
+
+	ps, err := algorithms.NewPseudoSteiner(g)
+	require.NoError(t, err)
+
+	res, err := ps.Run(terminals)
+	require.NoError(t, err)
+	assert.NotNil(t, res)
+	assert.GreaterOrEqual(t, res.Order(), uint32(500))
 }
