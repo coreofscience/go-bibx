@@ -408,4 +408,3 @@ func sortedPairs[K any](items []K) iter.Seq2[K, K] {
 		}
 	}
 }
-
