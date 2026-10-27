@@ -15,7 +15,7 @@ import (
 type SearchInput struct {
 	// Query is the search query for the collection articles.
 	Query string `json:"query"`
-	// Limit is the number of initial nodes to start the graph algorithm with (default: 10, max: 1000).
+	// Limit is the number of initial nodes to start the graph algorithm with (default: 10, max: 100).
 	Limit int `json:"limit,omitempty"`
 	// Target is the collection ID (UUID) or name alias. If omitted, the latest collection is queried.
 	Target string `json:"target,omitempty"`
@@ -77,8 +77,8 @@ func (s *Search) Handle(
 		if input.Limit < 1 {
 			return nil, nil, errors.New("limit must be greater than 0")
 		}
-		if input.Limit > 1000 {
-			return nil, nil, errors.New("limit must be less than or equal to 1000")
+		if input.Limit > 100 {
+			return nil, nil, errors.New("limit must be less than or equal to 100")
 		}
 		limit = input.Limit
 	}
