@@ -4,45 +4,17 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/coreofscience/go-bibx/internal/utils"
 	"github.com/nickng/bibtex"
+	"golang.org/x/text/runes"
+	"golang.org/x/text/transform"
+	"golang.org/x/text/unicode/norm"
 )
 
 var (
 	nonKeyChars = regexp.MustCompile(`[^a-zA-Z0-9_-]+`)
-
-	diacriticMap = map[rune]string{
-		'á': "a", 'à': "a", 'â': "a", 'ä': "a", 'ã': "a", 'å': "a", 'ā': "a", 'ă': "a", 'ą': "a",
-		'Á': "A", 'À': "A", 'Â': "A", 'Ä': "A", 'Ã': "A", 'Å': "A", 'Ā': "A", 'Ă': "A", 'Ą': "A",
-		'é': "e", 'è': "e", 'ê': "e", 'ë': "e", 'ē': "e", 'ĕ': "e", 'ė': "e", 'ę': "e", 'ě': "e",
-		'É': "E", 'È': "E", 'Ê': "E", 'Ë': "E", 'Ē': "E", 'Ĕ': "E", 'Ė': "E", 'Ę': "E", 'Ě': "E",
-		'í': "i", 'ì': "i", 'î': "i", 'ï': "i", 'ī': "i", 'ĭ': "i", 'į': "i", 'ı': "i",
-		'Í': "I", 'Ì': "I", 'Î': "I", 'Ï': "I", 'Ī': "I", 'Ĭ': "I", 'Į': "I", 'İ': "I",
-		'ó': "o", 'ò': "o", 'ô': "o", 'ö': "o", 'õ': "o", 'ō': "o", 'ŏ': "o", 'ő': "o", 'ø': "o",
-		'Ó': "O", 'Ò': "O", 'Ô': "O", 'Ö': "O", 'Õ': "O", 'Ō': "O", 'Ŏ': "O", 'Ő': "O", 'Ø': "O",
-		'ú': "u", 'ù': "u", 'û': "u", 'ü': "u", 'ũ': "u", 'ū': "u", 'ŭ': "u", 'ů': "u", 'ű': "u", 'ų': "u",
-		'Ú': "U", 'Ù': "U", 'Û': "U", 'Ü': "U", 'Ũ': "U", 'Ū': "U", 'Ŭ': "U", 'Ů': "U", 'Ű': "U", 'Ų': "U",
-		'ý': "y", 'ÿ': "y", 'Ý': "Y", 'Ÿ': "Y",
-		'ç': "c", 'ć': "c", 'ĉ': "c", 'ċ': "c", 'č': "c",
-		'Ç': "C", 'Ć': "C", 'Ĉ': "C", 'Ċ': "C", 'Č': "C",
-		'ď': "d", 'đ': "d", 'Ď': "D", 'Đ': "D", 'ð': "d", 'Ð': "D",
-		'ĝ': "g", 'ğ': "g", 'ġ': "g", 'ģ': "g", 'Ĝ': "G", 'Ğ': "G", 'Ġ': "G", 'Ģ': "G",
-		'ĥ': "h", 'ħ': "h", 'Ĥ': "H", 'Ħ': "H",
-		'ĵ': "j", 'Ĵ': "J",
-		'ķ': "k", 'Ķ': "K",
-		'ĺ': "l", 'ļ': "l", 'ľ': "l", 'ŀ': "l", 'ł': "l",
-		'Ĺ': "L", 'Ļ': "L", 'Ľ': "L", 'Ŀ': "L", 'Ł': "L",
-		'ñ': "n", 'ń': "n", 'ņ': "n", 'ň': "n",
-		'Ñ': "N", 'Ń': "N", 'Ņ': "N", 'Ň': "N",
-		'ŕ': "r", 'ŗ': "r", 'ř': "r", 'Ŕ': "R", 'Ŗ': "R", 'Ř': "R",
-		'ś': "s", 'ŝ': "s", 'ş': "s", 'š': "s",
-		'Ś': "S", 'Ŝ': "S", 'Ş': "S", 'Š': "S",
-		'ţ': "t", 'ť': "t", 'ŧ': "t", 'Ţ': "T", 'Ť': "T", 'Ŧ': "T",
-		'ŵ': "w", 'Ŵ': "W",
-		'ź': "z", 'ż': "z", 'ž': "z", 'Ź': "Z", 'Ż': "Z", 'Ž': "Z",
-		'ß': "ss", 'æ': "ae", 'Æ': "AE", 'œ': "oe", 'Œ': "OE", 'þ': "th", 'Þ': "TH",
-	}
 
 	defaultBibtexKeyOrder = []string{
 		"author",
@@ -95,20 +67,24 @@ func GenerateCitationKey(a *Article) string {
 	return "article"
 }
 
-func cleanDiacritics(s string) string {
-	var sb strings.Builder
-	for _, r := range s {
-		if replacement, ok := diacriticMap[r]; ok {
-			sb.WriteString(replacement)
-		} else {
-			sb.WriteRune(r)
-		}
+func cleanDiacritics(s string) (string, error) {
+	t := transform.Chain(
+		norm.NFD,
+		runes.Remove(runes.In(unicode.Mn)),
+		norm.NFC,
+	)
+	result, _, err := transform.String(t, s)
+	if err != nil {
+		return "", fmt.Errorf("error cleaning diacritics: %w", err)
 	}
-	return sb.String()
+	return result, nil
 }
 
 func sanitizeCiteKey(s string) string {
-	s = cleanDiacritics(s)
+	s, err := cleanDiacritics(s)
+	if err != nil {
+		return "article"
+	}
 	s = nonKeyChars.ReplaceAllString(s, "_")
 	s = strings.Trim(s, "_")
 	s = strings.ToLower(s)

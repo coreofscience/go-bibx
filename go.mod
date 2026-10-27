@@ -12,6 +12,7 @@ require (
 	github.com/urfave/cli/v3 v3.8.0
 	go.yaml.in/yaml/v4 v4.0.0-rc.4
 	golang.org/x/sync v0.24.0
+	golang.org/x/text v0.43.0
 	modernc.org/sqlite v1.61.0
 	resty.dev/v3 v3.0.0-beta.3
 )
