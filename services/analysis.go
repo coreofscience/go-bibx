@@ -14,6 +14,7 @@ import (
 	"github.com/coreofscience/go-bibx/clients/openalex"
 	"github.com/coreofscience/go-bibx/internal/collections"
 	"github.com/coreofscience/go-bibx/internal/graphs"
+	"github.com/coreofscience/go-bibx/internal/utils"
 	"github.com/coreofscience/go-bibx/models"
 	"github.com/coreofscience/go-bibx/repository"
 )
@@ -37,6 +38,7 @@ type AnalysisService interface {
 	LoadAnalysis(ctx context.Context, collectionID uuid.UUID) (*models.Analysis, error)
 	QueryCategory(ctx context.Context, collectionID uuid.UUID, category string, limit int) ([]*models.Result, error)
 	Search(ctx context.Context, collectionID uuid.UUID, query string, limit int) (*models.Analysis, error)
+	GetArticles(ctx context.Context, collectionID uuid.UUID, ids []string) ([]*models.Article, []string, error)
 }
 
 // OpenAlexAnalysisService coordinates literature fetching from OpenAlex,
@@ -495,6 +497,143 @@ func (s *OpenAlexAnalysisService) Search(ctx context.Context, collectionID uuid.
 		ids = append(ids, vertex.Label())
 	}
 	return analysis.Keep(ids), nil
+}
+
+// GetArticles retrieves articles belonging to a collection matching the provided IDs or labels.
+// If ids is empty or nil, all articles belonging to the collection are returned.
+// Any requested ID that cannot be resolved is returned in the notFound slice.
+func (s *OpenAlexAnalysisService) GetArticles(ctx context.Context, collectionID uuid.UUID, ids []string) ([]*models.Article, []string, error) {
+	analysis, err := s.LoadAnalysis(ctx, collectionID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if analysis == nil || len(analysis.Nodes) == 0 {
+		return nil, ids, nil
+	}
+
+	if len(ids) == 0 {
+		articles := make([]*models.Article, 0, len(analysis.Nodes))
+		for _, node := range analysis.Nodes {
+			if node != nil && node.Article != nil {
+				articles = append(articles, node.Article)
+			}
+		}
+		return articles, nil, nil
+	}
+
+	foundArticles := make([]*models.Article, 0, len(ids))
+	seen := make(map[*models.Article]bool)
+	var notFound []string
+
+	for _, id := range ids {
+		trimmed := strings.TrimSpace(id)
+		if trimmed == "" {
+			continue
+		}
+		var matched *models.Article
+		for _, node := range analysis.Nodes {
+			if matchArticle(node, trimmed) {
+				matched = node.Article
+				break
+			}
+		}
+		if matched != nil {
+			if !seen[matched] {
+				seen[matched] = true
+				foundArticles = append(foundArticles, matched)
+			}
+		} else {
+			notFound = append(notFound, trimmed)
+		}
+	}
+
+	return foundArticles, notFound, nil
+}
+
+func matchArticle(node *models.Node, target string) bool {
+	if node == nil {
+		return false
+	}
+	target = strings.TrimSpace(target)
+	if target == "" {
+		return false
+	}
+
+	// 1. Direct match on node ID
+	if strings.EqualFold(node.ID, target) {
+		return true
+	}
+
+	art := node.Article
+	if art == nil {
+		return false
+	}
+
+	// 2. Direct match on article Label
+	if strings.EqualFold(art.Label, target) {
+		return true
+	}
+
+	// 3. Match on SimpleId (e.g. "vaswani2017")
+	if sID := art.SimpleId(); sID != nil && strings.EqualFold(*sID, target) {
+		return true
+	}
+
+	// 4. Match on DOI
+	if art.DOI != nil && *art.DOI != "" {
+		cleanArtDOI := utils.ExtractDOI(*art.DOI)
+		cleanTargetDOI := utils.ExtractDOI(target)
+		if strings.EqualFold(cleanArtDOI, cleanTargetDOI) {
+			return true
+		}
+	}
+
+	// 5. Match on IDs set
+	if art.IDs != nil {
+		for _, id := range art.IDs.Items() {
+			if matchID(id, target) {
+				return true
+			}
+		}
+	}
+
+	// 6. Match on Key
+	if key := art.Key(); key != nil && matchID(*key, target) {
+		return true
+	}
+
+	return false
+}
+
+func matchID(storedID, target string) bool {
+	if strings.EqualFold(storedID, target) {
+		return true
+	}
+
+	// Compare with stripped source prefix (e.g. "openalex:", "doi:")
+	_, strippedStored, hasStoredPrefix := strings.Cut(storedID, ":")
+	_, strippedTarget, hasTargetPrefix := strings.Cut(target, ":")
+
+	if hasStoredPrefix && strings.EqualFold(strippedStored, target) {
+		return true
+	}
+	if hasTargetPrefix && strings.EqualFold(storedID, strippedTarget) {
+		return true
+	}
+	if hasStoredPrefix && hasTargetPrefix && strings.EqualFold(strippedStored, strippedTarget) {
+		return true
+	}
+
+	// Compare with trimmed OpenAlex URL prefix
+	oaStored := strings.TrimPrefix(storedID, "openalex:")
+	oaStored = strings.TrimPrefix(oaStored, "https://openalex.org/")
+	oaTarget := strings.TrimPrefix(target, "openalex:")
+	oaTarget = strings.TrimPrefix(oaTarget, "https://openalex.org/")
+	if oaStored != "" && strings.EqualFold(oaStored, oaTarget) {
+		return true
+	}
+
+	return false
 }
 
 func (s *OpenAlexAnalysisService) enrich(
