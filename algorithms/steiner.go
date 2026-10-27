@@ -15,13 +15,13 @@ import (
 
 // PseudoSteiner is a struct that represents a pseudo-steiner algorithm.
 type PseudoSteiner[K comparable] struct {
-	graph                 gograph.Graph[K]
-	topologicalOrder      []*gograph.Vertex[K]
-	topologicalIndex      map[K]int
-	shortestDistanceCache map[K]map[K]float64
-	shortestPathCache     map[K]map[K][]K
-	maxEffort             float64
-	maxEffortExceeded     int
+	graph             gograph.Graph[K]
+	topologicalOrder  []*gograph.Vertex[K]
+	topologicalIndex  map[K]int
+	ssspDist          map[K]map[K]float64
+	ssspParent        map[K]map[K]K
+	maxEffort         float64
+	maxEffortExceeded int
 }
 
 // PseudoSteinerOption configures a [PseudoSteiner] algorithm instance.
@@ -63,13 +63,13 @@ func NewPseudoSteiner[K comparable](graph gograph.Graph[K], opts ...PseudoSteine
 		topologicalIndex[v.Label()] = i
 	}
 	pseudoSteiner := &PseudoSteiner[K]{
-		graph:                 graph,
-		topologicalOrder:      topologicalOrder,
-		topologicalIndex:      topologicalIndex,
-		shortestDistanceCache: make(map[K]map[K]float64),
-		shortestPathCache:     make(map[K]map[K][]K),
-		maxEffort:             3.0,
-		maxEffortExceeded:     3,
+		graph:             graph,
+		topologicalOrder:  topologicalOrder,
+		topologicalIndex:  topologicalIndex,
+		ssspDist:          make(map[K]map[K]float64),
+		ssspParent:        make(map[K]map[K]K),
+		maxEffort:         3.0,
+		maxEffortExceeded: 3,
 	}
 	for _, opt := range opts {
 		opt(pseudoSteiner)
@@ -105,17 +105,36 @@ func (q *PseudoSteiner[K]) Run(terminals []K) (gograph.Graph[K], error) {
 	// distances as weights.
 	metaGraph := gograph.New[K](
 		gograph.Directed(),
-		gograph.Acyclic(),
 		gograph.Weighted(),
 	)
 	for _, terminal := range terminals {
 		metaGraph.AddVertex(gograph.NewVertex(terminal))
 	}
+	// Compute SSSP for each terminal only once
+	for _, a := range terminals {
+		q.computeSSSP(a)
+	}
+
 	for a, b := range sortedPairs(terminals) {
-		dist, _ := q.shortestPath(a, b)
+		dist, path := q.shortestPath(a, b)
 		if math.IsInf(dist, 1) {
 			continue
 		}
+		// If the shortest path between terminals a and b contains any intermediate terminal,
+		// the sub-path edges between adjacent terminals already cover it with equal or smaller weights.
+		containsIntermediateTerminal := false
+		if len(path) > 2 {
+			for _, node := range path[1 : len(path)-1] {
+				if _, ok := terminalSet[node]; ok {
+					containsIntermediateTerminal = true
+					break
+				}
+			}
+		}
+		if containsIntermediateTerminal {
+			continue
+		}
+
 		_, err := metaGraph.AddEdge(
 			gograph.NewVertex(a),
 			gograph.NewVertex(b),
@@ -162,90 +181,78 @@ func (q *PseudoSteiner[K]) sortTopological(items []K) {
 	})
 }
 
-func (q *PseudoSteiner[K]) shortestPath(a, b K) (float64, []K) {
-	indexA := q.topologicalIndex[a]
-	indexB := q.topologicalIndex[b]
-
-	// If a is after b in the topological order, there is no path.
-	if indexA >= indexB {
-		return math.Inf(1), nil
+func (q *PseudoSteiner[K]) computeSSSP(a K) {
+	if q.ssspDist == nil {
+		q.ssspDist = make(map[K]map[K]float64)
+		q.ssspParent = make(map[K]map[K]K)
+	}
+	if _, exists := q.ssspDist[a]; exists {
+		return
 	}
 
-	// Find in cache
-	if dist, cachedPath, ok := q.getShortestPathFromCache(a, b); ok {
-		return dist, cachedPath
+	indexA, ok := q.topologicalIndex[a]
+	if !ok {
+		q.ssspDist[a] = make(map[K]float64)
+		q.ssspParent[a] = make(map[K]K)
+		return
 	}
 
-	maxLength := indexB - indexA + 1
-
-	// Initialize the distance map and parent map.
+	maxLength := len(q.topologicalOrder) - indexA
 	dist := make(map[K]float64, maxLength)
+	parent := make(map[K]K, maxLength)
 	dist[a] = 0
 
-	// Initialize the parent map.
-	parent := make(map[K]K, maxLength)
-
-	for _, u := range q.topologicalOrder[indexA : indexB+1] {
+	for _, u := range q.topologicalOrder[indexA:] {
+		labelU := u.Label()
+		du, ok := dist[labelU]
+		if !ok {
+			continue
+		}
 		for _, edge := range q.graph.EdgesOf(u) {
 			v := edge.Destination()
+			labelV := v.Label()
 			weight := float64(1)
 			if q.graph.IsWeighted() {
 				weight = edge.Weight()
 			}
-			if du, ok := dist[u.Label()]; ok {
-				dv, ok := dist[v.Label()]
-				if !ok || dv > du+weight {
-					dist[v.Label()] = du + weight
-					parent[v.Label()] = u.Label()
-				}
+			dv, ok := dist[labelV]
+			if !ok || dv > du+weight {
+				dist[labelV] = du + weight
+				parent[labelV] = labelU
 			}
 		}
 	}
 
-	// Find out if we found a path from a to b.
-	distB, ok := dist[b]
-	if !ok {
-		// Cache the result as nil.
-		q.cacheShortestPath(a, b, math.Inf(1), nil)
+	q.ssspDist[a] = dist
+	q.ssspParent[a] = parent
+}
+
+func (q *PseudoSteiner[K]) shortestPath(a, b K) (float64, []K) {
+	indexA, okA := q.topologicalIndex[a]
+	indexB, okB := q.topologicalIndex[b]
+	if !okA || !okB || indexA >= indexB {
 		return math.Inf(1), nil
 	}
 
-	// Reconstruct the path from b to a using the parent map.
-	path := make([]K, 0, maxLength)
+	q.computeSSSP(a)
+
+	distMap := q.ssspDist[a]
+	distB, ok := distMap[b]
+	if !ok {
+		return math.Inf(1), nil
+	}
+
+	parentMap := q.ssspParent[a]
+	path := make([]K, 0, indexB-indexA+1)
 	curr := b
 	for curr != a {
 		path = append(path, curr)
-		curr = parent[curr]
+		curr = parentMap[curr]
 	}
 	path = append(path, a)
 	slices.Reverse(path)
 
-	// Cache the path.
-	q.cacheShortestPath(a, b, distB, path)
 	return distB, path
-}
-
-func (q *PseudoSteiner[K]) getShortestPathFromCache(a, b K) (float64, []K, bool) {
-	cachedPath, ok := q.shortestPathCache[a][b]
-	if !ok {
-		return math.Inf(1), nil, false
-	}
-	cachedDistance, ok := q.shortestDistanceCache[a][b]
-	if !ok {
-		return math.Inf(1), nil, false
-	}
-	return cachedDistance, cachedPath, true
-}
-
-func (q *PseudoSteiner[K]) cacheShortestPath(a, b K, d float64, path []K) {
-	if q.shortestPathCache[a] == nil {
-		q.shortestPathCache[a] = make(map[K][]K)
-	}
-	q.shortestPathCache[a][b] = path
-	if q.shortestDistanceCache[a] == nil {
-		q.shortestDistanceCache[a] = make(map[K]float64)
-	}
-	q.shortestDistanceCache[a][b] = d
 }
 
 func (q *PseudoSteiner[K]) materialize(mst gograph.Graph[K]) gograph.Graph[K] {
@@ -268,27 +275,42 @@ func (q *PseudoSteiner[K]) materialize(mst gograph.Graph[K]) gograph.Graph[K] {
 }
 
 func (q *PseudoSteiner[K]) findBestDescendant(toBridge [][]K, terminalSet map[K]struct{}) *K {
-	bestCost := math.Inf(1)
+	numComponents := len(toBridge)
+	if numComponents < 2 {
+		return nil
+	}
 
-	// Iterate over all pairs of components to bridge.
+	// Pre-calculate min distance from each component i to each node w
+	distComp := make([]map[K]float64, numComponents)
+	for i, comp := range toBridge {
+		distComp[i] = make(map[K]float64)
+		for _, a := range comp {
+			q.computeSSSP(a)
+			for w, d := range q.ssspDist[a] {
+				if cur, ok := distComp[i][w]; !ok || d < cur {
+					distComp[i][w] = d
+				}
+			}
+		}
+	}
+
+	bestCost := math.Inf(1)
 	var candidate *K
-	for sources, targets := range allPairs(toBridge) {
-		for a, b := range cartesianProduct(sources, targets) {
-			indexA := q.topologicalIndex[a]
-			indexB := q.topologicalIndex[b]
-			earliestDescendant := max(indexA, indexB)
+
+	for i := 0; i < numComponents-1; i++ {
+		for j := i + 1; j < numComponents; j++ {
 			consecutiveExceeded := 0
-			for _, w := range q.topologicalOrder[earliestDescendant+1:] {
-				labelW := w.Label()
-				if _, ok := terminalSet[labelW]; ok {
+			for _, wNode := range q.topologicalOrder {
+				w := wNode.Label()
+				if _, ok := terminalSet[w]; ok {
 					continue
 				}
-				distA, _ := q.shortestPath(a, labelW)
-				distB, _ := q.shortestPath(b, labelW)
-				if math.IsInf(distA, 1) || math.IsInf(distB, 1) {
+				dA, okA := distComp[i][w]
+				dB, okB := distComp[j][w]
+				if !okA || !okB || math.IsInf(dA, 1) || math.IsInf(dB, 1) {
 					continue
 				}
-				cost := distA + distB
+				cost := dA + dB
 				if cost > q.maxEffort {
 					slog.Debug("descendant cost exceeds max effort", "cost", cost, "maxEffort", q.maxEffort)
 					consecutiveExceeded++
@@ -300,44 +322,57 @@ func (q *PseudoSteiner[K]) findBestDescendant(toBridge [][]K, terminalSet map[K]
 				consecutiveExceeded = 0
 				if cost < bestCost {
 					bestCost = cost
-					cand := labelW
+					cand := w
 					candidate = &cand
 				}
 			}
 		}
 	}
 
-	// If no candidate was found, return nil.
 	if math.IsInf(bestCost, 1) || candidate == nil {
 		return nil
 	}
-
 	return candidate
 }
 
 func (q *PseudoSteiner[K]) findBestAncestor(toBridge [][]K, terminalSet map[K]struct{}) *K {
-	bestCost := math.Inf(1)
+	numComponents := len(toBridge)
+	if numComponents < 2 {
+		return nil
+	}
 
-	// Iterate over all pairs of components to bridge.
+	bestCost := math.Inf(1)
 	var candidate *K
-	for sources, targets := range allPairs(toBridge) {
-		for a, b := range cartesianProduct(sources, targets) {
-			indexA := q.topologicalIndex[a]
-			indexB := q.topologicalIndex[b]
-			oldestAncestor := min(indexA, indexB)
+
+	for i := 0; i < numComponents-1; i++ {
+		for j := i + 1; j < numComponents; j++ {
 			consecutiveExceeded := 0
-			for i := oldestAncestor - 1; i >= 0; i-- {
-				w := q.topologicalOrder[i]
-				labelW := w.Label()
-				if _, ok := terminalSet[labelW]; ok {
+			for k := len(q.topologicalOrder) - 1; k >= 0; k-- {
+				wNode := q.topologicalOrder[k]
+				w := wNode.Label()
+				if _, ok := terminalSet[w]; ok {
 					continue
 				}
-				distA, _ := q.shortestPath(labelW, a)
-				distB, _ := q.shortestPath(labelW, b)
-				if math.IsInf(distA, 1) || math.IsInf(distB, 1) {
+				q.computeSSSP(w)
+				distMap := q.ssspDist[w]
+
+				dA := math.Inf(1)
+				for _, a := range toBridge[i] {
+					if d, ok := distMap[a]; ok && d < dA {
+						dA = d
+					}
+				}
+				dB := math.Inf(1)
+				for _, b := range toBridge[j] {
+					if d, ok := distMap[b]; ok && d < dB {
+						dB = d
+					}
+				}
+
+				if math.IsInf(dA, 1) || math.IsInf(dB, 1) {
 					continue
 				}
-				cost := distA + distB
+				cost := dA + dB
 				if cost > q.maxEffort {
 					slog.Debug("ancestor cost exceeds max effort", "cost", cost, "maxEffort", q.maxEffort)
 					consecutiveExceeded++
@@ -349,18 +384,16 @@ func (q *PseudoSteiner[K]) findBestAncestor(toBridge [][]K, terminalSet map[K]st
 				consecutiveExceeded = 0
 				if cost < bestCost {
 					bestCost = cost
-					cand := labelW
+					cand := w
 					candidate = &cand
 				}
 			}
 		}
 	}
 
-	// If no candidate was found, return nil.
 	if math.IsInf(bestCost, 1) || candidate == nil {
 		return nil
 	}
-
 	return candidate
 }
 
@@ -369,33 +402,6 @@ func sortedPairs[K any](items []K) iter.Seq2[K, K] {
 		for i := 0; i < len(items)-1; i++ {
 			for j := i + 1; j < len(items); j++ {
 				if !yield(items[i], items[j]) {
-					return
-				}
-			}
-		}
-	}
-}
-
-func allPairs[K any](items []K) iter.Seq2[K, K] {
-	return func(yield func(K, K) bool) {
-		for i := range items {
-			for j := range items {
-				if i == j {
-					continue
-				}
-				if !yield(items[i], items[j]) {
-					return
-				}
-			}
-		}
-	}
-}
-
-func cartesianProduct[T any](a, b []T) iter.Seq2[T, T] {
-	return func(yield func(T, T) bool) {
-		for _, x := range a {
-			for _, y := range b {
-				if !yield(x, y) {
 					return
 				}
 			}

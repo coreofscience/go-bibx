@@ -146,7 +146,7 @@ func TestSearchTool(t *testing.T) {
 		})
 		require.NoError(t, err)
 		assert.True(t, res.IsError)
-		assert.Contains(t, res.Content[0].(*mcp.TextContent).Text, "limit must be less than or equal to 1000")
+		assert.Contains(t, res.Content[0].(*mcp.TextContent).Text, "limit must be less than or equal to 100")
 	})
 
 	t.Run("service failure returns error", func(t *testing.T) {
