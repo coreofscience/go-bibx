@@ -45,6 +45,8 @@ func NewRendererWithFormat(format string) (Renderer, error) {
 	switch format {
 	case "json":
 		return NewJSONRenderer(), nil
+	case "bibtex":
+		return NewBibtexRenderer(), nil
 	case "simple", "markdown", "reference":
 		return NewMarkdownRenderer(format)
 	default:
@@ -54,10 +56,10 @@ func NewRendererWithFormat(format string) (Renderer, error) {
 
 // AnalysisFormats returns the list of all supported output formats for analysis rendering.
 func AnalysisFormats() []string {
-	return []string{"filename", "json", "simple", "markdown", "reference"}
+	return []string{"filename", "json", "simple", "markdown", "reference", "bibtex"}
 }
 
 // ResultFormats returns the list of all supported output formats for result rendering.
 func ResultFormats() []string {
-	return []string{"json", "simple", "markdown", "reference"}
+	return []string{"json", "simple", "markdown", "reference", "bibtex"}
 }
