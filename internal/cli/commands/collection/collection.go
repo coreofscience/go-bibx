@@ -14,6 +14,7 @@ func New() *cli.Command {
 			newListCommand(),
 			newShowCommand(),
 			newDeleteCommand(),
+			newExportCommand(),
 		},
 	}
 }

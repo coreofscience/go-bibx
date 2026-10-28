@@ -49,6 +49,88 @@ func (_m *MockAnalysisService) EXPECT() *MockAnalysisService_Expecter {
 	return &MockAnalysisService_Expecter{mock: &_m.Mock}
 }
 
+// GetArticles provides a mock function for the type MockAnalysisService
+func (_mock *MockAnalysisService) GetArticles(ctx context.Context, collectionID uuid.UUID, ids []string) ([]*models.Article, []string, error) {
+	ret := _mock.Called(ctx, collectionID, ids)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetArticles")
+	}
+
+	var r0 []*models.Article
+	var r1 []string
+	var r2 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, []string) ([]*models.Article, []string, error)); ok {
+		return returnFunc(ctx, collectionID, ids)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, []string) []*models.Article); ok {
+		r0 = returnFunc(ctx, collectionID, ids)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*models.Article)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, []string) []string); ok {
+		r1 = returnFunc(ctx, collectionID, ids)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).([]string)
+		}
+	}
+	if returnFunc, ok := ret.Get(2).(func(context.Context, uuid.UUID, []string) error); ok {
+		r2 = returnFunc(ctx, collectionID, ids)
+	} else {
+		r2 = ret.Error(2)
+	}
+	return r0, r1, r2
+}
+
+// MockAnalysisService_GetArticles_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetArticles'
+type MockAnalysisService_GetArticles_Call struct {
+	*mock.Call
+}
+
+// GetArticles is a helper method to define mock.On call
+//   - ctx context.Context
+//   - collectionID uuid.UUID
+//   - ids []string
+func (_e *MockAnalysisService_Expecter) GetArticles(ctx any, collectionID any, ids any) *MockAnalysisService_GetArticles_Call {
+	return &MockAnalysisService_GetArticles_Call{Call: _e.mock.On("GetArticles", ctx, collectionID, ids)}
+}
+
+func (_c *MockAnalysisService_GetArticles_Call) Run(run func(ctx context.Context, collectionID uuid.UUID, ids []string)) *MockAnalysisService_GetArticles_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		var arg2 []string
+		if args[2] != nil {
+			arg2 = args[2].([]string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockAnalysisService_GetArticles_Call) Return(articles []*models.Article, strings []string, err error) *MockAnalysisService_GetArticles_Call {
+	_c.Call.Return(articles, strings, err)
+	return _c
+}
+
+func (_c *MockAnalysisService_GetArticles_Call) RunAndReturn(run func(ctx context.Context, collectionID uuid.UUID, ids []string) ([]*models.Article, []string, error)) *MockAnalysisService_GetArticles_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Inquire provides a mock function for the type MockAnalysisService
 func (_mock *MockAnalysisService) Inquire(ctx context.Context, query string, limit int, opts services.InquireOptions) (*services.InquireResult, error) {
 	ret := _mock.Called(ctx, query, limit, opts)

@@ -7,10 +7,12 @@ require (
 	github.com/hmdsefi/gograph v0.5.0
 	github.com/lmittmann/tint v1.1.3
 	github.com/modelcontextprotocol/go-sdk v1.8.0
+	github.com/nickng/bibtex v1.4.2
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli/v3 v3.8.0
 	go.yaml.in/yaml/v4 v4.0.0-rc.4
 	golang.org/x/sync v0.24.0
+	golang.org/x/text v0.43.0
 	modernc.org/sqlite v1.61.0
 	resty.dev/v3 v3.0.0-beta.3
 )

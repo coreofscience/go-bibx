@@ -69,7 +69,7 @@ func New() *cli.Command {
 			)
 
 			tools.Register(server, colSvc, anaSvc)
-			resources.Register(server, colSvc)
+			resources.Register(server, colSvc, anaSvc)
 
 			if err := server.Run(ctx, &mcp.StdioTransport{}); err != nil {
 				return fmt.Errorf("failed to run mcp server: %w", err)

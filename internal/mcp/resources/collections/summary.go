@@ -65,7 +65,7 @@ func (s *Summary) Provide(ctx context.Context, rrr *mcp.ReadResourceRequest) (*m
 		Contents: []*mcp.ResourceContents{{
 			URI:      rrr.Params.URI,
 			MIMEType: "application/json",
-			Blob:     bytes,
+			Text:     string(bytes),
 		}},
 	}, nil
 }

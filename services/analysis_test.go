@@ -454,6 +454,176 @@ func TestOpenAlexAnalysisService_SearchHighLimitPerformance(t *testing.T) {
 	assert.NotEmpty(t, res.Nodes)
 }
 
+func TestOpenAlexAnalysisService_GetArticles(t *testing.T) {
+	tempDir := t.TempDir()
+	db, err := repository.OpenAndMigrateSQLite(filepath.Join(tempDir, "get_articles_test.db"))
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, db.Close())
+	}()
+
+	colSvc := services.NewCollectionService(db)
+	oaClient := openalexmocks.NewMockClient(t)
+	anaSvc := services.NewAnalysisService(db, oaClient)
+	ctx := context.Background()
+
+	t.Run("non-existent collection returns ErrCollectionNotFound", func(t *testing.T) {
+		unknownID := uuid.NewV7()
+		articles, notFound, err := anaSvc.GetArticles(ctx, unknownID, []string{"W1"})
+		require.ErrorIs(t, err, services.ErrCollectionNotFound)
+		assert.Nil(t, articles)
+		assert.Nil(t, notFound)
+	})
+
+	// Setup a collection with test articles
+	colID := uuid.NewV7()
+	hash := services.ComputeQueryHash("article lookup test", 10)
+	require.NoError(t, colSvc.Create(ctx, &services.Collection{
+		ID:          colID,
+		QueryHash:   hash,
+		Query:       "article lookup test",
+		ResultLimit: 10,
+	}))
+
+	year1 := 2017
+	title1 := "Attention Is All You Need"
+	doi1 := "10.5555/3295222"
+	permalink1 := "https://doi.org/10.5555/3295222"
+
+	art1 := &models.Article{
+		Label:     "https://openalex.org/W100",
+		Title:     &title1,
+		Authors:   []string{"Vaswani, Ashish", "Shazeer, Noam"},
+		Year:      &year1,
+		DOI:       &doi1,
+		Permalink: &permalink1,
+		IDs:       collections.NewSet("openalex:https://openalex.org/W100", "doi:10.5555/3295222"),
+		Rich:      true,
+	}
+
+	year2 := 2018
+	title2 := "Deep Residual Learning"
+	doi2 := "10.1109/CVPR.2016.90"
+
+	art2 := &models.Article{
+		Label:   "custom-resnet-label",
+		Title:   &title2,
+		Authors: []string{"He, Kaiming", "Zhang, Xiangyu"},
+		Year:    &year2,
+		DOI:     &doi2,
+		IDs:     collections.NewSet("openalex:W200"),
+		Rich:    true,
+	}
+
+	analysis := &models.Analysis{
+		Nodes: []*models.Node{
+			{
+				ID:        "openalex:https://openalex.org/W100",
+				Category:  models.CategoryRoot,
+				Rootness:  0.9,
+				Article:   art1,
+				Community: 1,
+			},
+			{
+				ID:        "node-resnet-id",
+				Category:  models.CategoryTrunk,
+				Trunkness: 0.8,
+				Article:   art2,
+				Community: 1,
+			},
+		},
+		Links: []*models.Link{
+			{
+				Source: "openalex:https://openalex.org/W100",
+				Target: "node-resnet-id",
+				Weight: 1.0,
+			},
+		},
+	}
+
+	require.NoError(t, anaSvc.StoreAnalysis(ctx, colID, analysis))
+
+	t.Run("empty ids returns all articles in collection", func(t *testing.T) {
+		articles, notFound, err := anaSvc.GetArticles(ctx, colID, nil)
+		require.NoError(t, err)
+		assert.Empty(t, notFound)
+		require.Len(t, articles, 2)
+	})
+
+	t.Run("match by node ID", func(t *testing.T) {
+		articles, notFound, err := anaSvc.GetArticles(ctx, colID, []string{"openalex:W200"})
+		require.NoError(t, err)
+		assert.Empty(t, notFound)
+		require.Len(t, articles, 1)
+		assert.Equal(t, "custom-resnet-label", articles[0].Label)
+	})
+
+	t.Run("match by article label", func(t *testing.T) {
+		articles, notFound, err := anaSvc.GetArticles(ctx, colID, []string{"custom-resnet-label"})
+		require.NoError(t, err)
+		assert.Empty(t, notFound)
+		require.Len(t, articles, 1)
+		assert.Equal(t, "Deep Residual Learning", *articles[0].Title)
+	})
+
+	t.Run("match by SimpleId", func(t *testing.T) {
+		articles, notFound, err := anaSvc.GetArticles(ctx, colID, []string{"vaswani2017"})
+		require.NoError(t, err)
+		assert.Empty(t, notFound)
+		require.Len(t, articles, 1)
+		assert.Equal(t, "Attention Is All You Need", *articles[0].Title)
+	})
+
+	t.Run("match by DOI variations", func(t *testing.T) {
+		// Clean DOI
+		articles, notFound, err := anaSvc.GetArticles(ctx, colID, []string{"10.5555/3295222"})
+		require.NoError(t, err)
+		assert.Empty(t, notFound)
+		require.Len(t, articles, 1)
+
+		// Prefixed with doi:
+		articles, notFound, err = anaSvc.GetArticles(ctx, colID, []string{"doi:10.5555/3295222"})
+		require.NoError(t, err)
+		assert.Empty(t, notFound)
+		require.Len(t, articles, 1)
+
+		// Prefixed with https://doi.org/
+		articles, notFound, err = anaSvc.GetArticles(ctx, colID, []string{"https://doi.org/10.5555/3295222"})
+		require.NoError(t, err)
+		assert.Empty(t, notFound)
+		require.Len(t, articles, 1)
+	})
+
+	t.Run("match by OpenAlex ID variations", func(t *testing.T) {
+		// W-number only
+		articles, notFound, err := anaSvc.GetArticles(ctx, colID, []string{"W100"})
+		require.NoError(t, err)
+		assert.Empty(t, notFound)
+		require.Len(t, articles, 1)
+
+		// OpenAlex URL
+		articles, notFound, err = anaSvc.GetArticles(ctx, colID, []string{"https://openalex.org/W100"})
+		require.NoError(t, err)
+		assert.Empty(t, notFound)
+		require.Len(t, articles, 1)
+
+		// Prefixed W-number
+		articles, notFound, err = anaSvc.GetArticles(ctx, colID, []string{"openalex:W200"})
+		require.NoError(t, err)
+		assert.Empty(t, notFound)
+		require.Len(t, articles, 1)
+	})
+
+	t.Run("partial match returns found and notFound", func(t *testing.T) {
+		articles, notFound, err := anaSvc.GetArticles(ctx, colID, []string{"W100", "unknown-id-xyz", "vaswani2017"})
+		require.NoError(t, err)
+		require.Len(t, notFound, 1)
+		assert.Equal(t, "unknown-id-xyz", notFound[0])
+		// Note that W100 and vaswani2017 are the same article, so deduplication yields 1 article
+		require.Len(t, articles, 1)
+	})
+}
+
 func worksMapToSlice(works ...*openalex.Work) []*openalex.Work {
 	return works
 }
