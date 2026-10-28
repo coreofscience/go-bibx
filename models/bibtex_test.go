@@ -128,12 +128,29 @@ func TestArticle_ToBibEntry(t *testing.T) {
 			Title:   &title,
 		}
 
-		entry := art.ToBibEntry("customKey2023")
+		entry := art.ToBibEntry(models.WithCiteKey("customKey2023"))
 		require.NotNil(t, entry)
 		assert.Equal(t, "misc", entry.Type)
 		assert.Equal(t, "customKey2023", entry.CiteName)
 		_, hasJournal := entry.Fields["journal"]
 		assert.False(t, hasJournal)
+	})
+
+	t.Run("omits abstract when WithOmitAbstracts is true", func(t *testing.T) {
+		year := 2024
+		title := "Test Paper"
+		abstract := "Very long abstract text."
+		art := &models.Article{
+			Authors:  []string{"Doe, Jane"},
+			Year:     &year,
+			Title:    &title,
+			Abstract: &abstract,
+		}
+
+		entry := art.ToBibEntry(models.WithOmitAbstracts(true))
+		require.NotNil(t, entry)
+		_, hasAbstract := entry.Fields["abstract"]
+		assert.False(t, hasAbstract)
 	})
 }
 
@@ -264,4 +281,97 @@ func TestArticles_ToBibTeX(t *testing.T) {
 		}
 		assert.Equal(t, []string{"smith2020", "smith2020a", "smith2020b"}, citeKeys)
 	})
+}
+
+func TestSanitizeLaTeX(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "escapes percent signs",
+			input:    "fluctuations smaller than 8% of the bit period",
+			expected: `fluctuations smaller than 8\% of the bit period`,
+		},
+		{
+			name:     "escapes ampersands",
+			input:    "AT&T Bell Labs & IBM",
+			expected: `AT\&T Bell Labs \& IBM`,
+		},
+		{
+			name:     "escapes underscores",
+			input:    "deep_learning_models_in_practice",
+			expected: `deep\_learning\_models\_in\_practice`,
+		},
+		{
+			name:     "escapes hash symbols",
+			input:    "issue #42 and rule #1",
+			expected: `issue \#42 and rule \#1`,
+		},
+		{
+			name:     "does not double escape already escaped characters",
+			input:    `already escaped 8\% and \& symbol`,
+			expected: `already escaped 8\% and \& symbol`,
+		},
+		{
+			name:     "plain string without special characters unchanged",
+			input:    "Attention Is All You Need",
+			expected: "Attention Is All You Need",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expected, models.SanitizeLaTeX(tc.input))
+		})
+	}
+}
+
+func TestArticles_ToBibTeXWithKeys(t *testing.T) {
+	year := 2021
+	title1 := "Research on 8% efficiency in BPM"
+	title2 := "R&D in deep_learning #1"
+	journal := "Science & Technology"
+
+	articles := models.Articles{
+		{
+			Label:   "openalex:W1",
+			Authors: []string{"Albrecht, Manfred"},
+			Year:    &year,
+			Title:   &title1,
+			Journal: &journal,
+		},
+		{
+			Label:   "openalex:W2",
+			Authors: []string{"Albrecht, Manfred"},
+			Year:    &year,
+			Title:   &title2,
+			Journal: &journal,
+		},
+	}
+
+	bibStr, keys := articles.ToBibTeXWithKeys()
+	require.NotEmpty(t, bibStr)
+	require.Len(t, keys, 2)
+
+	assert.Equal(t, "openalex:W1", keys[0].ID)
+	assert.Equal(t, "albrecht2021", keys[0].CiteKey)
+	assert.Equal(t, "Research on 8% efficiency in BPM", keys[0].Title)
+	assert.Equal(t, "Albrecht, Manfred", keys[0].FirstAuthor)
+	assert.Equal(t, &year, keys[0].Year)
+
+	assert.Equal(t, "openalex:W2", keys[1].ID)
+	assert.Equal(t, "albrecht2021a", keys[1].CiteKey)
+
+	// Verify that escaped characters in bibStr parse without errors
+	assert.Contains(t, bibStr, `8\%`)
+	assert.Contains(t, bibStr, `R\&D`)
+	assert.Contains(t, bibStr, `deep\_learning`)
+	assert.Contains(t, bibStr, `\#1`)
+	assert.Contains(t, bibStr, `Science \& Technology`)
+
+	parsed, err := bibtex.Parse(strings.NewReader(bibStr))
+	require.NoError(t, err)
+	require.Len(t, parsed.Entries, 2)
 }

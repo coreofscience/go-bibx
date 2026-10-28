@@ -1,9 +1,13 @@
 package models
 
 import (
+	"bytes"
 	"fmt"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
+	"text/tabwriter"
 	"unicode"
 
 	"github.com/coreofscience/go-bibx/internal/utils"
@@ -30,6 +34,66 @@ var (
 		"abstract",
 	}
 )
+
+// CitationKeyInfo provides metadata for an exported citation.
+type CitationKeyInfo struct {
+	ID          string `json:"id"`
+	CiteKey     string `json:"citekey"`
+	Title       string `json:"title,omitempty"`
+	Year        *int   `json:"year,omitempty"`
+	FirstAuthor string `json:"first_author,omitempty"`
+}
+
+// BibtexOption specifies configuration options for BibTeX generation.
+type BibtexOption func(*bibtexOptions)
+
+type bibtexOptions struct {
+	omitAbstracts bool
+	citeKey       string
+}
+
+// WithOmitAbstracts configures whether the abstract field should be omitted from BibTeX entries.
+func WithOmitAbstracts(omit bool) BibtexOption {
+	return func(o *bibtexOptions) {
+		o.omitAbstracts = omit
+	}
+}
+
+// WithCiteKey specifies a custom citation key for a single Article BibTeX entry.
+func WithCiteKey(key string) BibtexOption {
+	return func(o *bibtexOptions) {
+		o.citeKey = key
+	}
+}
+
+// SanitizeLaTeX escapes common LaTeX reserved characters (%, &, _, #) in plain text,
+// avoiding double-escaping if a character is already preceded by a backslash.
+func SanitizeLaTeX(s string) string {
+	var sb strings.Builder
+	runesList := []rune(s)
+	for i, r := range runesList {
+		switch r {
+		case '%', '&', '_', '#':
+			escaped := false
+			if i > 0 && runesList[i-1] == '\\' {
+				numBackslashes := 0
+				for j := i - 1; j >= 0 && runesList[j] == '\\'; j-- {
+					numBackslashes++
+				}
+				if numBackslashes%2 == 1 {
+					escaped = true
+				}
+			}
+			if !escaped {
+				sb.WriteRune('\\')
+			}
+			sb.WriteRune(r)
+		default:
+			sb.WriteRune(r)
+		}
+	}
+	return sb.String()
+}
 
 // GenerateCitationKey generates a clean, URL-safe citation key for an article.
 func GenerateCitationKey(a *Article) string {
@@ -108,10 +172,15 @@ func keySuffix(n int) string {
 }
 
 // ToBibEntry converts the Article into a [*bibtex.BibEntry].
-// If citeKey is provided, it will be used as the citation key; otherwise, an automatic key is generated.
-func (a *Article) ToBibEntry(citeKey ...string) *bibtex.BibEntry {
+// Accepts optional [BibtexOption] modifiers (e.g. [WithCiteKey], [WithOmitAbstracts]).
+func (a *Article) ToBibEntry(opts ...BibtexOption) *bibtex.BibEntry {
 	if a == nil {
 		return nil
+	}
+
+	options := bibtexOptions{}
+	for _, opt := range opts {
+		opt(&options)
 	}
 
 	entryType := "misc"
@@ -120,8 +189,8 @@ func (a *Article) ToBibEntry(citeKey ...string) *bibtex.BibEntry {
 	}
 
 	key := GenerateCitationKey(a)
-	if len(citeKey) > 0 && citeKey[0] != "" {
-		key = citeKey[0]
+	if options.citeKey != "" {
+		key = options.citeKey
 	}
 
 	entry := bibtex.NewBibEntry(entryType, key)
@@ -130,10 +199,10 @@ func (a *Article) ToBibEntry(citeKey ...string) *bibtex.BibEntry {
 		entry.AddField("author", bibtex.NewBibConst(strings.Join(a.Authors, " and ")))
 	}
 	if a.Title != nil && *a.Title != "" {
-		entry.AddField("title", bibtex.NewBibConst(*a.Title))
+		entry.AddField("title", bibtex.NewBibConst(SanitizeLaTeX(*a.Title)))
 	}
 	if a.Journal != nil && *a.Journal != "" {
-		entry.AddField("journal", bibtex.NewBibConst(*a.Journal))
+		entry.AddField("journal", bibtex.NewBibConst(SanitizeLaTeX(*a.Journal)))
 	}
 	if a.Year != nil {
 		entry.AddField("year", bibtex.NewBibConst(fmt.Sprintf("%d", *a.Year)))
@@ -156,37 +225,87 @@ func (a *Article) ToBibEntry(citeKey ...string) *bibtex.BibEntry {
 		entry.AddField("url", bibtex.NewBibConst(*link))
 	}
 	if a.Keywords != nil && a.Keywords.Len() > 0 {
-		entry.AddField("keywords", bibtex.NewBibConst(strings.Join(a.Keywords.Items(), ", ")))
+		items := a.Keywords.Items()
+		sanitizedKeywords := make([]string, len(items))
+		for i, kw := range items {
+			sanitizedKeywords[i] = SanitizeLaTeX(kw)
+		}
+		entry.AddField("keywords", bibtex.NewBibConst(strings.Join(sanitizedKeywords, ", ")))
 	}
-	if a.Abstract != nil && *a.Abstract != "" {
+	if !options.omitAbstracts && a.Abstract != nil && *a.Abstract != "" {
 		cleanAbstract := strings.Join(strings.Fields(*a.Abstract), " ")
-		entry.AddField("abstract", bibtex.NewBibConst(cleanAbstract))
+		entry.AddField("abstract", bibtex.NewBibConst(SanitizeLaTeX(cleanAbstract)))
 	}
 
 	return entry
 }
 
+// formatBibEntry formats a bibtex.BibEntry into standard BibTeX with {...} value delimiters,
+// preserving LaTeX escapes without backslash-doubling.
+func formatBibEntry(buf *bytes.Buffer, entry *bibtex.BibEntry, keyOrder []string) {
+	if entry == nil {
+		return
+	}
+
+	fmt.Fprintf(buf, "@%s{%s,\n", entry.Type, entry.CiteName)
+
+	priority := make(map[string]int, len(keyOrder))
+	for i, k := range keyOrder {
+		priority[k] = i - len(keyOrder)
+	}
+
+	keys := make([]string, 0, len(entry.Fields))
+	for k := range entry.Fields {
+		keys = append(keys, k)
+	}
+
+	sort.Slice(keys, func(i, j int) bool {
+		pi, pj := priority[keys[i]], priority[keys[j]]
+		return pi < pj || (pi == pj && keys[i] < keys[j])
+	})
+
+	tw := tabwriter.NewWriter(buf, 1, 4, 1, ' ', 0)
+	for _, k := range keys {
+		val := entry.Fields[k].String()
+		if _, err := strconv.Atoi(val); err == nil && (k == "year" || k == "volume" || k == "number") {
+			_, _ = fmt.Fprintf(tw, "    %s\t=\t%s,\n", k, val)
+		} else {
+			_, _ = fmt.Fprintf(tw, "    %s\t=\t{%s},\n", k, val)
+		}
+	}
+	_ = tw.Flush()
+	buf.WriteString("}\n")
+}
+
 // ToBibTeX formats a single Article into a BibTeX entry string.
-func (a *Article) ToBibTeX(citeKey ...string) string {
+func (a *Article) ToBibTeX(opts ...BibtexOption) string {
 	if a == nil {
 		return ""
 	}
-	entry := a.ToBibEntry(citeKey...)
+	entry := a.ToBibEntry(opts...)
 	if entry == nil {
 		return ""
 	}
-	return entry.PrettyString(bibtex.WithKeyOrder(defaultBibtexKeyOrder))
+	var buf bytes.Buffer
+	formatBibEntry(&buf, entry, defaultBibtexKeyOrder)
+	return buf.String()
 }
 
-// ToBibTeX formats a collection of Articles into a concatenated BibTeX string,
-// automatically disambiguating duplicate citation keys.
-func (a Articles) ToBibTeX() string {
+// ToBibTeXWithKeys formats a collection of Articles into a concatenated BibTeX string,
+// automatically disambiguating duplicate citation keys, and returns the slice of [CitationKeyInfo].
+func (a Articles) ToBibTeXWithKeys(opts ...BibtexOption) (string, []CitationKeyInfo) {
 	if len(a) == 0 {
-		return ""
+		return "", nil
 	}
 
-	bib := bibtex.NewBibTex()
+	options := bibtexOptions{}
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	var buf bytes.Buffer
 	seenKeys := make(map[string]int)
+	keysInfo := make([]CitationKeyInfo, 0, len(a))
 
 	for _, art := range a {
 		if art == nil {
@@ -210,11 +329,42 @@ func (a Articles) ToBibTeX() string {
 			seenKeys[finalKey]++
 		}
 
-		entry := art.ToBibEntry(finalKey)
+		entry := art.ToBibEntry(WithCiteKey(finalKey), WithOmitAbstracts(options.omitAbstracts))
 		if entry != nil {
-			bib.AddEntry(entry)
+			if buf.Len() > 0 {
+				buf.WriteString("\n")
+			}
+			formatBibEntry(&buf, entry, defaultBibtexKeyOrder)
+
+			var firstAuthor string
+			if len(art.Authors) > 0 {
+				firstAuthor = art.Authors[0]
+			}
+			var title string
+			if art.Title != nil {
+				title = *art.Title
+			}
+			id := art.Label
+			if key := art.Key(); key != nil && *key != "" {
+				id = *key
+			}
+
+			keysInfo = append(keysInfo, CitationKeyInfo{
+				ID:          id,
+				CiteKey:     finalKey,
+				Title:       title,
+				Year:        art.Year,
+				FirstAuthor: firstAuthor,
+			})
 		}
 	}
 
-	return bib.PrettyString(bibtex.WithKeyOrder(defaultBibtexKeyOrder))
+	return buf.String(), keysInfo
+}
+
+// ToBibTeX formats a collection of Articles into a concatenated BibTeX string,
+// automatically disambiguating duplicate citation keys.
+func (a Articles) ToBibTeX(opts ...BibtexOption) string {
+	bibStr, _ := a.ToBibTeXWithKeys(opts...)
+	return bibStr
 }
