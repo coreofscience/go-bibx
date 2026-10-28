@@ -66,7 +66,7 @@ func TestCollectionSummaryResource(t *testing.T) {
 		assert.Equal(t, "application/json", content.MIMEType)
 
 		var retrieved services.Collection
-		err = json.Unmarshal(content.Blob, &retrieved)
+		err = json.Unmarshal([]byte(content.Text), &retrieved)
 		require.NoError(t, err)
 		assert.Equal(t, colID, retrieved.ID)
 		assert.Equal(t, "natural language processing", retrieved.Query)
