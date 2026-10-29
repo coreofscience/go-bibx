@@ -14,17 +14,17 @@ import (
 // SearchInput represents the input parameters for the Search tool.
 type SearchInput struct {
 	// Query is the search query for the collection articles.
-	Query string `json:"query"`
+	Query string `json:"query" jsonschema:"Keyword to match against article titles, abstracts, and metadata within the collection. For best results, try one-word queries."`
 	// Limit is the number of initial nodes to start the graph algorithm with (default: 10, max: 100).
-	Limit int `json:"limit,omitempty"`
+	Limit int `json:"limit,omitempty" jsonschema:"Number of top keyword-matched seed nodes used to construct the Steiner tree subgraph (1-100, default: 10). For best results, try between 10 and 20."`
 	// Target is the collection ID (UUID) or name alias. If omitted, the latest collection is queried.
-	Target string `json:"target,omitempty"`
+	Target string `json:"target,omitempty" jsonschema:"Collection UUID or name alias. Omit to search the most recently updated collection."`
 }
 
 // SearchOutput contains the graph results of the search query.
 type SearchOutput struct {
-	Nodes []*mcpmodels.NodeSummary `json:"nodes"`
-	Links []*mcpmodels.LinkSummary `json:"links"`
+	Nodes []*mcpmodels.NodeSummary `json:"nodes" jsonschema:"Articles in the connected Steiner tree subgraph (matched seed articles and connecting bridge papers)"`
+	Links []*mcpmodels.LinkSummary `json:"links" jsonschema:"Directed citation edges connecting nodes in the subgraph"`
 }
 
 // Search holds the search tool.
@@ -47,11 +47,11 @@ func (s *Search) Tool() *mcp.Tool {
 		Annotations: &mcp.ToolAnnotations{
 			DestructiveHint: new(false),
 			IdempotentHint:  true,
-			OpenWorldHint:   new(true),
+			OpenWorldHint:   new(false),
 			ReadOnlyHint:    true,
 			Title:           "search collection",
 		},
-		Description: "search articles in a bibliographic collection using keyword matching and graph Steiner tree reduction",
+		Description: "Search within an existing collection using keyword matching and Steiner tree graph reduction to find relevant articles and connecting citation paths.",
 		Name:        "search",
 		Title:       "Search collection",
 	}

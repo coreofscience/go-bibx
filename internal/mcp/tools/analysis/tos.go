@@ -25,16 +25,16 @@ var ValidCategories = map[string]struct{}{
 // TosInput represents the input parameters for the Tos tool.
 type TosInput struct {
 	// Category is the Tree of Science category to query: "root", "trunk", or "leaf".
-	Category string `json:"category"`
+	Category string `json:"category" jsonschema:"Tree of Science category: 'root' (foundational/seminal papers), 'trunk' (structural bridge papers), or 'leaf' (modern state-of-the-art papers)"`
 	// Limit is the number of results to return (default: 10, max: 1000).
-	Limit int `json:"limit,omitempty"`
+	Limit int `json:"limit,omitempty" jsonschema:"Maximum number of top-scored articles to return (1-1000, default: 10). 10 to 20 is usually plenty, except for 'leaf' where up to 40 is also fine."`
 	// Target is the collection ID (UUID) or name alias. If omitted, the latest collection is queried.
-	Target string `json:"target,omitempty"`
+	Target string `json:"target,omitempty" jsonschema:"Collection UUID or name alias. Omit to query the most recently updated collection."`
 }
 
 // TosOutput contains the results of the Tree of Science query.
 type TosOutput struct {
-	Results []*mcpmodels.Result `json:"results"`
+	Results []*mcpmodels.Result `json:"results" jsonschema:"Articles in the requested category ordered by descending score"`
 }
 
 // Tos holds the tos tool.
@@ -57,11 +57,11 @@ func (t *Tos) Tool() *mcp.Tool {
 		Annotations: &mcp.ToolAnnotations{
 			DestructiveHint: new(false),
 			IdempotentHint:  true,
-			OpenWorldHint:   new(true),
+			OpenWorldHint:   new(false),
 			ReadOnlyHint:    true,
 			Title:           "query Tree of Science categories",
 		},
-		Description: "query articles in a bibliographic collection by Tree of Science (ToS) category (root, trunk, or leaf)",
+		Description: "Query top articles in a collection by Tree of Science (ToS) category ('root', 'trunk', or 'leaf'). Read resource bibx:/summary for methodology details.",
 		Name:        "tos",
 		Title:       "Tree of Science",
 	}

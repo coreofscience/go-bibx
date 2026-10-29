@@ -60,6 +60,10 @@ func TestCollectionBibtexResource(t *testing.T) {
 		require.Len(t, tmplList.ResourceTemplates, 1)
 		assert.Equal(t, "bibx:/collections/{id}/bibtex", tmplList.ResourceTemplates[0].URITemplate)
 		assert.Equal(t, "text/x-bibtex", tmplList.ResourceTemplates[0].MIMEType)
+		assert.Equal(t, "Collection BibTeX", tmplList.ResourceTemplates[0].Title)
+		assert.NotEmpty(t, tmplList.ResourceTemplates[0].Description)
+		require.NotNil(t, tmplList.ResourceTemplates[0].Annotations)
+		assert.Equal(t, 0.5, tmplList.ResourceTemplates[0].Annotations.Priority)
 	})
 
 	t.Run("read collection bibtex resource successfully", func(t *testing.T) {

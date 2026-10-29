@@ -27,10 +27,14 @@ func NewSummary(service services.CollectionService) *Summary {
 // ResourceTemplate exports the [mcp.ResourceTemplate] required for a collection summary.
 func (s *Summary) ResourceTemplate() *mcp.ResourceTemplate {
 	return &mcp.ResourceTemplate{
-		Description: "description of a bibliographic collection",
+		Annotations: &mcp.Annotations{
+			Audience: []mcp.Role{"user", "assistant"},
+			Priority: 0.7,
+		},
+		Description: "JSON metadata summary for a bibliographic collection by its UUID (query, article count, limits, timestamps).",
 		MIMEType:    "application/json",
 		Name:        "collection summary",
-		Title:       "collection summary",
+		Title:       "Collection Summary",
 		URITemplate: "bibx:/collections/{id}/summary",
 	}
 }

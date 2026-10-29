@@ -58,6 +58,9 @@ func TestBibtexTool(t *testing.T) {
 		require.Len(t, res.Tools, 1)
 		assert.Equal(t, "bibtex", res.Tools[0].Name)
 		assert.Equal(t, "Export BibTeX", res.Tools[0].Title)
+		assert.False(t, *res.Tools[0].Annotations.OpenWorldHint)
+		mcptest.AssertPropertyDescriptions(t, res.Tools[0].InputSchema, "ids", "target", "preset", "limit", "omit_abstracts")
+		mcptest.AssertPropertyDescriptions(t, res.Tools[0].OutputSchema, "bibtex", "count", "keys", "resource_uri", "not_found")
 	})
 
 	t.Run("exports selected articles with target collection and keys mapping", func(t *testing.T) {

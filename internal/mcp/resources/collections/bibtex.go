@@ -30,7 +30,11 @@ func NewBibtex(collectionService services.CollectionService, analysisService ser
 // ResourceTemplate returns the [mcp.ResourceTemplate] for collection bibtex.
 func (b *Bibtex) ResourceTemplate() *mcp.ResourceTemplate {
 	return &mcp.ResourceTemplate{
-		Description: "Full BibTeX bibliography for a collection",
+		Annotations: &mcp.Annotations{
+			Audience: []mcp.Role{"user", "assistant"},
+			Priority: 0.5,
+		},
+		Description: "Complete BibTeX bibliography (including abstracts) for all articles in a collection by UUID. For filtered exports or presets, prefer the 'bibtex' tool.",
 		MIMEType:    "text/x-bibtex",
 		Name:        "collection bibtex",
 		Title:       "Collection BibTeX",

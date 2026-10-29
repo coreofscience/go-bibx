@@ -17,19 +17,19 @@ const DefaultLimit = 200
 // InquireInput represents the input parameters for the Inquire tool.
 type InquireInput struct {
 	// Query is the search query for the collection.
-	Query string `json:"query"`
+	Query string `json:"query" jsonschema:"Research topic or keywords to search on OpenAlex"`
 	// Limit is the number of initial results to fetch (default: 200, max: 1000).
-	Limit int `json:"limit,omitempty"`
+	Limit int `json:"limit,omitempty" jsonschema:"Maximum number of initial seed works to fetch from OpenAlex (1-1000, default: 200). For best results, try between 200 and 500."`
 	// Force forces re-fetching and recalculation of existing query results.
-	Force bool `json:"force,omitempty"`
+	Force bool `json:"force,omitempty" jsonschema:"Re-fetch from OpenAlex and recompute the citation graph even if a cached collection exists for this query and limit"`
 	// Name is an optional name alias for the collection.
-	Name string `json:"name,omitempty"`
+	Name string `json:"name,omitempty" jsonschema:"Optional human-readable alias for referencing this collection in other tools"`
 }
 
 // InquireOutput contains the collection details and whether it was newly queried.
 type InquireOutput struct {
-	Collection *models.CollectionSummary `json:"collection"`
-	IsNew      bool                      `json:"is_new"`
+	Collection *models.CollectionSummary `json:"collection" jsonschema:"Metadata of the created or cached bibliographic collection"`
+	IsNew      bool                      `json:"is_new" jsonschema:"True if newly fetched and analyzed; false if an existing cached collection was returned"`
 }
 
 // Inquire holds the inquire tool.
@@ -54,7 +54,7 @@ func (i *Inquire) Tool() *mcp.Tool {
 			ReadOnlyHint:    false,
 			Title:           "inquire collection",
 		},
-		Description: "fetch literature from OpenAlex for a research topic, run network algorithms (SAP), and store the resulting collection",
+		Description: "Fetch literature from OpenAlex for a research topic, run Tree of Science (SAP) network analysis, and store the collection locally.",
 		Name:        "inquire",
 		Title:       "Inquire collection",
 	}

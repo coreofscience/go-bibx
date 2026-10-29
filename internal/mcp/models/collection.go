@@ -8,13 +8,13 @@ import (
 
 // CollectionSummary is a version of [services.Collection] that is safe to infer.
 type CollectionSummary struct {
-	ID           string    `json:"id"`
-	Query        string    `json:"query"`
-	ResultLimit  int       `json:"result_limit"`
-	Name         *string   `json:"name,omitempty"`
-	ArticleCount int       `json:"article_count"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID           string    `json:"id" jsonschema:"Unique collection UUID"`
+	Query        string    `json:"query" jsonschema:"Search query used to build the collection"`
+	ResultLimit  int       `json:"result_limit" jsonschema:"Maximum number of initial seed works requested from OpenAlex"`
+	Name         *string   `json:"name,omitempty" jsonschema:"Optional human-readable alias for the collection"`
+	ArticleCount int       `json:"article_count" jsonschema:"Total number of articles in the analyzed citation graph"`
+	CreatedAt    time.Time `json:"created_at" jsonschema:"Creation timestamp (RFC 3339)"`
+	UpdatedAt    time.Time `json:"updated_at" jsonschema:"Last update timestamp (RFC 3339)"`
 }
 
 // NewCollectionSummaryFromModel converts a [services.Collection] to a schema-safe [CollectionSummary].

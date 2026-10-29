@@ -16,29 +16,29 @@ import (
 // BibtexInput represents the input parameters for the Bibtex tool.
 type BibtexInput struct {
 	// IDs is the list of article IDs, DOIs, or labels to export. If omitted, exports all articles in the collection.
-	IDs []string `json:"ids,omitempty"`
+	IDs []string `json:"ids,omitempty" jsonschema:"Article identifiers to export (OpenAlex IDs like 'W...', DOIs like '10.1109/...', or node labels). Mutually exclusive with 'preset'. Omit both 'ids' and 'preset' to export all articles."`
 	// Target is the collection ID (UUID) or name alias. If omitted, the latest collection is queried.
-	Target string `json:"target,omitempty"`
+	Target string `json:"target,omitempty" jsonschema:"Collection UUID or name alias. Omit to export from the most recently updated collection."`
 	// Preset selects articles by category ("tos", "roots", "trunks", "leaves", "top_cited").
-	Preset string `json:"preset,omitempty"`
+	Preset string `json:"preset,omitempty" jsonschema:"Category preset to export: 'tos' (top roots, trunks, and leaves combined), 'roots', 'trunks', 'leaves', or 'top_cited'. Mutually exclusive with 'ids'."`
 	// Limit is the maximum number of articles to export when using a preset (default: 10 per category).
-	Limit int `json:"limit,omitempty"`
-	// OmitAbstracts excludes abstract fields to minimize payload size and avoid LaTeX collisions (default: true).
-	OmitAbstracts *bool `json:"omit_abstracts,omitempty"`
+	Limit int `json:"limit,omitempty" jsonschema:"Maximum number of articles per category when using 'preset' (1-1000, default: 10)"`
+	// OmitAbstracts excludes abstract fields to minimize payload size (default: true).
+	OmitAbstracts *bool `json:"omit_abstracts,omitempty" jsonschema:"Omit abstract fields from BibTeX entries to reduce payload size (default: true)"`
 }
 
 // BibtexOutput contains the results of the BibTeX export.
 type BibtexOutput struct {
 	// Bibtex contains the formatted BibTeX entries string.
-	Bibtex string `json:"bibtex"`
+	Bibtex string `json:"bibtex" jsonschema:"Formatted BibTeX entries string"`
 	// Count is the number of articles successfully exported.
-	Count int `json:"count"`
+	Count int `json:"count" jsonschema:"Number of articles exported"`
 	// Keys maps each exported article to its generated citation key.
-	Keys []models.CitationKeyInfo `json:"keys"`
+	Keys []models.CitationKeyInfo `json:"keys" jsonschema:"Mapping of exported articles to their generated BibTeX citation keys"`
 	// ResourceURI informs the client where the complete collection BibTeX can be read as a resource.
-	ResourceURI string `json:"resource_uri,omitempty"`
+	ResourceURI string `json:"resource_uri,omitempty" jsonschema:"MCP resource URI (bibx:/collections/{id}/bibtex) for the full collection bibliography"`
 	// NotFound contains any input IDs that could not be resolved.
-	NotFound []string `json:"not_found,omitempty"`
+	NotFound []string `json:"not_found,omitempty" jsonschema:"Requested input IDs that could not be found in the collection"`
 }
 
 // Bibtex holds the bibtex export tool.
@@ -61,7 +61,7 @@ func (b *Bibtex) Tool() *mcp.Tool {
 		Annotations: &mcp.ToolAnnotations{
 			DestructiveHint: new(false),
 			IdempotentHint:  true,
-			OpenWorldHint:   new(true),
+			OpenWorldHint:   new(false),
 			ReadOnlyHint:    true,
 			Title:           "export articles as BibTeX",
 		},

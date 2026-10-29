@@ -13,12 +13,12 @@ import (
 // ShowInput represents the input parameters for the Show tool.
 type ShowInput struct {
 	// Target is the collection ID (UUID) or name alias. If omitted, the latest collection is returned.
-	Target string `json:"target,omitempty"`
+	Target string `json:"target,omitempty" jsonschema:"Collection UUID or name alias. Omit to inspect the most recently updated collection."`
 }
 
 // ShowOutput contains the collection details.
 type ShowOutput struct {
-	Collection *models.CollectionSummary `json:"collection"`
+	Collection *models.CollectionSummary `json:"collection" jsonschema:"Metadata of the resolved bibliographic collection"`
 }
 
 // Show holds the show tool.
@@ -39,11 +39,11 @@ func (s *Show) Tool() *mcp.Tool {
 		Annotations: &mcp.ToolAnnotations{
 			DestructiveHint: new(false),
 			IdempotentHint:  true,
-			OpenWorldHint:   new(true),
+			OpenWorldHint:   new(false),
 			ReadOnlyHint:    true,
 			Title:           "show collection",
 		},
-		Description: "show details of a bibliographic collection by ID or name (or latest collection)",
+		Description: "Show metadata for a bibliographic collection by UUID or name alias (defaults to the latest collection if target is omitted).",
 		Name:        "show",
 		Title:       "Show collection",
 	}

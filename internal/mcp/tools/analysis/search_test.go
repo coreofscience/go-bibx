@@ -63,6 +63,9 @@ func TestSearchTool(t *testing.T) {
 		require.Len(t, res.Tools, 1)
 		assert.Equal(t, "search", res.Tools[0].Name)
 		assert.Equal(t, "Search collection", res.Tools[0].Title)
+		assert.False(t, *res.Tools[0].Annotations.OpenWorldHint)
+		mcptest.AssertPropertyDescriptions(t, res.Tools[0].InputSchema, "query", "limit", "target")
+		mcptest.AssertPropertyDescriptions(t, res.Tools[0].OutputSchema, "nodes", "links")
 	})
 
 	t.Run("successful search with target", func(t *testing.T) {
