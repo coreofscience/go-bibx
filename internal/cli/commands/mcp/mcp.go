@@ -8,6 +8,7 @@ import (
 	"uuid"
 
 	"github.com/coreofscience/go-bibx/clients/openalex"
+	"github.com/coreofscience/go-bibx/internal/mcp/prompts"
 	"github.com/coreofscience/go-bibx/internal/mcp/resources"
 	"github.com/coreofscience/go-bibx/internal/mcp/tools"
 	"github.com/coreofscience/go-bibx/internal/utils"
@@ -70,6 +71,7 @@ func New() *cli.Command {
 
 			tools.Register(server, colSvc, anaSvc)
 			resources.Register(server, colSvc, anaSvc)
+			prompts.Register(server)
 
 			if err := server.Run(ctx, &mcp.StdioTransport{}); err != nil {
 				return fmt.Errorf("failed to run mcp server: %w", err)
