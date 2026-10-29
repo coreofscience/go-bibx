@@ -64,5 +64,4 @@ type Node struct {
 	Rootness     float64
 	Trunkness    float64
 	Leafness     float64
-	Community    int64
 }

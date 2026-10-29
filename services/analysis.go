@@ -745,7 +745,6 @@ func persistNode(
 		Rootness:     node.Rootness,
 		Trunkness:    node.Trunkness,
 		Leafness:     node.Leafness,
-		Community:    0,
 	})
 	if err != nil {
 		return uuid.Nil(), fmt.Errorf("failed to upsert node %s: %w", node.ID, err)

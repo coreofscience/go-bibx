@@ -301,7 +301,7 @@ func (q *Queries) ListLinks(ctx context.Context, collectionID uuid.UUID) ([]Link
 
 const listNodes = `-- name: ListNodes :many
 SELECT
-	n.id, n.category, n.rootness, n.trunkness, n.leafness, n.community,
+	n.id, n.category, n.rootness, n.trunkness, n.leafness,
 	a.id, a.label, a.title, a.journal, a.year, a.volume, a.issue, a.page,
 	a.doi, a.permalink, a.times_cited, a.abstract, a.rich,
 	a.authors, a.keywords, a.ids
@@ -316,7 +316,6 @@ type ListNodesRow struct {
 	Rootness   float64
 	Trunkness  float64
 	Leafness   float64
-	Community  int64
 	ID_2       uuid.UUID
 	Label      string
 	Title      sql.NullString
@@ -350,7 +349,6 @@ func (q *Queries) ListNodes(ctx context.Context, collectionID uuid.UUID) ([]List
 			&i.Rootness,
 			&i.Trunkness,
 			&i.Leafness,
-			&i.Community,
 			&i.ID_2,
 			&i.Label,
 			&i.Title,
@@ -541,7 +539,7 @@ func (q *Queries) ListTrunks(ctx context.Context, arg ListTrunksParams) ([]ListT
 
 const search = `-- name: Search :many
 SELECT
-    n.id, n.category, n.rootness, n.trunkness, n.leafness, n.community,
+    n.id, n.category, n.rootness, n.trunkness, n.leafness,
     a.id, a.label, a.title, a.journal, a.year, a.volume, a.issue, a.page,
     a.doi, a.permalink, a.times_cited, a.abstract, a.rich,
     a.authors, a.keywords, a.ids
@@ -565,7 +563,6 @@ type SearchRow struct {
 	Rootness   float64
 	Trunkness  float64
 	Leafness   float64
-	Community  int64
 	ID_2       uuid.UUID
 	Label      string
 	Title      sql.NullString
@@ -599,7 +596,6 @@ func (q *Queries) Search(ctx context.Context, arg SearchParams) ([]SearchRow, er
 			&i.Rootness,
 			&i.Trunkness,
 			&i.Leafness,
-			&i.Community,
 			&i.ID_2,
 			&i.Label,
 			&i.Title,
@@ -782,15 +778,13 @@ INSERT INTO nodes (
     category,
     rootness,
     trunkness,
-    leafness,
-    community
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    leafness
+) VALUES (?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(collection_id, article_id) DO UPDATE SET
     category=excluded.category,
     rootness=excluded.rootness,
     trunkness=excluded.trunkness,
-    leafness=excluded.leafness,
-    community=excluded.community
+    leafness=excluded.leafness
 RETURNING id
 `
 
@@ -802,7 +796,6 @@ type UpsertNodeParams struct {
 	Rootness     float64
 	Trunkness    float64
 	Leafness     float64
-	Community    int64
 }
 
 func (q *Queries) UpsertNode(ctx context.Context, arg UpsertNodeParams) (uuid.UUID, error) {
@@ -814,7 +807,6 @@ func (q *Queries) UpsertNode(ctx context.Context, arg UpsertNodeParams) (uuid.UU
 		arg.Rootness,
 		arg.Trunkness,
 		arg.Leafness,
-		arg.Community,
 	)
 	var id uuid.UUID
 	err := row.Scan(&id)
