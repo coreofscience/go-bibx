@@ -54,7 +54,7 @@ func (i *Inquire) Tool() *mcp.Tool {
 			ReadOnlyHint:    false,
 			Title:           "inquire collection",
 		},
-		Description: "fetch literature from OpenAlex for a research topic, run network algorithms (SAP, Leiden), and store the resulting collection",
+		Description: "fetch literature from OpenAlex for a research topic, run network algorithms (SAP), and store the resulting collection",
 		Name:        "inquire",
 		Title:       "Inquire collection",
 	}

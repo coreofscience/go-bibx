@@ -11,7 +11,6 @@ type NodeSummary struct {
 	Rootness  float64         `json:"rootness"`
 	Trunkness float64         `json:"trunkness"`
 	Leafness  float64         `json:"leafness"`
-	Community int             `json:"community"`
 	Article   *ArticleSummary `json:"article,omitempty"`
 }
 
@@ -26,7 +25,6 @@ func NewNodeSummaryFromModel(n *models.Node) *NodeSummary {
 		Rootness:  n.Rootness,
 		Trunkness: n.Trunkness,
 		Leafness:  n.Leafness,
-		Community: n.Community,
 		Article:   NewArticleSummaryFromModel(n.Article),
 	}
 }
