@@ -254,7 +254,6 @@ func TestOpenAlexAnalysisService_AnalysisPersistenceAndQuery(t *testing.T) {
 		Rootness:  0.95,
 		Trunkness: 0.1,
 		Leafness:  0.0,
-		Community: 1,
 		Article: &models.Article{
 			Label:    "openalex:W1",
 			Title:    &title1,
@@ -274,7 +273,6 @@ func TestOpenAlexAnalysisService_AnalysisPersistenceAndQuery(t *testing.T) {
 		Rootness:  0.1,
 		Trunkness: 0.88,
 		Leafness:  0.2,
-		Community: 1,
 		Article: &models.Article{
 			Label:    "openalex:W2",
 			Title:    &title2,
@@ -293,7 +291,6 @@ func TestOpenAlexAnalysisService_AnalysisPersistenceAndQuery(t *testing.T) {
 		Rootness:  0.0,
 		Trunkness: 0.2,
 		Leafness:  0.92,
-		Community: 1,
 		Article: &models.Article{
 			Label:    "openalex:W3",
 			Title:    &title3,
@@ -358,7 +355,6 @@ func TestOpenAlexAnalysisService_AnalysisPersistenceAndQuery(t *testing.T) {
 		Rootness:  0.80,
 		Trunkness: 0.0,
 		Leafness:  0.0,
-		Community: 2,
 		Article: &models.Article{
 			Label:    "openalex:W1",
 			Authors:  nil,
@@ -518,18 +514,16 @@ func TestOpenAlexAnalysisService_GetArticles(t *testing.T) {
 	analysis := &models.Analysis{
 		Nodes: []*models.Node{
 			{
-				ID:        "openalex:https://openalex.org/W100",
-				Category:  models.CategoryRoot,
-				Rootness:  0.9,
-				Article:   art1,
-				Community: 1,
+				ID:       "openalex:https://openalex.org/W100",
+				Category: models.CategoryRoot,
+				Rootness: 0.9,
+				Article:  art1,
 			},
 			{
 				ID:        "node-resnet-id",
 				Category:  models.CategoryTrunk,
 				Trunkness: 0.8,
 				Article:   art2,
-				Community: 1,
 			},
 		},
 		Links: []*models.Link{

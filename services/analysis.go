@@ -13,7 +13,6 @@ import (
 	"github.com/coreofscience/go-bibx/algorithms"
 	"github.com/coreofscience/go-bibx/clients/openalex"
 	"github.com/coreofscience/go-bibx/internal/collections"
-	"github.com/coreofscience/go-bibx/internal/graphs"
 	"github.com/coreofscience/go-bibx/internal/utils"
 	"github.com/coreofscience/go-bibx/models"
 	"github.com/coreofscience/go-bibx/repository"
@@ -42,7 +41,7 @@ type AnalysisService interface {
 }
 
 // OpenAlexAnalysisService coordinates literature fetching from OpenAlex,
-// running SAP and Leiden algorithms, and managing analysis persistence via SQLite.
+// running SAP and Steiner algorithms, and managing analysis persistence via SQLite.
 type OpenAlexAnalysisService struct {
 	db             *sql.DB
 	queries        *repository.Queries
@@ -74,7 +73,7 @@ func NewAnalysisServiceWithQueries(
 	}
 }
 
-// Inquire coordinates fetching literature from OpenAlex, running community detection and SAP algorithms,
+// Inquire coordinates fetching literature from OpenAlex, running SAP algorithms,
 // and storing the resulting analysis in SQLite with query idempotency support.
 func (s *OpenAlexAnalysisService) Inquire(
 	ctx context.Context,
@@ -183,20 +182,6 @@ func (s *OpenAlexAnalysisService) Inquire(
 	analysis := &models.Analysis{
 		Nodes: nodes,
 		Links: links,
-	}
-
-	slog.InfoContext(ctx, "applying leiden algorithm")
-	citationGraph, err := analysis.CitationGraph()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get citation graph: %w", err)
-	}
-	undirectedGraph, err := graphs.Undirected(citationGraph)
-	if err != nil {
-		return nil, fmt.Errorf("failed to make graph undirected: %w", err)
-	}
-	communities := algorithms.NewLeiden(undirectedGraph).Run()
-	for _, node := range analysis.Nodes {
-		node.Community = communities[node.ID]
 	}
 
 	var colName *string
@@ -355,7 +340,6 @@ func (s *OpenAlexAnalysisService) LoadAnalysis(ctx context.Context, collectionID
 			Rootness:  r.Rootness,
 			Trunkness: r.Trunkness,
 			Leafness:  r.Leafness,
-			Community: int(r.Community),
 			Article:   art,
 		})
 		nodeUUIDToLabel[r.ID] = nodeID
@@ -761,7 +745,7 @@ func persistNode(
 		Rootness:     node.Rootness,
 		Trunkness:    node.Trunkness,
 		Leafness:     node.Leafness,
-		Community:    int64(node.Community),
+		Community:    0,
 	})
 	if err != nil {
 		return uuid.Nil(), fmt.Errorf("failed to upsert node %s: %w", node.ID, err)
