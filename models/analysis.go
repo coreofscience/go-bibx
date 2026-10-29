@@ -31,15 +31,14 @@ var (
 	spaceReg           = regexp.MustCompile(`[\s_-]+`)
 )
 
-// Node represents an article entity within an analysis, containing its metadata,
-// Tree of Science category and scores, and community assignment.
+// Node represents an article entity within an analysis, containing its metadata
+// and Tree of Science category and scores.
 type Node struct {
 	ID        string   `json:"id"`
 	Category  Category `json:"category"`
 	Rootness  float64  `json:"rootness"`
 	Trunkness float64  `json:"trunkness"`
 	Leafness  float64  `json:"leafness"`
-	Community int      `json:"community"`
 	Article   *Article `json:"article"`
 }
 
@@ -52,7 +51,6 @@ type NodeMetadata struct {
 	Rootness   float64             `yaml:"rootness"`
 	Trunkness  float64             `yaml:"trunkness"`
 	Leafness   float64             `yaml:"leafness"`
-	Community  int                 `yaml:"community"`
 	Rich       bool                `yaml:"rich"`
 	Title      *utils.FoldedString `yaml:"title,omitempty"`
 	Year       *int                `yaml:"year,omitempty"`
@@ -80,7 +78,6 @@ func (n *Node) Metadata() *NodeMetadata {
 			Rootness:  n.Rootness,
 			Trunkness: n.Trunkness,
 			Leafness:  n.Leafness,
-			Community: n.Community,
 		}
 	}
 	var ids []string
@@ -94,7 +91,6 @@ func (n *Node) Metadata() *NodeMetadata {
 		Rootness:   n.Rootness,
 		Trunkness:  n.Trunkness,
 		Leafness:   n.Leafness,
-		Community:  n.Community,
 		Rich:       art.Rich,
 		Title:      utils.NewFoldedString(art.Title),
 		Year:       art.Year,
