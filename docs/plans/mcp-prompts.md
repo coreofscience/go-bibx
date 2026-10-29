@@ -22,10 +22,11 @@ However, the server currently only registers **tools** (`internal/mcp/tools`) an
 
 ### Objectives
 1. Introduce an `internal/mcp/prompts` package following the 3-Tier Architecture (ADR-001).
-2. Implement the **`literature_review`** prompt: Guides an LLM agent through conducting a rigorous, structured academic literature review on a given research topic using the Tree of Science methodology (`inquire`, `tos`, `search`, and `bibtex`).
-3. Implement the **`research_gaps`** prompt: Guides an LLM agent through analyzing citation network topology to discover unaddressed research gaps, isolated frontier topics, disconnected foundational lineages, and methodological lags.
-4. Integrate prompt registration into the MCP server startup.
-5. Provide comprehensive test coverage using in-memory MCP client/server test harnesses.
+2. Implement the **`review`** prompt: Guides an LLM agent through conducting a rigorous, structured academic literature review on a given research topic using the Tree of Science methodology (`inquire`, `tos`, and `search`).
+3. Implement the **`gaps`** prompt: Guides an LLM agent through analyzing citation network topology to discover unaddressed research gaps, isolated frontier topics, disconnected foundational lineages, and methodological lags.
+4. Keep bibliographic export decoupled: `bibtex` tool usage is omitted from default prompt flows, remaining available on user demand when an export is explicitly requested.
+5. Integrate prompt registration into the MCP server startup.
+6. Provide comprehensive test coverage using in-memory MCP client/server test harnesses.
 
 ---
 
@@ -45,8 +46,8 @@ internal/mcp/
 │   ├── collections/
 │   └── register.go
 ├── prompts/        # [NEW] MCP Prompt definitions & registration
-│   ├── literature_review.go
-│   ├── research_gaps.go
+│   ├── review.go
+│   ├── gaps.go
 │   ├── register.go
 │   └── prompts_test.go
 └── test/           # Test helpers (Connect, AssertPropertyDescriptions)
@@ -67,14 +68,14 @@ flowchart TD
     end
 
     subgraph PromptsPkg ["internal/mcp/prompts/"]
-        LitRev["LiteratureReview Prompt\n(literature_review)"]
-        Gaps["ResearchGaps Prompt\n(research_gaps)"]
+        Review["Review Prompt\n(review)"]
+        Gaps["Gaps Prompt\n(gaps)"]
     end
 
     CMD --> Tools
     CMD --> Resources
     CMD --> Prompts
-    Prompts --> LitRev
+    Prompts --> Review
     Prompts --> Gaps
 ```
 
@@ -82,9 +83,9 @@ flowchart TD
 
 ## 3. Detailed Prompt Specifications
 
-### 3.1. Literature Review Prompt (`literature_review`)
+### 3.1. Literature Review Prompt (`review`)
 
-- **Name**: `literature_review`
+- **Name**: `review`
 - **Title**: `Conduct a Literature Review with Tree of Science`
 - **Description**: `Structured workflow to perform a systematic literature review on a topic using the Tree of Science (roots, trunks, leaves) methodology and bibx MCP tools.`
 - **Arguments**:
@@ -92,7 +93,7 @@ flowchart TD
   - `target` (`string`, Optional): Existing collection UUID or name alias. If omitted or not found, instructions direct the agent to fetch a new collection via `inquire`.
 - **Role**: `mcp.RoleUser`
 - **Prompt Content / Instructions**:
-  Provides a structured 5-phase operational guide for the AI assistant:
+  Provides a structured 4-phase operational guide for the AI assistant:
   1. **Landscape Acquisition**:
      - Check if `target` exists via `show` or `list`.
      - If no collection exists, fetch literature from OpenAlex using `inquire(query="<topic>", limit=300-500)`.
@@ -111,14 +112,12 @@ flowchart TD
        - **Structural Evolution (Trunks)**: Methodological progressions, consolidation of schools of thought, and transition points.
        - **Current State-of-the-Art (Leaves)**: Modern advances, competing methodologies, and active research directions.
        - **Critical Discussion**: Methodological agreements, contradictions, and open questions.
-  5. **Citation Export**:
-     - Call `bibtex(preset="tos")` or `bibtex(ids=[...])` to export a ready-to-use BibTeX bibliography for the reviewed papers.
 
 ---
 
-### 3.2. Research Gaps Prompt (`research_gaps`)
+### 3.2. Research Gaps Prompt (`gaps`)
 
-- **Name**: `research_gaps`
+- **Name**: `gaps`
 - **Title**: `Find Research Gaps with Tree of Science`
 - **Description**: `Systematic methodology to identify unexplored gaps, disconnected lineages, and frontier opportunities in a field using Tree of Science network analysis.`
 - **Arguments**:
@@ -144,13 +143,11 @@ flowchart TD
        Divergent trunk pathways offering incompatible explanations or conflicting empirical results without subsequent reconciliation.
      - **Heuristic 5: Subgraph Sparsity via Steiner Search**:
        Use `search(query="<concept_A>")` and `search(query="<concept_B>")` to reveal sparse connectivity, missing bridge papers, or bottlenecks in the citation subgraph.
-  4. **Formulating Research Questions**:
+  4. **Formulating Actionable Research Questions**:
      - Transform each detected gap into concrete, high-impact research questions with:
        - Problem statement & identified gap type.
        - Anchor citations (foundational roots and frontier leaves involved).
        - Proposed methodological bridge.
-  5. **Bibliography Export**:
-     - Use `bibtex` to export key anchor papers that frame the identified research gaps.
 
 ---
 
@@ -158,7 +155,7 @@ flowchart TD
 
 ### 4.1. File Layout & Signatures
 
-#### `internal/mcp/prompts/literature_review.go`
+#### `internal/mcp/prompts/review.go`
 ```go
 package prompts
 
@@ -170,15 +167,15 @@ import (
     "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-type LiteratureReview struct{}
+type Review struct{}
 
-func NewLiteratureReview() *LiteratureReview {
-    return &LiteratureReview{}
+func NewReview() *Review {
+    return &Review{}
 }
 
-func (p *LiteratureReview) Prompt() *mcp.Prompt {
+func (p *Review) Prompt() *mcp.Prompt {
     return &mcp.Prompt{
-        Name:        "literature_review",
+        Name:        "review",
         Title:       "Conduct a Literature Review with Tree of Science",
         Description: "Structured workflow to perform a systematic literature review on a topic using the Tree of Science (roots, trunks, leaves) methodology and bibx MCP tools.",
         Arguments: []*mcp.PromptArgument{
@@ -198,11 +195,11 @@ func (p *LiteratureReview) Prompt() *mcp.Prompt {
     }
 }
 
-func (p *LiteratureReview) Handle(ctx context.Context, req *mcp.GetPromptRequest) (*mcp.GetPromptResult, error)
-func (p *LiteratureReview) Register(server *mcp.Server)
+func (p *Review) Handle(ctx context.Context, req *mcp.GetPromptRequest) (*mcp.GetPromptResult, error)
+func (p *Review) Register(server *mcp.Server)
 ```
 
-#### `internal/mcp/prompts/research_gaps.go`
+#### `internal/mcp/prompts/gaps.go`
 ```go
 package prompts
 
@@ -214,15 +211,15 @@ import (
     "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-type ResearchGaps struct{}
+type Gaps struct{}
 
-func NewResearchGaps() *ResearchGaps {
-    return &ResearchGaps{}
+func NewGaps() *Gaps {
+    return &Gaps{}
 }
 
-func (p *ResearchGaps) Prompt() *mcp.Prompt {
+func (p *Gaps) Prompt() *mcp.Prompt {
     return &mcp.Prompt{
-        Name:        "research_gaps",
+        Name:        "gaps",
         Title:       "Find Research Gaps with Tree of Science",
         Description: "Systematic methodology to identify unexplored gaps, disconnected lineages, and frontier opportunities in a field using Tree of Science network analysis.",
         Arguments: []*mcp.PromptArgument{
@@ -242,8 +239,8 @@ func (p *ResearchGaps) Prompt() *mcp.Prompt {
     }
 }
 
-func (p *ResearchGaps) Handle(ctx context.Context, req *mcp.GetPromptRequest) (*mcp.GetPromptResult, error)
-func (p *ResearchGaps) Register(server *mcp.Server)
+func (p *Gaps) Handle(ctx context.Context, req *mcp.GetPromptRequest) (*mcp.GetPromptResult, error)
+func (p *Gaps) Register(server *mcp.Server)
 ```
 
 #### `internal/mcp/prompts/register.go`
@@ -256,8 +253,8 @@ import (
 
 // Register registers all prompts in the given MCP server.
 func Register(server *mcp.Server) {
-    NewLiteratureReview().Register(server)
-    NewResearchGaps().Register(server)
+    NewReview().Register(server)
+    NewGaps().Register(server)
 }
 ```
 
@@ -277,20 +274,22 @@ prompts.Register(server) // [NEW]
 Using `mcptest.Connect(t, server)` from `internal/mcp/test/connect.go`:
 
 1. **`ListPrompts`**:
-   - Verify server returns both `literature_review` and `research_gaps`.
+   - Verify server returns both `review` and `gaps`.
    - Verify prompt metadata (`Name`, `Title`, `Description`).
    - Verify prompt arguments:
      - `topic`: required = true.
      - `target`: required = false.
-2. **`GetPrompt("literature_review")`**:
+2. **`GetPrompt("review")`**:
    - Provide `topic: "quantum computing error mitigation"` and optional `target: "qc-collection"`.
    - Verify result contains 1 message with role `mcp.RoleUser`.
-   - Verify message content includes the topic, target, workflow phases, and tool calls (`inquire`, `tos`, `search`, `bibtex`).
+   - Verify message content includes the topic, target, workflow phases, and tool calls (`inquire`, `tos`, `search`).
+   - Verify message content does not reference the `bibtex` tool.
    - Test missing required argument `topic`: returns an error.
-3. **`GetPrompt("research_gaps")`**:
+3. **`GetPrompt("gaps")`**:
    - Provide `topic: "continual learning for robotics"`.
    - Verify result contains 1 message with role `mcp.RoleUser`.
    - Verify message content includes gap heuristics (disconnected trunks, isolated leaves, methodological lag, etc.).
+   - Verify message content does not reference the `bibtex` tool.
    - Test missing required argument `topic`: returns an error.
 4. **Unknown prompt**:
    - Verify `GetPrompt("unknown_prompt")` returns an appropriate protocol error.
