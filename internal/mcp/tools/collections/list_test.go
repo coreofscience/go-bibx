@@ -33,6 +33,8 @@ func TestListTool(t *testing.T) {
 		require.Len(t, res.Tools, 1)
 		assert.Equal(t, "list", res.Tools[0].Name)
 		assert.Equal(t, "List collections", res.Tools[0].Title)
+		assert.False(t, *res.Tools[0].Annotations.OpenWorldHint)
+		mcptest.AssertPropertyDescriptions(t, res.Tools[0].OutputSchema, "collections")
 	})
 
 	t.Run("returns empty collection list", func(t *testing.T) {

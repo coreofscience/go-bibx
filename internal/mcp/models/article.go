@@ -5,20 +5,20 @@ import "github.com/coreofscience/go-bibx/models"
 // ArticleSummary represents the article metadata returned in analysis tool results,
 // safe for MCP jsonschema reflection.
 type ArticleSummary struct {
-	Label      string   `json:"label"`
-	Title      *string  `json:"title,omitempty"`
-	Authors    []string `json:"authors,omitempty"`
-	Year       *int     `json:"year,omitempty"`
-	Journal    *string  `json:"journal,omitempty"`
-	Volume     *string  `json:"volume,omitempty"`
-	Issue      *string  `json:"issue,omitempty"`
-	Page       *string  `json:"page,omitempty"`
-	DOI        *string  `json:"doi,omitempty"`
-	Permalink  *string  `json:"permalink,omitempty"`
-	TimesCited *int     `json:"times_cited,omitempty"`
-	Keywords   []string `json:"keywords,omitempty"`
-	Abstract   *string  `json:"abstract,omitempty"`
-	IDs        []string `json:"ids,omitempty"`
+	Label      string   `json:"label" jsonschema:"Primary article identifier in the collection (e.g., 'openalex:W...')"`
+	Title      *string  `json:"title,omitempty" jsonschema:"Article title"`
+	Authors    []string `json:"authors,omitempty" jsonschema:"Author names"`
+	Year       *int     `json:"year,omitempty" jsonschema:"Publication year"`
+	Journal    *string  `json:"journal,omitempty" jsonschema:"Publication venue or journal name"`
+	Volume     *string  `json:"volume,omitempty" jsonschema:"Journal volume"`
+	Issue      *string  `json:"issue,omitempty" jsonschema:"Journal issue"`
+	Page       *string  `json:"page,omitempty" jsonschema:"Page numbers or range"`
+	DOI        *string  `json:"doi,omitempty" jsonschema:"Digital Object Identifier (DOI)"`
+	Permalink  *string  `json:"permalink,omitempty" jsonschema:"Canonical URL to the article"`
+	TimesCited *int     `json:"times_cited,omitempty" jsonschema:"Global citation count reported by OpenAlex"`
+	Keywords   []string `json:"keywords,omitempty" jsonschema:"Associated keywords or concepts"`
+	Abstract   *string  `json:"abstract,omitempty" jsonschema:"Article abstract text"`
+	IDs        []string `json:"ids,omitempty" jsonschema:"All known identifiers for the article (e.g., 'openalex:...', 'doi:...', 'simple:...')"`
 }
 
 // NewArticleSummaryFromModel converts a [models.Article] to a schema-safe [ArticleSummary].

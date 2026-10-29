@@ -46,6 +46,10 @@ func TestCollectionSummaryResource(t *testing.T) {
 		require.Len(t, tmplList.ResourceTemplates, 1)
 		assert.Equal(t, "bibx:/collections/{id}/summary", tmplList.ResourceTemplates[0].URITemplate)
 		assert.Equal(t, "application/json", tmplList.ResourceTemplates[0].MIMEType)
+		assert.Equal(t, "Collection Summary", tmplList.ResourceTemplates[0].Title)
+		assert.NotEmpty(t, tmplList.ResourceTemplates[0].Description)
+		require.NotNil(t, tmplList.ResourceTemplates[0].Annotations)
+		assert.Equal(t, 0.7, tmplList.ResourceTemplates[0].Annotations.Priority)
 	})
 
 	t.Run("read collection summary resource successfully", func(t *testing.T) {

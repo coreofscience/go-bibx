@@ -48,7 +48,7 @@ func (s *Summary) Resource() *mcp.Resource {
 			Audience: []mcp.Role{"user", "assistant"},
 			Priority: 1,
 		},
-		Description: "description of the bibx system and it's relationship to the Tree of Science",
+		Description: "Overview of the Tree of Science (ToS) bibliometric methodology (root, trunk, and leaf categories) used by bibx.",
 		MIMEType:    "text/plain",
 		Name:        "bibx summary",
 		Size:        int64(len(summary)),

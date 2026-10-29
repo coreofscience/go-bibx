@@ -28,3 +28,21 @@ func Connect(t *testing.T, server *mcp.Server) *mcp.ClientSession {
 
 	return clientSession
 }
+
+// AssertPropertyDescriptions verifies that a client-received JSON schema (map[string]any)
+// contains each of the expected properties and that each property has a non-empty "description".
+func AssertPropertyDescriptions(t *testing.T, schema any, expectedProps ...string) {
+	t.Helper()
+	schemaMap, ok := schema.(map[string]any)
+	require.True(t, ok, "expected schema to be map[string]any")
+	props, ok := schemaMap["properties"].(map[string]any)
+	require.True(t, ok, "expected schema to have 'properties' map")
+	for _, propName := range expectedProps {
+		propRaw, exists := props[propName]
+		require.Truef(t, exists, "expected property %q in schema", propName)
+		propMap, ok := propRaw.(map[string]any)
+		require.Truef(t, ok, "expected property %q to be map[string]any", propName)
+		desc, ok := propMap["description"].(string)
+		require.Truef(t, ok && desc != "", "expected non-empty description for property %q", propName)
+	}
+}

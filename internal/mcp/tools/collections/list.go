@@ -16,7 +16,7 @@ type ListInput struct{}
 
 // ListOutput contains the collection we want to show to the user.
 type ListOutput struct {
-	Collections []*models.CollectionSummary `json:"collections"`
+	Collections []*models.CollectionSummary `json:"collections" jsonschema:"Stored bibliographic collections ordered by most recently updated"`
 }
 
 // List holds the list command.
@@ -37,11 +37,11 @@ func (l *List) Tool() *mcp.Tool {
 		Annotations: &mcp.ToolAnnotations{
 			DestructiveHint: new(false),
 			IdempotentHint:  true,
-			OpenWorldHint:   new(true),
+			OpenWorldHint:   new(false),
 			ReadOnlyHint:    true,
 			Title:           "list collections",
 		},
-		Description: "list collections in your bibliography database",
+		Description: "List stored bibliographic collections in the local database, ordered by most recently updated.",
 		Name:        "list",
 		Title:       "List collections",
 	}

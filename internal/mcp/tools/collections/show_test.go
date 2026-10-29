@@ -44,6 +44,9 @@ func TestShowTool(t *testing.T) {
 		require.Len(t, res.Tools, 1)
 		assert.Equal(t, "show", res.Tools[0].Name)
 		assert.Equal(t, "Show collection", res.Tools[0].Title)
+		assert.False(t, *res.Tools[0].Annotations.OpenWorldHint)
+		mcptest.AssertPropertyDescriptions(t, res.Tools[0].InputSchema, "target")
+		mcptest.AssertPropertyDescriptions(t, res.Tools[0].OutputSchema, "collection")
 	})
 
 	t.Run("show by UUID target", func(t *testing.T) {

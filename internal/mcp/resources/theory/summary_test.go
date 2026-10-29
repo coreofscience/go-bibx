@@ -25,6 +25,9 @@ func TestSummaryResource(t *testing.T) {
 		require.Len(t, resList.Resources, 1)
 		assert.Equal(t, "bibx:/summary", resList.Resources[0].URI)
 		assert.Equal(t, "text/plain", resList.Resources[0].MIMEType)
+		assert.Contains(t, resList.Resources[0].Description, "Tree of Science (ToS)")
+		require.NotNil(t, resList.Resources[0].Annotations)
+		assert.Equal(t, 1.0, resList.Resources[0].Annotations.Priority)
 	})
 
 	t.Run("read resource successfully", func(t *testing.T) {

@@ -6,12 +6,12 @@ import (
 
 // NodeSummary represents an article node within an analysis graph, safe for MCP jsonschema reflection.
 type NodeSummary struct {
-	ID        string          `json:"id"`
-	Category  string          `json:"category"`
-	Rootness  float64         `json:"rootness"`
-	Trunkness float64         `json:"trunkness"`
-	Leafness  float64         `json:"leafness"`
-	Article   *ArticleSummary `json:"article,omitempty"`
+	ID        string          `json:"id" jsonschema:"Unique node identifier in the citation graph"`
+	Category  string          `json:"category" jsonschema:"Assigned Tree of Science category ('root', 'trunk', 'leaf', or 'none')"`
+	Rootness  float64         `json:"rootness" jsonschema:"Score measuring foundational/seminal impact (in-degree from collection citation graph)"`
+	Trunkness float64         `json:"trunkness" jsonschema:"SAP score measuring structural bridge centrality between roots and leaves"`
+	Leafness  float64         `json:"leafness" jsonschema:"Score measuring modern state-of-the-art relevance (citation paths reaching roots)"`
+	Article   *ArticleSummary `json:"article,omitempty" jsonschema:"Bibliographic metadata for the article"`
 }
 
 // NewNodeSummaryFromModel converts a [models.Node] to a schema-safe [NodeSummary].

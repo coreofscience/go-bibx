@@ -51,6 +51,9 @@ func TestTosTool(t *testing.T) {
 		require.Len(t, res.Tools, 1)
 		assert.Equal(t, "tos", res.Tools[0].Name)
 		assert.Equal(t, "Tree of Science", res.Tools[0].Title)
+		assert.False(t, *res.Tools[0].Annotations.OpenWorldHint)
+		mcptest.AssertPropertyDescriptions(t, res.Tools[0].InputSchema, "category", "limit", "target")
+		mcptest.AssertPropertyDescriptions(t, res.Tools[0].OutputSchema, "results")
 	})
 
 	t.Run("query root category with target collection", func(t *testing.T) {

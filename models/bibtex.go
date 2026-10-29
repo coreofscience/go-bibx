@@ -37,11 +37,11 @@ var (
 
 // CitationKeyInfo provides metadata for an exported citation.
 type CitationKeyInfo struct {
-	ID          string `json:"id"`
-	CiteKey     string `json:"citekey"`
-	Title       string `json:"title,omitempty"`
-	Year        *int   `json:"year,omitempty"`
-	FirstAuthor string `json:"first_author,omitempty"`
+	ID          string `json:"id" jsonschema:"Article identifier in the collection"`
+	CiteKey     string `json:"citekey" jsonschema:"Generated BibTeX citation key (disambiguated within the export)"`
+	Title       string `json:"title,omitempty" jsonschema:"Article title"`
+	Year        *int   `json:"year,omitempty" jsonschema:"Publication year"`
+	FirstAuthor string `json:"first_author,omitempty" jsonschema:"Primary author name"`
 }
 
 // BibtexOption specifies configuration options for BibTeX generation.
