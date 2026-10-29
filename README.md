@@ -25,12 +25,11 @@ At its core, `go-bibx` implements the **SAP algorithm** (`algorithms/sap.go`), w
 - **Multi-Collection SQLite Storage**: Persistent storage in `.bibx/bibx.db` powered by a pure-Go driver (`modernc.org/sqlite`) with embedded database migrations. Multiple inquiries can coexist in a single database.
 - **Query Idempotency**: Deterministic query hashing prevents redundant OpenAlex API calls and recalculations when re-running identical inquiries.
 - **Clean 3-Tier Architecture**: Built with clear architectural boundaries separating public data persistence (`repository`), domain services (`services`), and internal presentation/delivery (`internal/cli`, `internal/mcp`).
-- **Inquire**: Fetch literature and citation networks directly from the OpenAlex API and run SAP and community detection algorithms.
+- **Inquire**: Fetch literature and citation networks directly from the OpenAlex API and run Tree of Science SAP algorithms.
 - **Collection Management**: Inspect, list, and delete inquiry collections by UUIDv7 or human-readable name aliases.
 - **Visualize**: Interactive, browser-based graph exploration of any collection.
 - **Keyword Search**: Graph search combining SQLite FTS5 (BM25 ranking) with pseudo-Steiner graph reduction to isolate subnetworks related to specific keywords.
 - **ToS Category Queries**: Filter and rank articles by relevance across Tree of Science categories (*Root*, *Trunk*, *Leaf*).
-- **Community Detection**: High-performance Leiden algorithm for detecting thematic clusters in citation networks.
 - **Pure Go & Cross-Platform**: Fully builds and runs with `CGO_ENABLED=0` on Linux, macOS, and Windows.
 
 ## Installation
@@ -67,7 +66,7 @@ CGO_ENABLED=0 go build -o bibx ./cmd/bibx
 
 ### 1. Inquire a research topic
 
-Fetch papers related to a specific topic, compute Tree of Science metrics and Leiden communities, and save them as a collection:
+Fetch papers related to a specific topic, compute Tree of Science metrics, and save them as a collection:
 
 ```bash
 # Basic inquiry (defaults to limit 200)

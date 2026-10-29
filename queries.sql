@@ -92,15 +92,13 @@ INSERT INTO nodes (
     category,
     rootness,
     trunkness,
-    leafness,
-    community
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    leafness
+) VALUES (?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(collection_id, article_id) DO UPDATE SET
     category=excluded.category,
     rootness=excluded.rootness,
     trunkness=excluded.trunkness,
-    leafness=excluded.leafness,
-    community=excluded.community
+    leafness=excluded.leafness
 RETURNING id;
 
 -- name: UpdateArticleCount :exec
@@ -123,7 +121,7 @@ INSERT OR REPLACE INTO links (
 
 -- name: ListNodes :many
 SELECT
-	n.id, n.category, n.rootness, n.trunkness, n.leafness, n.community,
+	n.id, n.category, n.rootness, n.trunkness, n.leafness,
 	a.id, a.label, a.title, a.journal, a.year, a.volume, a.issue, a.page,
 	a.doi, a.permalink, a.times_cited, a.abstract, a.rich,
 	a.authors, a.keywords, a.ids
@@ -174,7 +172,7 @@ LIMIT ?;
 
 -- name: Search :many
 SELECT
-    n.id, n.category, n.rootness, n.trunkness, n.leafness, n.community,
+    n.id, n.category, n.rootness, n.trunkness, n.leafness,
     a.id, a.label, a.title, a.journal, a.year, a.volume, a.issue, a.page,
     a.doi, a.permalink, a.times_cited, a.abstract, a.rich,
     a.authors, a.keywords, a.ids

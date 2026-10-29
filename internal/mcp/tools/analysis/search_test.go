@@ -41,7 +41,6 @@ func TestSearchTool(t *testing.T) {
 				Category:  models.CategoryRoot,
 				Rootness:  0.9,
 				Trunkness: 0.1,
-				Community: 1,
 				Article: &models.Article{
 					Label: "openalex:W1",
 					Title: &paperTitle,
