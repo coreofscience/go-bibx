@@ -28,6 +28,9 @@ type InquireOptions struct {
 type InquireResult struct {
 	Collection *Collection
 	IsNew      bool
+	// SeedCount is the number of works OpenAlex returned for the query. It is
+	// only set when the collection was newly fetched.
+	SeedCount int
 }
 
 // AnalysisService defines operations for literature inquiry, graph algorithms, and analysis queries.
@@ -107,9 +110,9 @@ func (s *OpenAlexAnalysisService) Inquire(
 	}
 
 	slog.InfoContext(ctx, "fetching initial articles")
-	works, err := s.openalexClient.ListRecentArticles(ctx, query, limit)
+	works, err := s.openalexClient.SearchArticles(ctx, query, limit)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list recent articles: %w", err)
+		return nil, fmt.Errorf("failed to search articles: %w", err)
 	}
 	articles := make(models.Articles, len(works))
 	for i, w := range works {
@@ -236,6 +239,7 @@ func (s *OpenAlexAnalysisService) Inquire(
 	return &InquireResult{
 		Collection: toCollection(savedRow),
 		IsNew:      true,
+		SeedCount:  len(works),
 	}, nil
 }
 

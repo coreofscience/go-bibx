@@ -45,7 +45,7 @@ func TestInquireTool(t *testing.T) {
 		assert.Equal(t, "Inquire collection", res.Tools[0].Title)
 		assert.True(t, *res.Tools[0].Annotations.OpenWorldHint)
 		mcptest.AssertPropertyDescriptions(t, res.Tools[0].InputSchema, "query", "limit", "force", "name")
-		mcptest.AssertPropertyDescriptions(t, res.Tools[0].OutputSchema, "collection", "is_new")
+		mcptest.AssertPropertyDescriptions(t, res.Tools[0].OutputSchema, "collection", "is_new", "warnings")
 	})
 
 	t.Run("successful inquiry", func(t *testing.T) {
@@ -54,6 +54,7 @@ func TestInquireTool(t *testing.T) {
 			Return(&services.InquireResult{
 				Collection: testCol,
 				IsNew:      true,
+				SeedCount:  200,
 			}, nil).
 			Once()
 
@@ -73,6 +74,57 @@ func TestInquireTool(t *testing.T) {
 		require.NotNil(t, out.Collection)
 		assert.Equal(t, colID.String(), out.Collection.ID)
 		assert.Equal(t, "graph algorithms", out.Collection.Query)
+		assert.Empty(t, out.Warnings)
+	})
+
+	t.Run("few matching works returns a warning", func(t *testing.T) {
+		mockAnaSvc.EXPECT().
+			Inquire(mock.Anything, "nosql cap theorem consistency", 200, mock.Anything).
+			Return(&services.InquireResult{
+				Collection: testCol,
+				IsNew:      true,
+				SeedCount:  1,
+			}, nil).
+			Once()
+
+		res, err := client.CallTool(t.Context(), &mcp.CallToolParams{
+			Name: "inquire",
+			Arguments: map[string]any{
+				"query": "nosql cap theorem consistency",
+			},
+		})
+		require.NoError(t, err)
+		assert.False(t, res.IsError)
+
+		var out collections.InquireOutput
+		err = json.Unmarshal([]byte(res.Content[0].(*mcp.TextContent).Text), &out)
+		require.NoError(t, err)
+		require.Len(t, out.Warnings, 1)
+		assert.Contains(t, out.Warnings[0], "only 1 of the 200 requested works")
+	})
+
+	t.Run("cached collection returns no warning", func(t *testing.T) {
+		mockAnaSvc.EXPECT().
+			Inquire(mock.Anything, "cached topic", 200, mock.Anything).
+			Return(&services.InquireResult{
+				Collection: testCol,
+				IsNew:      false,
+			}, nil).
+			Once()
+
+		res, err := client.CallTool(t.Context(), &mcp.CallToolParams{
+			Name: "inquire",
+			Arguments: map[string]any{
+				"query": "cached topic",
+			},
+		})
+		require.NoError(t, err)
+		assert.False(t, res.IsError)
+
+		var out collections.InquireOutput
+		err = json.Unmarshal([]byte(res.Content[0].(*mcp.TextContent).Text), &out)
+		require.NoError(t, err)
+		assert.Empty(t, out.Warnings)
 	})
 
 	t.Run("missing query returns error", func(t *testing.T) {

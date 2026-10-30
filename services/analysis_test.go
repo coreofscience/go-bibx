@@ -56,7 +56,7 @@ func TestOpenAlexAnalysisService_InquireAndSearch(t *testing.T) {
 
 	oaClient := openalexmocks.NewMockClient(t)
 	oaClient.EXPECT().
-		ListRecentArticles(mock.Anything, mock.Anything, mock.Anything).
+		SearchArticles(mock.Anything, mock.Anything, mock.Anything).
 		Return(worksMapToSlice(w1, w2, w3, w4), nil).
 		Times(4)
 	oaClient.EXPECT().
@@ -87,8 +87,9 @@ func TestOpenAlexAnalysisService_InquireAndSearch(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, res)
 	require.True(t, res.IsNew)
+	assert.Equal(t, 4, res.SeedCount)
 	col := res.Collection
-	oaClient.AssertNumberOfCalls(t, "ListRecentArticles", 1)
+	oaClient.AssertNumberOfCalls(t, "SearchArticles", 1)
 	assert.Equal(t, 4, col.ArticleCount)
 
 	// 2. Query Idempotency: re-running identical query (with whitespace variation) skips remote fetch
@@ -96,15 +97,16 @@ func TestOpenAlexAnalysisService_InquireAndSearch(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, res2)
 	assert.False(t, res2.IsNew)
+	assert.Zero(t, res2.SeedCount, "cached collections do not report a seed count")
 	assert.Equal(t, col.ID, res2.Collection.ID, "idempotent query must return the existing collection")
-	oaClient.AssertNumberOfCalls(t, "ListRecentArticles", 1)
+	oaClient.AssertNumberOfCalls(t, "SearchArticles", 1)
 
 	// 3. Force re-run: with force=true, OpenAlex is called again
 	res3, err := svc.Inquire(context.Background(), "test query", 10, services.InquireOptions{Force: true})
 	require.NoError(t, err)
 	require.NotNil(t, res3)
 	assert.True(t, res3.IsNew)
-	oaClient.AssertNumberOfCalls(t, "ListRecentArticles", 2)
+	oaClient.AssertNumberOfCalls(t, "SearchArticles", 2)
 
 	// 4. Test QueryCategory
 	results, err := svc.QueryCategory(context.Background(), col.ID, "root", 2)
@@ -180,7 +182,7 @@ func TestOpenAlexAnalysisService_ReCleansAfterEnrichDiscardsMissingReferences(t 
 
 	oaClient := openalexmocks.NewMockClient(t)
 	oaClient.EXPECT().
-		ListRecentArticles(mock.Anything, mock.Anything, mock.Anything).
+		SearchArticles(mock.Anything, mock.Anything, mock.Anything).
 		Return(worksMapToSlice(w1, w2, w3, w4), nil).
 		Once()
 	oaClient.EXPECT().

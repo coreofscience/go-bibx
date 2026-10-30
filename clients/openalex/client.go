@@ -29,8 +29,8 @@ const (
 
 // Client is the interface for the OpenAlex client.
 type Client interface {
-	// ListRecentArticles lists recent articles based on the given query and limit.
-	ListRecentArticles(ctx context.Context, query string, limit int) ([]*Work, error)
+	// SearchArticles lists the articles most relevant to the given query, up to limit.
+	SearchArticles(ctx context.Context, query string, limit int) ([]*Work, error)
 
 	// ListArticlesByIDs lists articles by their IDs.
 	ListArticlesByIDs(ctx context.Context, ids []string) ([]*Work, error)
@@ -119,8 +119,8 @@ func getWorkFields() []string {
 	return workFields
 }
 
-// ListRecentArticles implements [Client]
-func (c *RestyClient) ListRecentArticles(ctx context.Context, query string, limit int) ([]*Work, error) {
+// SearchArticles implements [Client]
+func (c *RestyClient) SearchArticles(ctx context.Context, query string, limit int) ([]*Work, error) {
 	selectFields := getWorkFields()
 	sanitizedQuery := strings.NewReplacer(",", " ", ":", " ").Replace(query)
 	queryFilter := fmt.Sprintf(
@@ -144,7 +144,7 @@ func (c *RestyClient) ListRecentArticles(ctx context.Context, query string, limi
 		queryParams := map[string]string{
 			"select":   strings.Join(selectFields, ","),
 			"filter":   strings.Join(filterParts, ","),
-			"sort":     "publication_year:desc",
+			"sort":     "relevance_score:desc",
 			"per_page": fmt.Sprintf("%d", MaxWorksPerPage),
 			"page":     fmt.Sprintf("%d", page),
 		}
@@ -328,7 +328,7 @@ func WorkToArticle(work *Work) *models.Article {
 		Journal:    journal,
 		Volume:     work.Biblio.Volume,
 		Issue:      work.Biblio.Issue,
-		Page:       work.Biblio.FirstPage,
+		Page:       pageRange(work.Biblio),
 		DOI:        doi,
 		Permalink:  permalink,
 		TimesCited: &work.CitedByCount,
@@ -337,6 +337,20 @@ func WorkToArticle(work *Work) *models.Article {
 		Abstract:   &abstract,
 		Rich:       true,
 	}
+}
+
+// pageRange returns "first-last" when both pages are known and differ,
+// otherwise whichever single page is available.
+func pageRange(biblio WorkBiblio) *string {
+	first, last := biblio.FirstPage, biblio.LastPage
+	if first == nil || *first == "" {
+		return nil
+	}
+	if last == nil || *last == "" || *last == *first {
+		return first
+	}
+	pages := *first + "-" + *last
+	return &pages
 }
 
 // ReferenceToArticle transforms an OpenAlex ID to an Article.
