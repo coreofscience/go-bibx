@@ -34,12 +34,14 @@ func TestTosTool(t *testing.T) {
 	}
 
 	paperTitle := "Foundational Network Paper"
+	paperAbstract := "A seminal abstract on graph theory."
 	mockResults := []*models.Result{
 		{
 			Score: 0.95,
 			Article: &models.Article{
-				Label: "openalex:W1",
-				Title: &paperTitle,
+				Label:    "openalex:W1",
+				Title:    &paperTitle,
+				Abstract: &paperAbstract,
 			},
 		},
 	}
@@ -52,11 +54,11 @@ func TestTosTool(t *testing.T) {
 		assert.Equal(t, "tos", res.Tools[0].Name)
 		assert.Equal(t, "Tree of Science", res.Tools[0].Title)
 		assert.False(t, *res.Tools[0].Annotations.OpenWorldHint)
-		mcptest.AssertPropertyDescriptions(t, res.Tools[0].InputSchema, "category", "limit", "target")
+		mcptest.AssertPropertyDescriptions(t, res.Tools[0].InputSchema, "category", "limit", "target", "include_abstracts")
 		mcptest.AssertPropertyDescriptions(t, res.Tools[0].OutputSchema, "results")
 	})
 
-	t.Run("query root category with target collection", func(t *testing.T) {
+	t.Run("query root category with target collection omits abstract by default", func(t *testing.T) {
 		mockColSvc.EXPECT().
 			Resolve(mock.Anything, colID.String()).
 			Return(testCol, nil).
@@ -83,6 +85,37 @@ func TestTosTool(t *testing.T) {
 		require.Len(t, out.Results, 1)
 		assert.Equal(t, 0.95, out.Results[0].Score)
 		assert.Equal(t, "Foundational Network Paper", *out.Results[0].Article.Title)
+		assert.Nil(t, out.Results[0].Article.Abstract)
+	})
+
+	t.Run("query category with include_abstracts true includes abstract", func(t *testing.T) {
+		mockColSvc.EXPECT().
+			Resolve(mock.Anything, colID.String()).
+			Return(testCol, nil).
+			Once()
+
+		mockAnaSvc.EXPECT().
+			QueryCategory(mock.Anything, colID, "root", 10).
+			Return(mockResults, nil).
+			Once()
+
+		res, err := client.CallTool(t.Context(), &mcp.CallToolParams{
+			Name: "tos",
+			Arguments: map[string]any{
+				"category":          "root",
+				"target":            colID.String(),
+				"include_abstracts": true,
+			},
+		})
+		require.NoError(t, err)
+		assert.False(t, res.IsError)
+
+		var out analysis.TosOutput
+		err = json.Unmarshal([]byte(res.Content[0].(*mcp.TextContent).Text), &out)
+		require.NoError(t, err)
+		require.Len(t, out.Results, 1)
+		require.NotNil(t, out.Results[0].Article.Abstract)
+		assert.Equal(t, paperAbstract, *out.Results[0].Article.Abstract)
 	})
 
 	t.Run("query trunk category with custom limit", func(t *testing.T) {

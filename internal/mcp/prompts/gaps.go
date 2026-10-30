@@ -81,6 +81,8 @@ Follow this systematic network-analysis methodology using the bibx MCP tools:
 2. **Contemporary Frontier (Leaves)**:
    - Query leaves: `+"`tos(category=\"leaf\", limit=30%s)`"+` to survey active contemporary research papers.
    - Cluster leaves by sub-domain, application area, and theoretical orientation.
+3. **Selective Abstract Inspection**:
+   - Because `+"`tos`"+` and `+"`search`"+` omit abstracts by default to conserve context window, use the `+"`articles`"+` tool with specific paper IDs to inspect full abstracts for candidate anchor papers.
 
 ### Phase 3: Systematic Gap Detection Heuristics
 Apply the following graph-topology heuristics to uncover research gaps:
