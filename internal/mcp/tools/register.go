@@ -14,5 +14,6 @@ func Register(server *mcp.Server, collectionService services.CollectionService, 
 	collections.NewInquire(analysisService).Register(server)
 	analysis.NewTos(analysisService, collectionService).Register(server)
 	analysis.NewSearch(analysisService, collectionService).Register(server)
+	analysis.NewArticles(analysisService, collectionService).Register(server)
 	analysis.NewBibtex(analysisService, collectionService).Register(server)
 }

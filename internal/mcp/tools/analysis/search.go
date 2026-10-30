@@ -19,6 +19,8 @@ type SearchInput struct {
 	Limit int `json:"limit,omitempty" jsonschema:"Number of top keyword-matched seed nodes used to construct the Steiner tree subgraph (1-100, default: 10). For best results, try between 10 and 20."`
 	// Target is the collection ID (UUID) or name alias. If omitted, the latest collection is queried.
 	Target string `json:"target,omitempty" jsonschema:"Collection UUID or name alias. Omit to search the most recently updated collection."`
+	// IncludeAbstracts includes article abstracts in the nodes (default: false).
+	IncludeAbstracts bool `json:"include_abstracts,omitempty" jsonschema:"Include article abstracts in the response (default: false). Omit to save context window space and use the 'articles' tool to fetch abstracts for specific papers."`
 }
 
 // SearchOutput contains the graph results of the search query.
@@ -51,7 +53,7 @@ func (s *Search) Tool() *mcp.Tool {
 			ReadOnlyHint:    true,
 			Title:           "search collection",
 		},
-		Description: "Search within an existing collection using keyword matching and Steiner tree graph reduction to find relevant articles and connecting citation paths.",
+		Description: "Search within an existing collection using keyword matching and Steiner tree graph reduction to find relevant articles and connecting citation paths. Abstracts are omitted by default; use the 'articles' tool to fetch abstracts for specific papers.",
 		Name:        "search",
 		Title:       "Search collection",
 	}
@@ -105,7 +107,11 @@ func (s *Search) Handle(
 	if rawAnalysis != nil {
 		nodes = make([]*mcpmodels.NodeSummary, len(rawAnalysis.Nodes))
 		for i, n := range rawAnalysis.Nodes {
-			nodes[i] = mcpmodels.NewNodeSummaryFromModel(n)
+			node := mcpmodels.NewNodeSummaryFromModel(n)
+			if !input.IncludeAbstracts && node != nil && node.Article != nil {
+				node.Article.Abstract = nil
+			}
+			nodes[i] = node
 		}
 		links = make([]*mcpmodels.LinkSummary, len(rawAnalysis.Links))
 		for i, l := range rawAnalysis.Links {

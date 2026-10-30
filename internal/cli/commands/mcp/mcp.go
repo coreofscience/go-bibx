@@ -49,7 +49,7 @@ func New() *cli.Command {
 					WebsiteURL:  "https://bibx.coreofscience.org",
 				},
 				&mcp.ServerOptions{
-					Instructions: "Manage and analyze bibliographic collections using the Tree of Science (ToS) methodology (see resource bibx:/summary). Typical workflow: 1) 'list' existing collections or 'inquire' a research topic from OpenAlex; 2) analyze key papers with 'tos' (root/trunk/leaf) or 'search' (Steiner tree subgraph); 3) export citations with 'bibtex'.",
+					Instructions: "Manage and analyze bibliographic collections using the Tree of Science (ToS) methodology (see resource bibx:/summary). Typical workflow: 1) 'list' existing collections or 'inquire' a research topic from OpenAlex; 2) analyze key papers with 'tos' (root/trunk/leaf) or 'search' (Steiner tree subgraph); 3) inspect full metadata and abstracts for selected papers with 'articles'; 4) export citations with 'bibtex'.",
 					Logger:       slog.Default(),
 					Capabilities: &mcp.ServerCapabilities{
 						Prompts: &mcp.PromptCapabilities{

@@ -30,6 +30,8 @@ type TosInput struct {
 	Limit int `json:"limit,omitempty" jsonschema:"Maximum number of top-scored articles to return (1-1000, default: 10). 10 to 20 is usually plenty, except for 'leaf' where up to 40 is also fine."`
 	// Target is the collection ID (UUID) or name alias. If omitted, the latest collection is queried.
 	Target string `json:"target,omitempty" jsonschema:"Collection UUID or name alias. Omit to query the most recently updated collection."`
+	// IncludeAbstracts includes article abstracts in the results (default: false).
+	IncludeAbstracts bool `json:"include_abstracts,omitempty" jsonschema:"Include article abstracts in the response (default: false). Omit to save context window space and use the 'articles' tool to fetch abstracts for specific papers."`
 }
 
 // TosOutput contains the results of the Tree of Science query.
@@ -61,7 +63,7 @@ func (t *Tos) Tool() *mcp.Tool {
 			ReadOnlyHint:    true,
 			Title:           "query Tree of Science categories",
 		},
-		Description: "Query top articles in a collection by Tree of Science (ToS) category ('root', 'trunk', or 'leaf'). Read resource bibx:/summary for methodology details.",
+		Description: "Query top articles in a collection by Tree of Science (ToS) category ('root', 'trunk', or 'leaf'). Abstracts are omitted by default; use the 'articles' tool to fetch abstracts for specific papers. Read resource bibx:/summary for methodology details.",
 		Name:        "tos",
 		Title:       "Tree of Science",
 	}
@@ -116,7 +118,11 @@ func (t *Tos) Handle(
 
 	results := make([]*mcpmodels.Result, len(rawResults))
 	for i, r := range rawResults {
-		results[i] = mcpmodels.NewResultFromModel(r)
+		res := mcpmodels.NewResultFromModel(r)
+		if !input.IncludeAbstracts && res != nil && res.Article != nil {
+			res.Article.Abstract = nil
+		}
+		results[i] = res
 	}
 
 	return &mcp.CallToolResult{IsError: false}, &TosOutput{
