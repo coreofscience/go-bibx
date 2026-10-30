@@ -14,7 +14,7 @@ import (
 // SearchInput represents the input parameters for the Search tool.
 type SearchInput struct {
 	// Query is the search query for the collection articles.
-	Query string `json:"query" jsonschema:"Keyword to match against article titles, abstracts, and metadata within the collection. For best results, try one-word queries."`
+	Query string `json:"query" jsonschema:"Keyword to match against article titles, abstracts, keywords and author names within the collection. For best results, try one-word queries."`
 	// Limit is the number of initial nodes to start the graph algorithm with (default: 10, max: 100).
 	Limit int `json:"limit,omitempty" jsonschema:"Number of top keyword-matched seed nodes used to construct the Steiner tree subgraph (1-100, default: 10). For best results, try between 10 and 20."`
 	// Target is the collection ID (UUID) or name alias. If omitted, the latest collection is queried.
@@ -53,7 +53,7 @@ func (s *Search) Tool() *mcp.Tool {
 			ReadOnlyHint:    true,
 			Title:           "search collection",
 		},
-		Description: "Search within an existing collection using keyword matching and Steiner tree graph reduction to find relevant articles and connecting citation paths. Abstracts are omitted by default; use the 'articles' tool to fetch abstracts for specific papers.",
+		Description: "Search within an existing collection using keyword matching and Steiner tree graph reduction to find relevant articles and connecting citation paths. Only articles already in the collection can be found; an empty result for a known paper usually means 'inquire' never fetched it. Abstracts are omitted by default; use the 'articles' tool to fetch abstracts for specific papers.",
 		Name:        "search",
 		Title:       "Search collection",
 	}

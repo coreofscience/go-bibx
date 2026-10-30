@@ -1,0 +1,38 @@
+bibx builds and analyses citation networks with the Tree of Science (ToS)
+method. Use it for literature reviews, finding the key papers on a topic,
+and exporting citations.
+
+TREE OF SCIENCE: what the categories mean
+- root: a seminal, foundational paper. Many citation chains in the
+  collection end at it as their original source. Not simply "old" or
+  "most cited".
+- trunk: a structural paper where the topic took its current shape. It
+  joins two or more roots, so many citation chains pass through it.
+- leaf: a current, state-of-the-art paper. Many of its outgoing citation
+  chains lead back to the roots. Not simply "recent".
+Use these definitions when you describe the method to the user. Do not
+paraphrase them from general knowledge. Read bibx:/summary before you write
+a methods section, explain how the scores work, or cite the methodology.
+
+WORKFLOW
+1. `list` to reuse an existing collection. Otherwise run `inquire` with ONE
+   concept of 1-3 words per call (every term must appear in the title or
+   abstract). Give it a `name` so later calls can refer to it. Use a limit
+   of 200-500.
+2. `tos` for root (10-20), trunk (10-20) and leaf (up to 40). This is the
+   backbone of a review: roots = background, trunk = how the field
+   developed, leaves = the research front.
+3. `search` with one-word keywords to cover subtopics the ToS lists miss.
+   It returns a connected subgraph, not only matches.
+4. `articles` to fetch abstracts before making claims about a paper's
+   findings. Titles and keywords alone are not enough for quantitative
+   statements.
+5. `bibtex` with the DOIs you cite, or preset "tos". Use the returned
+   citekeys in the text.
+
+GOOD PRACTICE
+- Report the query, limit, collection size and date in the review's method
+  note.
+- Results are cached per query and limit. Pass `force` only to refresh.
+- `delete` is permanent. Use it only on collections the user agrees are
+  throwaway.

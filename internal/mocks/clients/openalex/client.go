@@ -115,12 +115,12 @@ func (_c *MockClient_ListArticlesByIDs_Call) RunAndReturn(run func(ctx context.C
 	return _c
 }
 
-// ListRecentArticles provides a mock function for the type MockClient
-func (_mock *MockClient) ListRecentArticles(ctx context.Context, query string, limit int) ([]*openalex.Work, error) {
+// SearchArticles provides a mock function for the type MockClient
+func (_mock *MockClient) SearchArticles(ctx context.Context, query string, limit int) ([]*openalex.Work, error) {
 	ret := _mock.Called(ctx, query, limit)
 
 	if len(ret) == 0 {
-		panic("no return value specified for ListRecentArticles")
+		panic("no return value specified for SearchArticles")
 	}
 
 	var r0 []*openalex.Work
@@ -143,20 +143,20 @@ func (_mock *MockClient) ListRecentArticles(ctx context.Context, query string, l
 	return r0, r1
 }
 
-// MockClient_ListRecentArticles_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListRecentArticles'
-type MockClient_ListRecentArticles_Call struct {
+// MockClient_SearchArticles_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SearchArticles'
+type MockClient_SearchArticles_Call struct {
 	*mock.Call
 }
 
-// ListRecentArticles is a helper method to define mock.On call
+// SearchArticles is a helper method to define mock.On call
 //   - ctx context.Context
 //   - query string
 //   - limit int
-func (_e *MockClient_Expecter) ListRecentArticles(ctx any, query any, limit any) *MockClient_ListRecentArticles_Call {
-	return &MockClient_ListRecentArticles_Call{Call: _e.mock.On("ListRecentArticles", ctx, query, limit)}
+func (_e *MockClient_Expecter) SearchArticles(ctx any, query any, limit any) *MockClient_SearchArticles_Call {
+	return &MockClient_SearchArticles_Call{Call: _e.mock.On("SearchArticles", ctx, query, limit)}
 }
 
-func (_c *MockClient_ListRecentArticles_Call) Run(run func(ctx context.Context, query string, limit int)) *MockClient_ListRecentArticles_Call {
+func (_c *MockClient_SearchArticles_Call) Run(run func(ctx context.Context, query string, limit int)) *MockClient_SearchArticles_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -179,12 +179,12 @@ func (_c *MockClient_ListRecentArticles_Call) Run(run func(ctx context.Context, 
 	return _c
 }
 
-func (_c *MockClient_ListRecentArticles_Call) Return(works []*openalex.Work, err error) *MockClient_ListRecentArticles_Call {
+func (_c *MockClient_SearchArticles_Call) Return(works []*openalex.Work, err error) *MockClient_SearchArticles_Call {
 	_c.Call.Return(works, err)
 	return _c
 }
 
-func (_c *MockClient_ListRecentArticles_Call) RunAndReturn(run func(ctx context.Context, query string, limit int) ([]*openalex.Work, error)) *MockClient_ListRecentArticles_Call {
+func (_c *MockClient_SearchArticles_Call) RunAndReturn(run func(ctx context.Context, query string, limit int) ([]*openalex.Work, error)) *MockClient_SearchArticles_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -98,7 +98,7 @@ func TestListArticlesByIDs(t *testing.T) {
 	})
 }
 
-func TestListRecentArticles(t *testing.T) {
+func TestSearchArticles(t *testing.T) {
 	t.Run("successful fetch with pagination", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			page := r.URL.Query().Get("page")
@@ -115,7 +115,7 @@ func TestListRecentArticles(t *testing.T) {
 
 		client := openalex.NewRestyClient(openalex.WithBaseURL(server.URL))
 		// MaxWorksPerPage is 200, so limit 250 should request 2 pages
-		works, err := client.ListRecentArticles(context.Background(), "test query", 250)
+		works, err := client.SearchArticles(context.Background(), "test query", 250)
 
 		assert.NoError(t, err)
 		// Since our mock returns 1 work per page, we expect 2 works total
@@ -132,7 +132,7 @@ func TestListRecentArticles(t *testing.T) {
 			openalex.WithBaseURL(server.URL),
 			openalex.WithHTTPClient(resty.New()), // Disable retries
 		)
-		_, err := client.ListRecentArticles(context.Background(), "query", 10)
+		_, err := client.SearchArticles(context.Background(), "query", 10)
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "503 Service Unavailable")
@@ -142,6 +142,7 @@ func TestListRecentArticles(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			filter := r.URL.Query().Get("filter")
 			assert.Contains(t, filter, "title_and_abstract.search:covid+19+review+study")
+			assert.Equal(t, "relevance_score:desc", r.URL.Query().Get("sort"))
 
 			page := r.URL.Query().Get("page")
 			if page == "1" {
@@ -162,7 +163,7 @@ func TestListRecentArticles(t *testing.T) {
 		defer server.Close()
 
 		client := openalex.NewRestyClient(openalex.WithBaseURL(server.URL))
-		works, err := client.ListRecentArticles(context.Background(), "covid: 19, review study", 250)
+		works, err := client.SearchArticles(context.Background(), "covid: 19, review study", 250)
 		require.NoError(t, err)
 		require.Len(t, works, 250)
 		// First 200 items must be from page 1, next 50 from page 2
@@ -189,4 +190,29 @@ func TestReferenceToArticle_DoesNotShadowRichPermalink(t *testing.T) {
 	merged := stub.Merge(rich)
 	require.NotNil(t, merged.Permalink)
 	assert.Equal(t, landingURL, *merged.Permalink)
+}
+
+func TestWorkToArticle_PageRange(t *testing.T) {
+	tests := []struct {
+		name  string
+		first *string
+		last  *string
+		want  *string
+	}{
+		{name: "first and last", first: new("107"), last: new("113"), want: new("107-113")},
+		{name: "first only", first: new("107"), want: new("107")},
+		{name: "same first and last", first: new("42"), last: new("42"), want: new("42")},
+		{name: "empty last", first: new("107"), last: new(""), want: new("107")},
+		{name: "no pages"},
+		{name: "last only", last: new("113")},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			article := openalex.WorkToArticle(&openalex.Work{
+				ID:     "https://openalex.org/W1",
+				Biblio: openalex.WorkBiblio{FirstPage: tt.first, LastPage: tt.last},
+			})
+			assert.Equal(t, tt.want, article.Page)
+		})
+	}
 }
