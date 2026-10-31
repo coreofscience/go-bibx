@@ -90,15 +90,15 @@ func New() *cli.Command {
 			}
 
 			if !res.IsNew {
-				fmt.Printf("Collection already exists: %s (%d articles). Use --force to re-run inquiry.\n", res.Collection.ID, res.Collection.ArticleCount)
+				fmt.Printf("Collection already exists: %s (%d works). Use --force to re-run inquiry.\n", res.Collection.ID, res.Collection.WorkCount)
 				return nil
 			}
 
 			slog.InfoContext(ctx, "inquiry completed",
 				"collection_id", res.Collection.ID,
-				"articles", res.Collection.ArticleCount,
+				"works", res.Collection.WorkCount,
 			)
-			fmt.Printf("Collection ready: %s (articles: %d)\n", res.Collection.ID, res.Collection.ArticleCount)
+			fmt.Printf("Collection ready: %s (works: %d)\n", res.Collection.ID, res.Collection.WorkCount)
 			return nil
 		},
 	}

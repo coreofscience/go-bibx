@@ -5,21 +5,21 @@ import (
 	"fmt"
 )
 
-// References prevents circular references by using a slice of Article pointers.
-type References []*Article
+// References prevents circular references by using a slice of Work pointers.
+type References []*Work
 
 // MarshalJSON implements the json.Marshaler interface.
 func (r References) MarshalJSON() ([]byte, error) {
 	toMarshal := make([]*struct {
-		*Article
+		*Work
 		References any `json:"references,omitempty"`
 	}, len(r))
 	for i, a := range r {
 		toMarshal[i] = &struct {
-			*Article
+			*Work
 			References any `json:"references,omitempty"`
 		}{
-			Article:    a,
+			Work:       a,
 			References: nil,
 		}
 	}

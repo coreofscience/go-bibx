@@ -38,13 +38,13 @@ func TestBibtexTool(t *testing.T) {
 
 	year := 2017
 	paperTitle := "Foundational Network Paper"
-	journal := "Network Science"
+	venue := "Network Science"
 	abstract := "Comprehensive overview of graph algorithms and network structure."
 	timesCited := 150
-	art := &models.Article{
+	work := &models.Work{
 		Label:      "openalex:W1",
 		Title:      &paperTitle,
-		Journal:    &journal,
+		Venue:      &venue,
 		Authors:    []string{"Vaswani, Ashish", "Shazeer, Noam"},
 		Year:       &year,
 		Abstract:   &abstract,
@@ -63,15 +63,15 @@ func TestBibtexTool(t *testing.T) {
 		mcptest.AssertPropertyDescriptions(t, res.Tools[0].OutputSchema, "bibtex", "count", "keys", "resource_uri", "not_found")
 	})
 
-	t.Run("exports selected articles with target collection and keys mapping", func(t *testing.T) {
+	t.Run("exports selected works with target collection and keys mapping", func(t *testing.T) {
 		mockColSvc.EXPECT().
 			Resolve(mock.Anything, colID.String()).
 			Return(testCol, nil).
 			Once()
 
 		mockAnaSvc.EXPECT().
-			GetArticles(mock.Anything, colID, []string{"openalex:W1"}).
-			Return([]*models.Article{art}, nil, nil).
+			GetWorks(mock.Anything, colID, []string{"openalex:W1"}).
+			Return([]*models.Work{work}, nil, nil).
 			Once()
 
 		res, err := client.CallTool(t.Context(), &mcp.CallToolParams{
@@ -114,8 +114,8 @@ func TestBibtexTool(t *testing.T) {
 			Once()
 
 		mockAnaSvc.EXPECT().
-			GetArticles(mock.Anything, colID, []string{"openalex:W1"}).
-			Return([]*models.Article{art}, nil, nil).
+			GetWorks(mock.Anything, colID, []string{"openalex:W1"}).
+			Return([]*models.Work{work}, nil, nil).
 			Once()
 
 		res, err := client.CallTool(t.Context(), &mcp.CallToolParams{
@@ -135,15 +135,15 @@ func TestBibtexTool(t *testing.T) {
 		assert.Contains(t, out.Bibtex, "Comprehensive overview")
 	})
 
-	t.Run("exports all articles when ids omitted", func(t *testing.T) {
+	t.Run("exports all works when ids omitted", func(t *testing.T) {
 		mockColSvc.EXPECT().
 			Resolve(mock.Anything, "").
 			Return(testCol, nil).
 			Once()
 
 		mockAnaSvc.EXPECT().
-			GetArticles(mock.Anything, colID, []string(nil)).
-			Return([]*models.Article{art}, nil, nil).
+			GetWorks(mock.Anything, colID, []string(nil)).
+			Return([]*models.Work{work}, nil, nil).
 			Once()
 
 		res, err := client.CallTool(t.Context(), &mcp.CallToolParams{
@@ -170,8 +170,8 @@ func TestBibtexTool(t *testing.T) {
 			Once()
 
 		mockAnaSvc.EXPECT().
-			GetArticles(mock.Anything, colID, []string{"openalex:W1", "unknown-xyz"}).
-			Return([]*models.Article{art}, []string{"unknown-xyz"}, nil).
+			GetWorks(mock.Anything, colID, []string{"openalex:W1", "unknown-xyz"}).
+			Return([]*models.Work{work}, []string{"unknown-xyz"}, nil).
 			Once()
 
 		res, err := client.CallTool(t.Context(), &mcp.CallToolParams{
@@ -197,21 +197,21 @@ func TestBibtexTool(t *testing.T) {
 			Return(testCol, nil).
 			Once()
 
-		rootArt := &models.Article{Label: "root1", Authors: []string{"Root, Alan"}, Year: &year}
-		trunkArt := &models.Article{Label: "trunk1", Authors: []string{"Trunk, Bob"}, Year: &year}
-		leafArt := &models.Article{Label: "leaf1", Authors: []string{"Leaf, Charlie"}, Year: &year}
+		rootArt := &models.Work{Label: "root1", Authors: []string{"Root, Alan"}, Year: &year}
+		trunkArt := &models.Work{Label: "trunk1", Authors: []string{"Trunk, Bob"}, Year: &year}
+		leafArt := &models.Work{Label: "leaf1", Authors: []string{"Leaf, Charlie"}, Year: &year}
 
 		mockAnaSvc.EXPECT().
 			QueryCategory(mock.Anything, colID, "root", 10).
-			Return([]*models.Result{{Score: 0.9, Article: rootArt}}, nil).
+			Return([]*models.Result{{Score: 0.9, Work: rootArt}}, nil).
 			Once()
 		mockAnaSvc.EXPECT().
 			QueryCategory(mock.Anything, colID, "trunk", 10).
-			Return([]*models.Result{{Score: 0.8, Article: trunkArt}}, nil).
+			Return([]*models.Result{{Score: 0.8, Work: trunkArt}}, nil).
 			Once()
 		mockAnaSvc.EXPECT().
 			QueryCategory(mock.Anything, colID, "leaf", 10).
-			Return([]*models.Result{{Score: 0.7, Article: leafArt}}, nil).
+			Return([]*models.Result{{Score: 0.7, Work: leafArt}}, nil).
 			Once()
 
 		res, err := client.CallTool(t.Context(), &mcp.CallToolParams{
@@ -239,10 +239,10 @@ func TestBibtexTool(t *testing.T) {
 			Return(testCol, nil).
 			Once()
 
-		rootArt := &models.Article{Label: "root1", Authors: []string{"Root, Alan"}, Year: &year}
+		rootArt := &models.Work{Label: "root1", Authors: []string{"Root, Alan"}, Year: &year}
 		mockAnaSvc.EXPECT().
 			QueryCategory(mock.Anything, colID, "root", 5).
-			Return([]*models.Result{{Score: 0.9, Article: rootArt}}, nil).
+			Return([]*models.Result{{Score: 0.9, Work: rootArt}}, nil).
 			Once()
 
 		res, err := client.CallTool(t.Context(), &mcp.CallToolParams{
@@ -261,7 +261,7 @@ func TestBibtexTool(t *testing.T) {
 		assert.Equal(t, 1, out.Count)
 	})
 
-	t.Run("preset top_cited sorts articles by TimesCited", func(t *testing.T) {
+	t.Run("preset top_cited sorts works by TimesCited", func(t *testing.T) {
 		mockColSvc.EXPECT().
 			Resolve(mock.Anything, "").
 			Return(testCol, nil).
@@ -270,13 +270,13 @@ func TestBibtexTool(t *testing.T) {
 		tc10 := 10
 		tc50 := 50
 		tc30 := 30
-		art1 := &models.Article{Label: "art1", Authors: []string{"A1"}, Year: &year, TimesCited: &tc10}
-		art2 := &models.Article{Label: "art2", Authors: []string{"A2"}, Year: &year, TimesCited: &tc50}
-		art3 := &models.Article{Label: "art3", Authors: []string{"A3"}, Year: &year, TimesCited: &tc30}
+		art1 := &models.Work{Label: "art1", Authors: []string{"A1"}, Year: &year, TimesCited: &tc10}
+		art2 := &models.Work{Label: "art2", Authors: []string{"A2"}, Year: &year, TimesCited: &tc50}
+		art3 := &models.Work{Label: "art3", Authors: []string{"A3"}, Year: &year, TimesCited: &tc30}
 
 		mockAnaSvc.EXPECT().
-			GetArticles(mock.Anything, colID, ([]string)(nil)).
-			Return([]*models.Article{art1, art2, art3}, nil, nil).
+			GetWorks(mock.Anything, colID, ([]string)(nil)).
+			Return([]*models.Work{art1, art2, art3}, nil, nil).
 			Once()
 
 		res, err := client.CallTool(t.Context(), &mcp.CallToolParams{
@@ -374,7 +374,7 @@ func TestBibtexTool(t *testing.T) {
 			Once()
 
 		mockAnaSvc.EXPECT().
-			GetArticles(mock.Anything, colID, []string{"W1"}).
+			GetWorks(mock.Anything, colID, []string{"W1"}).
 			Return(nil, nil, errors.New("db query timeout")).
 			Once()
 
@@ -386,6 +386,6 @@ func TestBibtexTool(t *testing.T) {
 		})
 		require.NoError(t, err)
 		assert.True(t, res.IsError)
-		assert.Contains(t, res.Content[0].(*mcp.TextContent).Text, "failed to retrieve articles: db query timeout")
+		assert.Contains(t, res.Content[0].(*mcp.TextContent).Text, "failed to retrieve works: db query timeout")
 	})
 }

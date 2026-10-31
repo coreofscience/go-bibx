@@ -29,13 +29,13 @@ func TestDeleteTool(t *testing.T) {
 	colID := uuid.NewV7()
 	alias := "diss-verify-kafka"
 	testCol := &services.Collection{
-		ID:           colID,
-		Query:        "kafka log processing",
-		ResultLimit:  50,
-		Name:         &alias,
-		ArticleCount: 3,
-		CreatedAt:    time.Now().UTC(),
-		UpdatedAt:    time.Now().UTC(),
+		ID:          colID,
+		Query:       "kafka log processing",
+		ResultLimit: 50,
+		Name:        &alias,
+		WorkCount:   3,
+		CreatedAt:   time.Now().UTC(),
+		UpdatedAt:   time.Now().UTC(),
 	}
 
 	t.Run("lists tool metadata", func(t *testing.T) {

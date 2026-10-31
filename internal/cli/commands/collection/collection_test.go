@@ -92,23 +92,23 @@ func TestCollectionCommands(t *testing.T) {
 	// Seed collections
 	name1 := "first-col"
 	col1 := &services.Collection{
-		ID:           uuid.NewV7(),
-		Name:         &name1,
-		QueryHash:    services.ComputeQueryHash("first query", 10),
-		Query:        "first query",
-		ResultLimit:  10,
-		ArticleCount: 5,
+		ID:          uuid.NewV7(),
+		Name:        &name1,
+		QueryHash:   services.ComputeQueryHash("first query", 10),
+		Query:       "first query",
+		ResultLimit: 10,
+		WorkCount:   5,
 	}
 	require.NoError(t, store.Create(ctx, col1))
 
 	name2 := "second-col"
 	col2 := &services.Collection{
-		ID:           uuid.NewV7(),
-		Name:         &name2,
-		QueryHash:    services.ComputeQueryHash("second query", 20),
-		Query:        "second query",
-		ResultLimit:  20,
-		ArticleCount: 12,
+		ID:          uuid.NewV7(),
+		Name:        &name2,
+		QueryHash:   services.ComputeQueryHash("second query", 20),
+		Query:       "second query",
+		ResultLimit: 20,
+		WorkCount:   12,
 	}
 	require.NoError(t, store.Create(ctx, col2))
 

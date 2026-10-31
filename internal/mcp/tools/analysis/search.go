@@ -13,19 +13,19 @@ import (
 
 // SearchInput represents the input parameters for the Search tool.
 type SearchInput struct {
-	// Query is the search query for the collection articles.
-	Query string `json:"query" jsonschema:"Keyword to match against article titles, abstracts, keywords and author names within the collection. For best results, try one-word queries."`
+	// Query is the search query for the collection works.
+	Query string `json:"query" jsonschema:"Keyword to match against work titles, abstracts, keywords and author names within the collection. For best results, try one-word queries."`
 	// Limit is the number of initial nodes to start the graph algorithm with (default: 10, max: 100).
 	Limit int `json:"limit,omitempty" jsonschema:"Number of top keyword-matched seed nodes used to construct the Steiner tree subgraph (1-100, default: 10). For best results, try between 10 and 20."`
 	// Target is the collection ID (UUID) or name alias. If omitted, the latest collection is queried.
 	Target string `json:"target,omitempty" jsonschema:"Collection UUID or name alias. Omit to search the most recently updated collection."`
-	// IncludeAbstracts includes article abstracts in the nodes (default: false).
-	IncludeAbstracts bool `json:"include_abstracts,omitempty" jsonschema:"Include article abstracts in the response (default: false). Omit to save context window space and use the 'articles' tool to fetch abstracts for specific papers."`
+	// IncludeAbstracts includes work abstracts in the nodes (default: false).
+	IncludeAbstracts bool `json:"include_abstracts,omitempty" jsonschema:"Include work abstracts in the response (default: false). Omit to save context window space and use the 'works' tool to fetch abstracts for specific papers."`
 }
 
 // SearchOutput contains the graph results of the search query.
 type SearchOutput struct {
-	Nodes []*mcpmodels.NodeSummary `json:"nodes" jsonschema:"Articles in the connected Steiner tree subgraph (matched seed articles and connecting bridge papers)"`
+	Nodes []*mcpmodels.NodeSummary `json:"nodes" jsonschema:"Works in the connected Steiner tree subgraph (matched seed works and connecting bridge papers)"`
 	Links []*mcpmodels.LinkSummary `json:"links" jsonschema:"Directed citation edges connecting nodes in the subgraph"`
 }
 
@@ -53,7 +53,7 @@ func (s *Search) Tool() *mcp.Tool {
 			ReadOnlyHint:    true,
 			Title:           "search collection",
 		},
-		Description: "Search within an existing collection using keyword matching and Steiner tree graph reduction to find relevant articles and connecting citation paths. Only articles already in the collection can be found; an empty result for a known paper usually means 'inquire' never fetched it. Abstracts are omitted by default; use the 'articles' tool to fetch abstracts for specific papers.",
+		Description: "Search within an existing collection using keyword matching and Steiner tree graph reduction to find relevant works and connecting citation paths. Only works already in the collection can be found; an empty result for a known paper usually means 'inquire' never fetched it. Abstracts are omitted by default; use the 'works' tool to fetch abstracts for specific papers.",
 		Name:        "search",
 		Title:       "Search collection",
 	}
@@ -108,8 +108,8 @@ func (s *Search) Handle(
 		nodes = make([]*mcpmodels.NodeSummary, len(rawAnalysis.Nodes))
 		for i, n := range rawAnalysis.Nodes {
 			node := mcpmodels.NewNodeSummaryFromModel(n)
-			if !input.IncludeAbstracts && node != nil && node.Article != nil {
-				node.Article.Abstract = nil
+			if !input.IncludeAbstracts && node != nil && node.Work != nil {
+				node.Work.Abstract = nil
 			}
 			nodes[i] = node
 		}

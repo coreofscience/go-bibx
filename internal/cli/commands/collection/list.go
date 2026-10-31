@@ -44,7 +44,7 @@ func newListCommand() *cli.Command {
 			}
 
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-			_, _ = fmt.Fprintln(w, "ID\tNAME\tARTICLES\tQUERY\tCREATED")
+			_, _ = fmt.Fprintln(w, "ID\tNAME\tWORKS\tQUERY\tCREATED")
 			for _, col := range collections {
 				name := "-"
 				if col.Name != nil && *col.Name != "" {
@@ -55,7 +55,7 @@ func newListCommand() *cli.Command {
 					q = q[:37] + "..."
 				}
 				created := col.CreatedAt.Local().Format("2006-01-02 15:04")
-				_, _ = fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\n", col.ID.String(), name, col.ArticleCount, q, created)
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\n", col.ID.String(), name, col.WorkCount, q, created)
 			}
 			return w.Flush()
 		},

@@ -47,12 +47,12 @@ func (_m *MockClient) EXPECT() *MockClient_Expecter {
 	return &MockClient_Expecter{mock: &_m.Mock}
 }
 
-// ListArticlesByIDs provides a mock function for the type MockClient
-func (_mock *MockClient) ListArticlesByIDs(ctx context.Context, ids []string) ([]*openalex.Work, error) {
+// ListWorksByIDs provides a mock function for the type MockClient
+func (_mock *MockClient) ListWorksByIDs(ctx context.Context, ids []string) ([]*openalex.Work, error) {
 	ret := _mock.Called(ctx, ids)
 
 	if len(ret) == 0 {
-		panic("no return value specified for ListArticlesByIDs")
+		panic("no return value specified for ListWorksByIDs")
 	}
 
 	var r0 []*openalex.Work
@@ -75,19 +75,19 @@ func (_mock *MockClient) ListArticlesByIDs(ctx context.Context, ids []string) ([
 	return r0, r1
 }
 
-// MockClient_ListArticlesByIDs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListArticlesByIDs'
-type MockClient_ListArticlesByIDs_Call struct {
+// MockClient_ListWorksByIDs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListWorksByIDs'
+type MockClient_ListWorksByIDs_Call struct {
 	*mock.Call
 }
 
-// ListArticlesByIDs is a helper method to define mock.On call
+// ListWorksByIDs is a helper method to define mock.On call
 //   - ctx context.Context
 //   - ids []string
-func (_e *MockClient_Expecter) ListArticlesByIDs(ctx any, ids any) *MockClient_ListArticlesByIDs_Call {
-	return &MockClient_ListArticlesByIDs_Call{Call: _e.mock.On("ListArticlesByIDs", ctx, ids)}
+func (_e *MockClient_Expecter) ListWorksByIDs(ctx any, ids any) *MockClient_ListWorksByIDs_Call {
+	return &MockClient_ListWorksByIDs_Call{Call: _e.mock.On("ListWorksByIDs", ctx, ids)}
 }
 
-func (_c *MockClient_ListArticlesByIDs_Call) Run(run func(ctx context.Context, ids []string)) *MockClient_ListArticlesByIDs_Call {
+func (_c *MockClient_ListWorksByIDs_Call) Run(run func(ctx context.Context, ids []string)) *MockClient_ListWorksByIDs_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -105,22 +105,22 @@ func (_c *MockClient_ListArticlesByIDs_Call) Run(run func(ctx context.Context, i
 	return _c
 }
 
-func (_c *MockClient_ListArticlesByIDs_Call) Return(works []*openalex.Work, err error) *MockClient_ListArticlesByIDs_Call {
+func (_c *MockClient_ListWorksByIDs_Call) Return(works []*openalex.Work, err error) *MockClient_ListWorksByIDs_Call {
 	_c.Call.Return(works, err)
 	return _c
 }
 
-func (_c *MockClient_ListArticlesByIDs_Call) RunAndReturn(run func(ctx context.Context, ids []string) ([]*openalex.Work, error)) *MockClient_ListArticlesByIDs_Call {
+func (_c *MockClient_ListWorksByIDs_Call) RunAndReturn(run func(ctx context.Context, ids []string) ([]*openalex.Work, error)) *MockClient_ListWorksByIDs_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// SearchArticles provides a mock function for the type MockClient
-func (_mock *MockClient) SearchArticles(ctx context.Context, query string, limit int) ([]*openalex.Work, error) {
+// SearchWorks provides a mock function for the type MockClient
+func (_mock *MockClient) SearchWorks(ctx context.Context, query string, limit int) ([]*openalex.Work, error) {
 	ret := _mock.Called(ctx, query, limit)
 
 	if len(ret) == 0 {
-		panic("no return value specified for SearchArticles")
+		panic("no return value specified for SearchWorks")
 	}
 
 	var r0 []*openalex.Work
@@ -143,20 +143,20 @@ func (_mock *MockClient) SearchArticles(ctx context.Context, query string, limit
 	return r0, r1
 }
 
-// MockClient_SearchArticles_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SearchArticles'
-type MockClient_SearchArticles_Call struct {
+// MockClient_SearchWorks_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SearchWorks'
+type MockClient_SearchWorks_Call struct {
 	*mock.Call
 }
 
-// SearchArticles is a helper method to define mock.On call
+// SearchWorks is a helper method to define mock.On call
 //   - ctx context.Context
 //   - query string
 //   - limit int
-func (_e *MockClient_Expecter) SearchArticles(ctx any, query any, limit any) *MockClient_SearchArticles_Call {
-	return &MockClient_SearchArticles_Call{Call: _e.mock.On("SearchArticles", ctx, query, limit)}
+func (_e *MockClient_Expecter) SearchWorks(ctx any, query any, limit any) *MockClient_SearchWorks_Call {
+	return &MockClient_SearchWorks_Call{Call: _e.mock.On("SearchWorks", ctx, query, limit)}
 }
 
-func (_c *MockClient_SearchArticles_Call) Run(run func(ctx context.Context, query string, limit int)) *MockClient_SearchArticles_Call {
+func (_c *MockClient_SearchWorks_Call) Run(run func(ctx context.Context, query string, limit int)) *MockClient_SearchWorks_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -179,12 +179,12 @@ func (_c *MockClient_SearchArticles_Call) Run(run func(ctx context.Context, quer
 	return _c
 }
 
-func (_c *MockClient_SearchArticles_Call) Return(works []*openalex.Work, err error) *MockClient_SearchArticles_Call {
+func (_c *MockClient_SearchWorks_Call) Return(works []*openalex.Work, err error) *MockClient_SearchWorks_Call {
 	_c.Call.Return(works, err)
 	return _c
 }
 
-func (_c *MockClient_SearchArticles_Call) RunAndReturn(run func(ctx context.Context, query string, limit int) ([]*openalex.Work, error)) *MockClient_SearchArticles_Call {
+func (_c *MockClient_SearchWorks_Call) RunAndReturn(run func(ctx context.Context, query string, limit int) ([]*openalex.Work, error)) *MockClient_SearchWorks_Call {
 	_c.Call.Return(run)
 	return _c
 }

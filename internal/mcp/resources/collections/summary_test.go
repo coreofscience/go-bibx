@@ -29,14 +29,14 @@ func TestCollectionSummaryResource(t *testing.T) {
 	colID := uuid.NewV7()
 	colName := "nlp-collection"
 	testCol := &services.Collection{
-		ID:           colID,
-		QueryHash:    services.ComputeQueryHash("natural language processing", 100),
-		Query:        "natural language processing",
-		ResultLimit:  100,
-		Name:         &colName,
-		ArticleCount: 25,
-		CreatedAt:    time.Now().UTC().Truncate(time.Second),
-		UpdatedAt:    time.Now().UTC().Truncate(time.Second),
+		ID:          colID,
+		QueryHash:   services.ComputeQueryHash("natural language processing", 100),
+		Query:       "natural language processing",
+		ResultLimit: 100,
+		Name:        &colName,
+		WorkCount:   25,
+		CreatedAt:   time.Now().UTC().Truncate(time.Second),
+		UpdatedAt:   time.Now().UTC().Truncate(time.Second),
 	}
 
 	t.Run("list resource template", func(t *testing.T) {

@@ -28,15 +28,15 @@ var (
 
 // Collection represents a bibliographic inquiry collection stored in the database.
 type Collection struct {
-	ID           uuid.UUID `json:"id"`
-	QueryHash    [32]byte  `json:"query_hash"`
-	Query        string    `json:"query"`
-	ResultLimit  int       `json:"result_limit"`
-	Parameters   []byte    `json:"parameters,omitempty"`
-	Name         *string   `json:"name,omitempty"`
-	ArticleCount int       `json:"article_count"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID          uuid.UUID `json:"id"`
+	QueryHash   [32]byte  `json:"query_hash"`
+	Query       string    `json:"query"`
+	ResultLimit int       `json:"result_limit"`
+	Parameters  []byte    `json:"parameters,omitempty"`
+	Name        *string   `json:"name,omitempty"`
+	WorkCount   int       `json:"work_count"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 // CollectionService defines collection lifecycle and resolution operations.
@@ -171,13 +171,13 @@ func (s *SQLiteCollectionService) Create(ctx context.Context, col *Collection) e
 	}
 
 	err := s.queries.CreateCollection(ctx, repository.CreateCollectionParams{
-		ID:           col.ID,
-		QueryHash:    col.QueryHash[:],
-		Query:        col.Query,
-		ResultLimit:  int64(col.ResultLimit),
-		Parameters:   col.Parameters,
-		Name:         nameNull,
-		ArticleCount: sql.NullInt64{Int64: int64(col.ArticleCount), Valid: true},
+		ID:          col.ID,
+		QueryHash:   col.QueryHash[:],
+		Query:       col.Query,
+		ResultLimit: int64(col.ResultLimit),
+		Parameters:  col.Parameters,
+		Name:        nameNull,
+		WorkCount:   sql.NullInt64{Int64: int64(col.WorkCount), Valid: true},
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
@@ -292,15 +292,15 @@ func toCollection(c repository.Collection) *Collection {
 	}
 
 	return &Collection{
-		ID:           c.ID,
-		QueryHash:    hash,
-		Query:        c.Query,
-		ResultLimit:  int(c.ResultLimit),
-		Parameters:   c.Parameters,
-		Name:         namePtr,
-		ArticleCount: int(c.ArticleCount.Int64),
-		CreatedAt:    createdAt,
-		UpdatedAt:    updatedAt,
+		ID:          c.ID,
+		QueryHash:   hash,
+		Query:       c.Query,
+		ResultLimit: int(c.ResultLimit),
+		Parameters:  c.Parameters,
+		Name:        namePtr,
+		WorkCount:   int(c.WorkCount.Int64),
+		CreatedAt:   createdAt,
+		UpdatedAt:   updatedAt,
 	}
 }
 

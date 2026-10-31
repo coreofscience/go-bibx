@@ -21,13 +21,13 @@ var (
 	categories = collections.NewSet("root", "trunk", "leaf")
 )
 
-// New returns the query subcommand which retrieves top articles by category score.
+// New returns the query subcommand which retrieves top works by category score.
 func New() *cli.Command {
 	supportedFormats := strings.Join(formats.Items(), ", ")
 	supportedCategories := strings.Join(categories.Items(), ", ")
 	return &cli.Command{
 		Name:  "query",
-		Usage: "Query the bibx collection for relevant articles",
+		Usage: "Query the bibx collection for relevant works",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:     "category",

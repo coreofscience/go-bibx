@@ -12,7 +12,7 @@ import (
 //go:embed templates/*.md
 var templatesFS embed.FS
 
-// MarkdownRenderer renders articles and analysis results using embedded markdown templates.
+// MarkdownRenderer renders works and analysis results using embedded markdown templates.
 type MarkdownRenderer struct {
 	template *template.Template
 	format   string
@@ -39,7 +39,7 @@ func NewMarkdownRenderer(format string) (*MarkdownRenderer, error) {
 // RenderResults implements the [Renderer] interface
 func (e *MarkdownRenderer) RenderResults(w io.Writer, results []*models.Result) error {
 	for _, result := range results {
-		if err := e.Render(w, result.Article, e.format); err != nil {
+		if err := e.Render(w, result.Work, e.format); err != nil {
 			return err
 		}
 	}
@@ -51,13 +51,13 @@ func (e *MarkdownRenderer) RenderAnalysis(w io.Writer, analysis *models.Analysis
 	if analysis == nil {
 		return nil
 	}
-	nodeByID := make(map[string]*models.Article, len(analysis.Nodes))
+	nodeByID := make(map[string]*models.Work, len(analysis.Nodes))
 	for _, node := range analysis.Nodes {
-		if node != nil && node.Article != nil {
-			nodeByID[node.ID] = node.Article
+		if node != nil && node.Work != nil {
+			nodeByID[node.ID] = node.Work
 		}
 	}
-	refsBySource := make(map[string][]*models.Article)
+	refsBySource := make(map[string][]*models.Work)
 	for _, link := range analysis.Links {
 		if link == nil {
 			continue
@@ -67,14 +67,14 @@ func (e *MarkdownRenderer) RenderAnalysis(w io.Writer, analysis *models.Analysis
 		}
 	}
 	for _, node := range analysis.Nodes {
-		if node == nil || node.Article == nil {
+		if node == nil || node.Work == nil {
 			continue
 		}
-		art := node.Article
-		if len(art.References) == 0 && len(refsBySource[node.ID]) > 0 {
-			art = art.Clone(models.WithReferences(refsBySource[node.ID]))
+		work := node.Work
+		if len(work.References) == 0 && len(refsBySource[node.ID]) > 0 {
+			work = work.Clone(models.WithReferences(refsBySource[node.ID]))
 		}
-		if err := e.Render(w, art, e.format); err != nil {
+		if err := e.Render(w, work, e.format); err != nil {
 			return err
 		}
 	}

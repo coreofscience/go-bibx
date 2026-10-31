@@ -49,25 +49,25 @@ func (_m *MockAnalysisService) EXPECT() *MockAnalysisService_Expecter {
 	return &MockAnalysisService_Expecter{mock: &_m.Mock}
 }
 
-// GetArticles provides a mock function for the type MockAnalysisService
-func (_mock *MockAnalysisService) GetArticles(ctx context.Context, collectionID uuid.UUID, ids []string) ([]*models.Article, []string, error) {
+// GetWorks provides a mock function for the type MockAnalysisService
+func (_mock *MockAnalysisService) GetWorks(ctx context.Context, collectionID uuid.UUID, ids []string) ([]*models.Work, []string, error) {
 	ret := _mock.Called(ctx, collectionID, ids)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetArticles")
+		panic("no return value specified for GetWorks")
 	}
 
-	var r0 []*models.Article
+	var r0 []*models.Work
 	var r1 []string
 	var r2 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, []string) ([]*models.Article, []string, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, []string) ([]*models.Work, []string, error)); ok {
 		return returnFunc(ctx, collectionID, ids)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, []string) []*models.Article); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, []string) []*models.Work); ok {
 		r0 = returnFunc(ctx, collectionID, ids)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*models.Article)
+			r0 = ret.Get(0).([]*models.Work)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, []string) []string); ok {
@@ -85,20 +85,20 @@ func (_mock *MockAnalysisService) GetArticles(ctx context.Context, collectionID 
 	return r0, r1, r2
 }
 
-// MockAnalysisService_GetArticles_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetArticles'
-type MockAnalysisService_GetArticles_Call struct {
+// MockAnalysisService_GetWorks_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetWorks'
+type MockAnalysisService_GetWorks_Call struct {
 	*mock.Call
 }
 
-// GetArticles is a helper method to define mock.On call
+// GetWorks is a helper method to define mock.On call
 //   - ctx context.Context
 //   - collectionID uuid.UUID
 //   - ids []string
-func (_e *MockAnalysisService_Expecter) GetArticles(ctx any, collectionID any, ids any) *MockAnalysisService_GetArticles_Call {
-	return &MockAnalysisService_GetArticles_Call{Call: _e.mock.On("GetArticles", ctx, collectionID, ids)}
+func (_e *MockAnalysisService_Expecter) GetWorks(ctx any, collectionID any, ids any) *MockAnalysisService_GetWorks_Call {
+	return &MockAnalysisService_GetWorks_Call{Call: _e.mock.On("GetWorks", ctx, collectionID, ids)}
 }
 
-func (_c *MockAnalysisService_GetArticles_Call) Run(run func(ctx context.Context, collectionID uuid.UUID, ids []string)) *MockAnalysisService_GetArticles_Call {
+func (_c *MockAnalysisService_GetWorks_Call) Run(run func(ctx context.Context, collectionID uuid.UUID, ids []string)) *MockAnalysisService_GetWorks_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -121,12 +121,12 @@ func (_c *MockAnalysisService_GetArticles_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *MockAnalysisService_GetArticles_Call) Return(articles []*models.Article, strings []string, err error) *MockAnalysisService_GetArticles_Call {
-	_c.Call.Return(articles, strings, err)
+func (_c *MockAnalysisService_GetWorks_Call) Return(works []*models.Work, strings []string, err error) *MockAnalysisService_GetWorks_Call {
+	_c.Call.Return(works, strings, err)
 	return _c
 }
 
-func (_c *MockAnalysisService_GetArticles_Call) RunAndReturn(run func(ctx context.Context, collectionID uuid.UUID, ids []string) ([]*models.Article, []string, error)) *MockAnalysisService_GetArticles_Call {
+func (_c *MockAnalysisService_GetWorks_Call) RunAndReturn(run func(ctx context.Context, collectionID uuid.UUID, ids []string) ([]*models.Work, []string, error)) *MockAnalysisService_GetWorks_Call {
 	_c.Call.Return(run)
 	return _c
 }

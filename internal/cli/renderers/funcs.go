@@ -31,17 +31,17 @@ func join(sep string, items []string) string {
 	return strings.Join(items, sep)
 }
 
-func frontMatter(a *models.Article) string {
-	if a == nil {
+func frontMatter(w *models.Work) string {
+	if w == nil {
 		return ""
 	}
 	var keywords []string
-	if a.Keywords != nil {
-		keywords = a.Keywords.Items()
+	if w.Keywords != nil {
+		keywords = w.Keywords.Items()
 	}
 	m := &struct {
 		Title      *string  `yaml:"title,omitempty"`
-		Journal    *string  `yaml:"journal,omitempty"`
+		Venue      *string  `yaml:"venue,omitempty"`
 		Volume     *string  `yaml:"volume,omitempty"`
 		Issue      *string  `yaml:"issue,omitempty"`
 		Page       *string  `yaml:"page,omitempty"`
@@ -51,16 +51,16 @@ func frontMatter(a *models.Article) string {
 		Keywords   []string `yaml:"keywords,omitempty"`
 		Rich       bool     `yaml:"rich"`
 	}{
-		Title:      a.Title,
-		Journal:    a.Journal,
-		Volume:     a.Volume,
-		Issue:      a.Issue,
-		Page:       a.Page,
-		DOI:        a.DOI,
-		Permalink:  a.Permalink,
-		TimesCited: a.TimesCited,
+		Title:      w.Title,
+		Venue:      w.Venue,
+		Volume:     w.Volume,
+		Issue:      w.Issue,
+		Page:       w.Page,
+		DOI:        w.DOI,
+		Permalink:  w.Permalink,
+		TimesCited: w.TimesCited,
 		Keywords:   keywords,
-		Rich:       a.Rich,
+		Rich:       w.Rich,
 	}
 	data, err := yaml.Marshal(m)
 	if err != nil {

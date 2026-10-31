@@ -20,18 +20,18 @@ INSERT INTO collections (
     result_limit,
     parameters,
     name,
-    article_count
+    work_count
 ) VALUES (?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateCollectionParams struct {
-	ID           uuid.UUID
-	QueryHash    interface{}
-	Query        string
-	ResultLimit  int64
-	Parameters   []byte
-	Name         sql.NullString
-	ArticleCount sql.NullInt64
+	ID          uuid.UUID
+	QueryHash   interface{}
+	Query       string
+	ResultLimit int64
+	Parameters  []byte
+	Name        sql.NullString
+	WorkCount   sql.NullInt64
 }
 
 func (q *Queries) CreateCollection(ctx context.Context, arg CreateCollectionParams) error {
@@ -42,7 +42,7 @@ func (q *Queries) CreateCollection(ctx context.Context, arg CreateCollectionPara
 		arg.ResultLimit,
 		arg.Parameters,
 		arg.Name,
-		arg.ArticleCount,
+		arg.WorkCount,
 	)
 	return err
 }
@@ -78,7 +78,7 @@ func (q *Queries) DeleteNodesByCollectionID(ctx context.Context, collectionID uu
 }
 
 const getCollectionByHash = `-- name: GetCollectionByHash :one
-SELECT id, query_hash, "query", result_limit, parameters, name, article_count, created_at, updated_at
+SELECT id, query_hash, "query", result_limit, parameters, name, work_count, created_at, updated_at
 FROM collections
 WHERE query_hash = ?
 `
@@ -93,7 +93,7 @@ func (q *Queries) GetCollectionByHash(ctx context.Context, queryHash interface{}
 		&i.ResultLimit,
 		&i.Parameters,
 		&i.Name,
-		&i.ArticleCount,
+		&i.WorkCount,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -101,7 +101,7 @@ func (q *Queries) GetCollectionByHash(ctx context.Context, queryHash interface{}
 }
 
 const getCollectionByID = `-- name: GetCollectionByID :one
-SELECT id, query_hash, "query", result_limit, parameters, name, article_count, created_at, updated_at
+SELECT id, query_hash, "query", result_limit, parameters, name, work_count, created_at, updated_at
 FROM collections
 WHERE id = ?
 `
@@ -116,7 +116,7 @@ func (q *Queries) GetCollectionByID(ctx context.Context, id uuid.UUID) (Collecti
 		&i.ResultLimit,
 		&i.Parameters,
 		&i.Name,
-		&i.ArticleCount,
+		&i.WorkCount,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -124,7 +124,7 @@ func (q *Queries) GetCollectionByID(ctx context.Context, id uuid.UUID) (Collecti
 }
 
 const getCollectionByName = `-- name: GetCollectionByName :one
-SELECT id, query_hash, "query", result_limit, parameters, name, article_count, created_at, updated_at
+SELECT id, query_hash, "query", result_limit, parameters, name, work_count, created_at, updated_at
 FROM collections
 WHERE name = ?
 `
@@ -139,7 +139,7 @@ func (q *Queries) GetCollectionByName(ctx context.Context, name sql.NullString) 
 		&i.ResultLimit,
 		&i.Parameters,
 		&i.Name,
-		&i.ArticleCount,
+		&i.WorkCount,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -147,7 +147,7 @@ func (q *Queries) GetCollectionByName(ctx context.Context, name sql.NullString) 
 }
 
 const listCollections = `-- name: ListCollections :many
-SELECT id, query_hash, "query", result_limit, parameters, name, article_count, created_at, updated_at
+SELECT id, query_hash, "query", result_limit, parameters, name, work_count, created_at, updated_at
 FROM collections
 ORDER BY created_at DESC, id DESC
 LIMIT ?
@@ -169,7 +169,7 @@ func (q *Queries) ListCollections(ctx context.Context, limit int64) ([]Collectio
 			&i.ResultLimit,
 			&i.Parameters,
 			&i.Name,
-			&i.ArticleCount,
+			&i.WorkCount,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -189,11 +189,11 @@ func (q *Queries) ListCollections(ctx context.Context, limit int64) ([]Collectio
 const listLeaves = `-- name: ListLeaves :many
 SELECT
     n.leafness,
-    a.id, a.label, a.title, a.journal, a.year, a.volume, a.issue, a.page,
-    a.doi, a.permalink, a.times_cited, a.abstract, a.rich,
-    a.authors, a.keywords, a.ids
+    w.id, w.label, w.title, w.venue, w.year, w.volume, w.issue, w.page,
+    w.doi, w.permalink, w.times_cited, w.abstract, w.rich,
+    w.authors, w.keywords, w.ids
 FROM nodes n
-JOIN articles a ON a.id = n.article_id
+JOIN works w ON w.id = n.work_id
 WHERE n.collection_id = ? AND n.leafness > 0
 ORDER BY n.leafness DESC
 LIMIT ?
@@ -209,7 +209,7 @@ type ListLeavesRow struct {
 	ID         uuid.UUID
 	Label      string
 	Title      sql.NullString
-	Journal    sql.NullString
+	Venue      sql.NullString
 	Year       sql.NullInt64
 	Volume     sql.NullString
 	Issue      sql.NullString
@@ -238,7 +238,7 @@ func (q *Queries) ListLeaves(ctx context.Context, arg ListLeavesParams) ([]ListL
 			&i.ID,
 			&i.Label,
 			&i.Title,
-			&i.Journal,
+			&i.Venue,
 			&i.Year,
 			&i.Volume,
 			&i.Issue,
@@ -302,11 +302,11 @@ func (q *Queries) ListLinks(ctx context.Context, collectionID uuid.UUID) ([]Link
 const listNodes = `-- name: ListNodes :many
 SELECT
 	n.id, n.category, n.rootness, n.trunkness, n.leafness,
-	a.id, a.label, a.title, a.journal, a.year, a.volume, a.issue, a.page,
-	a.doi, a.permalink, a.times_cited, a.abstract, a.rich,
-	a.authors, a.keywords, a.ids
+	w.id, w.label, w.title, w.venue, w.year, w.volume, w.issue, w.page,
+	w.doi, w.permalink, w.times_cited, w.abstract, w.rich,
+	w.authors, w.keywords, w.ids
 FROM nodes n
-JOIN articles a ON a.id = n.article_id
+JOIN works w ON w.id = n.work_id
 WHERE n.collection_id = ?
 `
 
@@ -319,7 +319,7 @@ type ListNodesRow struct {
 	ID_2       uuid.UUID
 	Label      string
 	Title      sql.NullString
-	Journal    sql.NullString
+	Venue      sql.NullString
 	Year       sql.NullInt64
 	Volume     sql.NullString
 	Issue      sql.NullString
@@ -352,7 +352,7 @@ func (q *Queries) ListNodes(ctx context.Context, collectionID uuid.UUID) ([]List
 			&i.ID_2,
 			&i.Label,
 			&i.Title,
-			&i.Journal,
+			&i.Venue,
 			&i.Year,
 			&i.Volume,
 			&i.Issue,
@@ -382,11 +382,11 @@ func (q *Queries) ListNodes(ctx context.Context, collectionID uuid.UUID) ([]List
 const listRoots = `-- name: ListRoots :many
 SELECT
     n.rootness,
-    a.id, a.label, a.title, a.journal, a.year, a.volume, a.issue, a.page,
-    a.doi, a.permalink, a.times_cited, a.abstract, a.rich,
-    a.authors, a.keywords, a.ids
+    w.id, w.label, w.title, w.venue, w.year, w.volume, w.issue, w.page,
+    w.doi, w.permalink, w.times_cited, w.abstract, w.rich,
+    w.authors, w.keywords, w.ids
 FROM nodes n
-JOIN articles a ON a.id = n.article_id
+JOIN works w ON w.id = n.work_id
 WHERE n.collection_id = ? AND n.rootness > 0
 ORDER BY n.rootness DESC
 LIMIT ?
@@ -402,7 +402,7 @@ type ListRootsRow struct {
 	ID         uuid.UUID
 	Label      string
 	Title      sql.NullString
-	Journal    sql.NullString
+	Venue      sql.NullString
 	Year       sql.NullInt64
 	Volume     sql.NullString
 	Issue      sql.NullString
@@ -431,7 +431,7 @@ func (q *Queries) ListRoots(ctx context.Context, arg ListRootsParams) ([]ListRoo
 			&i.ID,
 			&i.Label,
 			&i.Title,
-			&i.Journal,
+			&i.Venue,
 			&i.Year,
 			&i.Volume,
 			&i.Issue,
@@ -461,11 +461,11 @@ func (q *Queries) ListRoots(ctx context.Context, arg ListRootsParams) ([]ListRoo
 const listTrunks = `-- name: ListTrunks :many
 SELECT
     n.trunkness,
-    a.id, a.label, a.title, a.journal, a.year, a.volume, a.issue, a.page,
-    a.doi, a.permalink, a.times_cited, a.abstract, a.rich,
-    a.authors, a.keywords, a.ids
+    w.id, w.label, w.title, w.venue, w.year, w.volume, w.issue, w.page,
+    w.doi, w.permalink, w.times_cited, w.abstract, w.rich,
+    w.authors, w.keywords, w.ids
 FROM nodes n
-JOIN articles a ON a.id = n.article_id
+JOIN works w ON w.id = n.work_id
 WHERE n.collection_id = ? AND n.trunkness > 0
 ORDER BY n.trunkness DESC
 LIMIT ?
@@ -481,7 +481,7 @@ type ListTrunksRow struct {
 	ID         uuid.UUID
 	Label      string
 	Title      sql.NullString
-	Journal    sql.NullString
+	Venue      sql.NullString
 	Year       sql.NullInt64
 	Volume     sql.NullString
 	Issue      sql.NullString
@@ -510,7 +510,7 @@ func (q *Queries) ListTrunks(ctx context.Context, arg ListTrunksParams) ([]ListT
 			&i.ID,
 			&i.Label,
 			&i.Title,
-			&i.Journal,
+			&i.Venue,
 			&i.Year,
 			&i.Volume,
 			&i.Issue,
@@ -540,19 +540,19 @@ func (q *Queries) ListTrunks(ctx context.Context, arg ListTrunksParams) ([]ListT
 const search = `-- name: Search :many
 SELECT
     n.id, n.category, n.rootness, n.trunkness, n.leafness,
-    a.id, a.label, a.title, a.journal, a.year, a.volume, a.issue, a.page,
-    a.doi, a.permalink, a.times_cited, a.abstract, a.rich,
-    a.authors, a.keywords, a.ids
-FROM articles_fts(?) fts
-JOIN articles a ON a.rowid = fts.rowid
-JOIN nodes n ON n.article_id = a.id
+    w.id, w.label, w.title, w.venue, w.year, w.volume, w.issue, w.page,
+    w.doi, w.permalink, w.times_cited, w.abstract, w.rich,
+    w.authors, w.keywords, w.ids
+FROM works_fts(?) fts
+JOIN works w ON w.rowid = fts.rowid
+JOIN nodes n ON n.work_id = w.id
 WHERE n.collection_id = ?
-ORDER BY bm25(articles_fts)
+ORDER BY bm25(works_fts)
 LIMIT ?
 `
 
 type SearchParams struct {
-	ArticlesFts  interface{}
+	WorksFts     interface{}
 	CollectionID uuid.UUID
 	Limit        int64
 }
@@ -566,7 +566,7 @@ type SearchRow struct {
 	ID_2       uuid.UUID
 	Label      string
 	Title      sql.NullString
-	Journal    sql.NullString
+	Venue      sql.NullString
 	Year       sql.NullInt64
 	Volume     sql.NullString
 	Issue      sql.NullString
@@ -582,7 +582,7 @@ type SearchRow struct {
 }
 
 func (q *Queries) Search(ctx context.Context, arg SearchParams) ([]SearchRow, error) {
-	rows, err := q.db.QueryContext(ctx, search, arg.ArticlesFts, arg.CollectionID, arg.Limit)
+	rows, err := q.db.QueryContext(ctx, search, arg.WorksFts, arg.CollectionID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -599,7 +599,7 @@ func (q *Queries) Search(ctx context.Context, arg SearchParams) ([]SearchRow, er
 			&i.ID_2,
 			&i.Label,
 			&i.Title,
-			&i.Journal,
+			&i.Venue,
 			&i.Year,
 			&i.Volume,
 			&i.Issue,
@@ -626,27 +626,6 @@ func (q *Queries) Search(ctx context.Context, arg SearchParams) ([]SearchRow, er
 	return items, nil
 }
 
-const updateArticleCount = `-- name: UpdateArticleCount :exec
-UPDATE collections
-SET article_count = (
-        SELECT count(*)
-        FROM nodes n
-        WHERE n.collection_id = ?
-    ),
-    updated_at = CURRENT_TIMESTAMP
-WHERE collections.id = ?
-`
-
-type UpdateArticleCountParams struct {
-	CollectionID uuid.UUID
-	ID           uuid.UUID
-}
-
-func (q *Queries) UpdateArticleCount(ctx context.Context, arg UpdateArticleCountParams) error {
-	_, err := q.db.ExecContext(ctx, updateArticleCount, arg.CollectionID, arg.ID)
-	return err
-}
-
 const updateCollectionName = `-- name: UpdateCollectionName :exec
 UPDATE collections
 SET name = ?,
@@ -664,84 +643,25 @@ func (q *Queries) UpdateCollectionName(ctx context.Context, arg UpdateCollection
 	return err
 }
 
-const upsertArticle = `-- name: UpsertArticle :one
-INSERT INTO articles (
-    id,
-    label,
-    title,
-    journal,
-    year,
-    volume,
-    issue,
-    page,
-    doi,
-    permalink,
-    times_cited,
-    abstract,
-    rich,
-    authors,
-    keywords,
-    ids
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-ON CONFLICT(label) DO UPDATE SET
-    title=COALESCE(excluded.title, articles.title),
-    journal=COALESCE(excluded.journal, articles.journal),
-    year=COALESCE(excluded.year, articles.year),
-    volume=COALESCE(excluded.volume, articles.volume),
-    issue=COALESCE(excluded.issue, articles.issue),
-    page=COALESCE(excluded.page, articles.page),
-    doi=COALESCE(excluded.doi, articles.doi),
-    permalink=COALESCE(excluded.permalink, articles.permalink),
-    times_cited=COALESCE(excluded.times_cited, articles.times_cited),
-    abstract=COALESCE(excluded.abstract, articles.abstract),
-    rich=excluded.rich OR articles.rich,
-    authors=COALESCE(excluded.authors, articles.authors),
-    keywords=COALESCE(excluded.keywords, articles.keywords),
-    ids=COALESCE(excluded.ids, articles.ids)
-RETURNING id
+const updateWorkCount = `-- name: UpdateWorkCount :exec
+UPDATE collections
+SET work_count = (
+        SELECT count(*)
+        FROM nodes n
+        WHERE n.collection_id = ?
+    ),
+    updated_at = CURRENT_TIMESTAMP
+WHERE collections.id = ?
 `
 
-type UpsertArticleParams struct {
-	ID         uuid.UUID
-	Label      string
-	Title      sql.NullString
-	Journal    sql.NullString
-	Year       sql.NullInt64
-	Volume     sql.NullString
-	Issue      sql.NullString
-	Page       sql.NullString
-	Doi        sql.NullString
-	Permalink  sql.NullString
-	TimesCited sql.NullInt64
-	Abstract   sql.NullString
-	Rich       sql.NullBool
-	Authors    []byte
-	Keywords   []byte
-	Ids        []byte
+type UpdateWorkCountParams struct {
+	CollectionID uuid.UUID
+	ID           uuid.UUID
 }
 
-func (q *Queries) UpsertArticle(ctx context.Context, arg UpsertArticleParams) (uuid.UUID, error) {
-	row := q.db.QueryRowContext(ctx, upsertArticle,
-		arg.ID,
-		arg.Label,
-		arg.Title,
-		arg.Journal,
-		arg.Year,
-		arg.Volume,
-		arg.Issue,
-		arg.Page,
-		arg.Doi,
-		arg.Permalink,
-		arg.TimesCited,
-		arg.Abstract,
-		arg.Rich,
-		arg.Authors,
-		arg.Keywords,
-		arg.Ids,
-	)
-	var id uuid.UUID
-	err := row.Scan(&id)
-	return id, err
+func (q *Queries) UpdateWorkCount(ctx context.Context, arg UpdateWorkCountParams) error {
+	_, err := q.db.ExecContext(ctx, updateWorkCount, arg.CollectionID, arg.ID)
+	return err
 }
 
 const upsertLink = `-- name: UpsertLink :exec
@@ -774,13 +694,13 @@ const upsertNode = `-- name: UpsertNode :one
 INSERT INTO nodes (
     id,
     collection_id,
-    article_id,
+    work_id,
     category,
     rootness,
     trunkness,
     leafness
 ) VALUES (?, ?, ?, ?, ?, ?, ?)
-ON CONFLICT(collection_id, article_id) DO UPDATE SET
+ON CONFLICT(collection_id, work_id) DO UPDATE SET
     category=excluded.category,
     rootness=excluded.rootness,
     trunkness=excluded.trunkness,
@@ -791,7 +711,7 @@ RETURNING id
 type UpsertNodeParams struct {
 	ID           uuid.UUID
 	CollectionID uuid.UUID
-	ArticleID    uuid.UUID
+	WorkID       uuid.UUID
 	Category     string
 	Rootness     float64
 	Trunkness    float64
@@ -802,11 +722,91 @@ func (q *Queries) UpsertNode(ctx context.Context, arg UpsertNodeParams) (uuid.UU
 	row := q.db.QueryRowContext(ctx, upsertNode,
 		arg.ID,
 		arg.CollectionID,
-		arg.ArticleID,
+		arg.WorkID,
 		arg.Category,
 		arg.Rootness,
 		arg.Trunkness,
 		arg.Leafness,
+	)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const upsertWork = `-- name: UpsertWork :one
+INSERT INTO works (
+    id,
+    label,
+    title,
+    venue,
+    year,
+    volume,
+    issue,
+    page,
+    doi,
+    permalink,
+    times_cited,
+    abstract,
+    rich,
+    authors,
+    keywords,
+    ids
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(label) DO UPDATE SET
+    title=COALESCE(excluded.title, works.title),
+    venue=COALESCE(excluded.venue, works.venue),
+    year=COALESCE(excluded.year, works.year),
+    volume=COALESCE(excluded.volume, works.volume),
+    issue=COALESCE(excluded.issue, works.issue),
+    page=COALESCE(excluded.page, works.page),
+    doi=COALESCE(excluded.doi, works.doi),
+    permalink=COALESCE(excluded.permalink, works.permalink),
+    times_cited=COALESCE(excluded.times_cited, works.times_cited),
+    abstract=COALESCE(excluded.abstract, works.abstract),
+    rich=excluded.rich OR works.rich,
+    authors=COALESCE(excluded.authors, works.authors),
+    keywords=COALESCE(excluded.keywords, works.keywords),
+    ids=COALESCE(excluded.ids, works.ids)
+RETURNING id
+`
+
+type UpsertWorkParams struct {
+	ID         uuid.UUID
+	Label      string
+	Title      sql.NullString
+	Venue      sql.NullString
+	Year       sql.NullInt64
+	Volume     sql.NullString
+	Issue      sql.NullString
+	Page       sql.NullString
+	Doi        sql.NullString
+	Permalink  sql.NullString
+	TimesCited sql.NullInt64
+	Abstract   sql.NullString
+	Rich       sql.NullBool
+	Authors    []byte
+	Keywords   []byte
+	Ids        []byte
+}
+
+func (q *Queries) UpsertWork(ctx context.Context, arg UpsertWorkParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, upsertWork,
+		arg.ID,
+		arg.Label,
+		arg.Title,
+		arg.Venue,
+		arg.Year,
+		arg.Volume,
+		arg.Issue,
+		arg.Page,
+		arg.Doi,
+		arg.Permalink,
+		arg.TimesCited,
+		arg.Abstract,
+		arg.Rich,
+		arg.Authors,
+		arg.Keywords,
+		arg.Ids,
 	)
 	var id uuid.UUID
 	err := row.Scan(&id)

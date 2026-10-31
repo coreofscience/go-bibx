@@ -72,11 +72,11 @@ func TestQueryCommand_BibtexFormat(t *testing.T) {
 
 	year := 2017
 	title := "Attention Is All You Need"
-	journal := "NeurIPS"
-	art := &models.Article{
+	venue := "NeurIPS"
+	work := &models.Work{
 		Label:   "openalex:W100",
 		Title:   &title,
-		Journal: &journal,
+		Venue:   &venue,
 		Authors: []string{"Vaswani, Ashish"},
 		Year:    &year,
 		IDs:     collections.NewSet("openalex:W100"),
@@ -89,7 +89,7 @@ func TestQueryCommand_BibtexFormat(t *testing.T) {
 				ID:       "openalex:W100",
 				Category: models.CategoryRoot,
 				Rootness: 0.95,
-				Article:  art,
+				Work:     work,
 			},
 		},
 	}

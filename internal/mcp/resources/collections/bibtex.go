@@ -34,7 +34,7 @@ func (b *Bibtex) ResourceTemplate() *mcp.ResourceTemplate {
 			Audience: []mcp.Role{"user", "assistant"},
 			Priority: 0.5,
 		},
-		Description: "Complete BibTeX bibliography (including abstracts) for all articles in a collection by UUID. For filtered exports or presets, prefer the 'bibtex' tool.",
+		Description: "Complete BibTeX bibliography (including abstracts) for all works in a collection by UUID. For filtered exports or presets, prefer the 'bibtex' tool.",
 		MIMEType:    "text/x-bibtex",
 		Name:        "collection bibtex",
 		Title:       "Collection BibTeX",
@@ -65,12 +65,12 @@ func (b *Bibtex) Provide(ctx context.Context, rrr *mcp.ReadResourceRequest) (*mc
 		return nil, fmt.Errorf("failed to find collection: %w", err)
 	}
 
-	articles, _, err := b.analysisService.GetArticles(ctx, id, nil)
+	works, _, err := b.analysisService.GetWorks(ctx, id, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve articles for collection: %w", err)
+		return nil, fmt.Errorf("failed to retrieve works for collection: %w", err)
 	}
 
-	bibtexStr := models.Articles(articles).ToBibTeX()
+	bibtexStr := models.Works(works).ToBibTeX()
 
 	return &mcp.ReadResourceResult{
 		TTLMs:      int((60 * time.Minute).Milliseconds()),

@@ -10,11 +10,40 @@ import (
 	"uuid"
 )
 
-type Article struct {
+type Collection struct {
+	ID          uuid.UUID
+	QueryHash   interface{}
+	Query       string
+	ResultLimit int64
+	Parameters  []byte
+	Name        sql.NullString
+	WorkCount   sql.NullInt64
+	CreatedAt   sql.NullTime
+	UpdatedAt   sql.NullTime
+}
+
+type Link struct {
+	CollectionID uuid.UUID
+	SourceID     uuid.UUID
+	TargetID     uuid.UUID
+	Weight       sql.NullFloat64
+}
+
+type Node struct {
+	ID           uuid.UUID
+	CollectionID uuid.UUID
+	WorkID       uuid.UUID
+	Category     string
+	Rootness     float64
+	Trunkness    float64
+	Leafness     float64
+}
+
+type Work struct {
 	ID         uuid.UUID
 	Label      string
 	Title      sql.NullString
-	Journal    sql.NullString
+	Venue      sql.NullString
 	Year       sql.NullInt64
 	Volume     sql.NullString
 	Issue      sql.NullString
@@ -30,38 +59,9 @@ type Article struct {
 	CreatedAt  sql.NullTime
 }
 
-type ArticlesFt struct {
+type WorksFt struct {
 	Title    string
 	Abstract string
 	Keywords string
 	Authors  string
-}
-
-type Collection struct {
-	ID           uuid.UUID
-	QueryHash    interface{}
-	Query        string
-	ResultLimit  int64
-	Parameters   []byte
-	Name         sql.NullString
-	ArticleCount sql.NullInt64
-	CreatedAt    sql.NullTime
-	UpdatedAt    sql.NullTime
-}
-
-type Link struct {
-	CollectionID uuid.UUID
-	SourceID     uuid.UUID
-	TargetID     uuid.UUID
-	Weight       sql.NullFloat64
-}
-
-type Node struct {
-	ID           uuid.UUID
-	CollectionID uuid.UUID
-	ArticleID    uuid.UUID
-	Category     string
-	Rootness     float64
-	Trunkness    float64
-	Leafness     float64
 }

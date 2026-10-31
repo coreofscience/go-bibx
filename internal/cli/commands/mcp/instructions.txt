@@ -24,7 +24,7 @@ WORKFLOW
    developed, leaves = the research front.
 3. `search` with one-word keywords to cover subtopics the ToS lists miss.
    It returns a connected subgraph, not only matches.
-4. `articles` to fetch abstracts before making claims about a paper's
+4. `works` to fetch abstracts before making claims about a paper's
    findings. Titles and keywords alone are not enough for quantitative
    statements.
 5. `bibtex` with the DOIs you cite, or preset "tos". Use the returned

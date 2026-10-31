@@ -59,21 +59,21 @@ func TestListTool(t *testing.T) {
 	t.Run("returns multiple collections", func(t *testing.T) {
 		name1 := "bio-informatics"
 		col1 := &services.Collection{
-			ID:           uuid.NewV7(),
-			Query:        "bioinformatics",
-			ResultLimit:  100,
-			Name:         &name1,
-			ArticleCount: 15,
-			CreatedAt:    time.Now().UTC(),
-			UpdatedAt:    time.Now().UTC(),
+			ID:          uuid.NewV7(),
+			Query:       "bioinformatics",
+			ResultLimit: 100,
+			Name:        &name1,
+			WorkCount:   15,
+			CreatedAt:   time.Now().UTC(),
+			UpdatedAt:   time.Now().UTC(),
 		}
 		col2 := &services.Collection{
-			ID:           uuid.NewV7(),
-			Query:        "crispr",
-			ResultLimit:  50,
-			ArticleCount: 8,
-			CreatedAt:    time.Now().UTC(),
-			UpdatedAt:    time.Now().UTC(),
+			ID:          uuid.NewV7(),
+			Query:       "crispr",
+			ResultLimit: 50,
+			WorkCount:   8,
+			CreatedAt:   time.Now().UTC(),
+			UpdatedAt:   time.Now().UTC(),
 		}
 
 		mockColSvc.EXPECT().

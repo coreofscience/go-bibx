@@ -37,9 +37,9 @@ var (
 
 // CitationKeyInfo provides metadata for an exported citation.
 type CitationKeyInfo struct {
-	ID          string `json:"id" jsonschema:"Article identifier in the collection"`
+	ID          string `json:"id" jsonschema:"Work identifier in the collection"`
 	CiteKey     string `json:"citekey" jsonschema:"Generated BibTeX citation key (disambiguated within the export)"`
-	Title       string `json:"title,omitempty" jsonschema:"Article title"`
+	Title       string `json:"title,omitempty" jsonschema:"Work title"`
 	Year        *int   `json:"year,omitempty" jsonschema:"Publication year"`
 	FirstAuthor string `json:"first_author,omitempty" jsonschema:"Primary author name"`
 }
@@ -59,7 +59,7 @@ func WithOmitAbstracts(omit bool) BibtexOption {
 	}
 }
 
-// WithCiteKey specifies a custom citation key for a single Article BibTeX entry.
+// WithCiteKey specifies a custom citation key for a single Work BibTeX entry.
 func WithCiteKey(key string) BibtexOption {
 	return func(o *bibtexOptions) {
 		o.citeKey = key
@@ -95,37 +95,37 @@ func SanitizeLaTeX(s string) string {
 	return sb.String()
 }
 
-// GenerateCitationKey generates a clean, URL-safe citation key for an article.
-func GenerateCitationKey(a *Article) string {
-	if a == nil {
+// GenerateCitationKey generates a clean, URL-safe citation key for a work.
+func GenerateCitationKey(w *Work) string {
+	if w == nil {
 		return "article"
 	}
 
 	// 1. Primary: SimpleId (first author + year, e.g. "vaswani2017")
-	if simpleID := a.SimpleId(); simpleID != nil && *simpleID != "" {
+	if simpleID := w.SimpleId(); simpleID != nil && *simpleID != "" {
 		return sanitizeCiteKey(*simpleID)
 	}
 
 	// 2. Fallback: DOI
-	if a.DOI != nil && *a.DOI != "" {
-		cleanDOI := utils.ExtractDOI(*a.DOI)
+	if w.DOI != nil && *w.DOI != "" {
+		cleanDOI := utils.ExtractDOI(*w.DOI)
 		return sanitizeCiteKey("doi_" + cleanDOI)
 	}
 
 	// 3. Fallback: OpenAlex ID
-	if id, ok := a.ID("openalex"); ok && id != "" {
+	if id, ok := w.ID("openalex"); ok && id != "" {
 		trimmed := strings.TrimPrefix(id, "https://openalex.org/")
 		return sanitizeCiteKey(trimmed)
 	}
 
-	// 4. Fallback: Article Key
-	if key := a.Key(); key != nil && *key != "" {
+	// 4. Fallback: Work Key
+	if key := w.Key(); key != nil && *key != "" {
 		return sanitizeCiteKey(*key)
 	}
 
-	// 5. Fallback: Article Label
-	if a.Label != "" {
-		return sanitizeCiteKey(a.Label)
+	// 5. Fallback: Work Label
+	if w.Label != "" {
+		return sanitizeCiteKey(w.Label)
 	}
 
 	return "article"
@@ -171,10 +171,10 @@ func keySuffix(n int) string {
 	return string(buf)
 }
 
-// ToBibEntry converts the Article into a [*bibtex.BibEntry].
+// ToBibEntry converts the Work into a [*bibtex.BibEntry].
 // Accepts optional [BibtexOption] modifiers (e.g. [WithCiteKey], [WithOmitAbstracts]).
-func (a *Article) ToBibEntry(opts ...BibtexOption) *bibtex.BibEntry {
-	if a == nil {
+func (w *Work) ToBibEntry(opts ...BibtexOption) *bibtex.BibEntry {
+	if w == nil {
 		return nil
 	}
 
@@ -184,56 +184,56 @@ func (a *Article) ToBibEntry(opts ...BibtexOption) *bibtex.BibEntry {
 	}
 
 	entryType := "misc"
-	if a.Journal != nil && *a.Journal != "" {
+	if w.Venue != nil && *w.Venue != "" {
 		entryType = "article"
 	}
 
-	key := GenerateCitationKey(a)
+	key := GenerateCitationKey(w)
 	if options.citeKey != "" {
 		key = options.citeKey
 	}
 
 	entry := bibtex.NewBibEntry(entryType, key)
 
-	if len(a.Authors) > 0 {
-		entry.AddField("author", bibtex.NewBibConst(strings.Join(a.Authors, " and ")))
+	if len(w.Authors) > 0 {
+		entry.AddField("author", bibtex.NewBibConst(strings.Join(w.Authors, " and ")))
 	}
-	if a.Title != nil && *a.Title != "" {
-		entry.AddField("title", bibtex.NewBibConst(SanitizeLaTeX(*a.Title)))
+	if w.Title != nil && *w.Title != "" {
+		entry.AddField("title", bibtex.NewBibConst(SanitizeLaTeX(*w.Title)))
 	}
-	if a.Journal != nil && *a.Journal != "" {
-		entry.AddField("journal", bibtex.NewBibConst(SanitizeLaTeX(*a.Journal)))
+	if w.Venue != nil && *w.Venue != "" {
+		entry.AddField("journal", bibtex.NewBibConst(SanitizeLaTeX(*w.Venue)))
 	}
-	if a.Year != nil {
-		entry.AddField("year", bibtex.NewBibConst(fmt.Sprintf("%d", *a.Year)))
+	if w.Year != nil {
+		entry.AddField("year", bibtex.NewBibConst(fmt.Sprintf("%d", *w.Year)))
 	}
-	if a.Volume != nil && *a.Volume != "" {
-		entry.AddField("volume", bibtex.NewBibConst(*a.Volume))
+	if w.Volume != nil && *w.Volume != "" {
+		entry.AddField("volume", bibtex.NewBibConst(*w.Volume))
 	}
-	if a.Issue != nil && *a.Issue != "" {
-		entry.AddField("number", bibtex.NewBibConst(*a.Issue))
+	if w.Issue != nil && *w.Issue != "" {
+		entry.AddField("number", bibtex.NewBibConst(*w.Issue))
 	}
-	if a.Page != nil && *a.Page != "" {
-		pages := strings.ReplaceAll(*a.Page, "-", "--")
+	if w.Page != nil && *w.Page != "" {
+		pages := strings.ReplaceAll(*w.Page, "-", "--")
 		pages = strings.ReplaceAll(pages, "----", "--")
 		entry.AddField("pages", bibtex.NewBibConst(pages))
 	}
-	if a.DOI != nil && *a.DOI != "" {
-		entry.AddField("doi", bibtex.NewBibConst(utils.ExtractDOI(*a.DOI)))
+	if w.DOI != nil && *w.DOI != "" {
+		entry.AddField("doi", bibtex.NewBibConst(utils.ExtractDOI(*w.DOI)))
 	}
-	if link := a.GetPermalink(); link != nil && *link != "" {
+	if link := w.GetPermalink(); link != nil && *link != "" {
 		entry.AddField("url", bibtex.NewBibConst(*link))
 	}
-	if a.Keywords != nil && a.Keywords.Len() > 0 {
-		items := a.Keywords.Items()
+	if w.Keywords != nil && w.Keywords.Len() > 0 {
+		items := w.Keywords.Items()
 		sanitizedKeywords := make([]string, len(items))
 		for i, kw := range items {
 			sanitizedKeywords[i] = SanitizeLaTeX(kw)
 		}
 		entry.AddField("keywords", bibtex.NewBibConst(strings.Join(sanitizedKeywords, ", ")))
 	}
-	if !options.omitAbstracts && a.Abstract != nil && *a.Abstract != "" {
-		cleanAbstract := strings.Join(strings.Fields(*a.Abstract), " ")
+	if !options.omitAbstracts && w.Abstract != nil && *w.Abstract != "" {
+		cleanAbstract := strings.Join(strings.Fields(*w.Abstract), " ")
 		entry.AddField("abstract", bibtex.NewBibConst(SanitizeLaTeX(cleanAbstract)))
 	}
 
@@ -277,12 +277,12 @@ func formatBibEntry(buf *bytes.Buffer, entry *bibtex.BibEntry, keyOrder []string
 	buf.WriteString("}\n")
 }
 
-// ToBibTeX formats a single Article into a BibTeX entry string.
-func (a *Article) ToBibTeX(opts ...BibtexOption) string {
-	if a == nil {
+// ToBibTeX formats a single Work into a BibTeX entry string.
+func (w *Work) ToBibTeX(opts ...BibtexOption) string {
+	if w == nil {
 		return ""
 	}
-	entry := a.ToBibEntry(opts...)
+	entry := w.ToBibEntry(opts...)
 	if entry == nil {
 		return ""
 	}
@@ -291,10 +291,10 @@ func (a *Article) ToBibTeX(opts ...BibtexOption) string {
 	return buf.String()
 }
 
-// ToBibTeXWithKeys formats a collection of Articles into a concatenated BibTeX string,
+// ToBibTeXWithKeys formats a collection of Works into a concatenated BibTeX string,
 // automatically disambiguating duplicate citation keys, and returns the slice of [CitationKeyInfo].
-func (a Articles) ToBibTeXWithKeys(opts ...BibtexOption) (string, []CitationKeyInfo) {
-	if len(a) == 0 {
+func (w Works) ToBibTeXWithKeys(opts ...BibtexOption) (string, []CitationKeyInfo) {
+	if len(w) == 0 {
 		return "", nil
 	}
 
@@ -305,13 +305,13 @@ func (a Articles) ToBibTeXWithKeys(opts ...BibtexOption) (string, []CitationKeyI
 
 	var buf bytes.Buffer
 	seenKeys := make(map[string]int)
-	keysInfo := make([]CitationKeyInfo, 0, len(a))
+	keysInfo := make([]CitationKeyInfo, 0, len(w))
 
-	for _, art := range a {
-		if art == nil {
+	for _, work := range w {
+		if work == nil {
 			continue
 		}
-		baseKey := GenerateCitationKey(art)
+		baseKey := GenerateCitationKey(work)
 		count := seenKeys[baseKey]
 		seenKeys[baseKey]++
 
@@ -329,7 +329,7 @@ func (a Articles) ToBibTeXWithKeys(opts ...BibtexOption) (string, []CitationKeyI
 			seenKeys[finalKey]++
 		}
 
-		entry := art.ToBibEntry(WithCiteKey(finalKey), WithOmitAbstracts(options.omitAbstracts))
+		entry := work.ToBibEntry(WithCiteKey(finalKey), WithOmitAbstracts(options.omitAbstracts))
 		if entry != nil {
 			if buf.Len() > 0 {
 				buf.WriteString("\n")
@@ -337,15 +337,15 @@ func (a Articles) ToBibTeXWithKeys(opts ...BibtexOption) (string, []CitationKeyI
 			formatBibEntry(&buf, entry, defaultBibtexKeyOrder)
 
 			var firstAuthor string
-			if len(art.Authors) > 0 {
-				firstAuthor = art.Authors[0]
+			if len(work.Authors) > 0 {
+				firstAuthor = work.Authors[0]
 			}
 			var title string
-			if art.Title != nil {
-				title = *art.Title
+			if work.Title != nil {
+				title = *work.Title
 			}
-			id := art.Label
-			if key := art.Key(); key != nil && *key != "" {
+			id := work.Label
+			if key := work.Key(); key != nil && *key != "" {
 				id = *key
 			}
 
@@ -353,7 +353,7 @@ func (a Articles) ToBibTeXWithKeys(opts ...BibtexOption) (string, []CitationKeyI
 				ID:          id,
 				CiteKey:     finalKey,
 				Title:       title,
-				Year:        art.Year,
+				Year:        work.Year,
 				FirstAuthor: firstAuthor,
 			})
 		}
@@ -362,9 +362,9 @@ func (a Articles) ToBibTeXWithKeys(opts ...BibtexOption) (string, []CitationKeyI
 	return buf.String(), keysInfo
 }
 
-// ToBibTeX formats a collection of Articles into a concatenated BibTeX string,
+// ToBibTeX formats a collection of Works into a concatenated BibTeX string,
 // automatically disambiguating duplicate citation keys.
-func (a Articles) ToBibTeX(opts ...BibtexOption) string {
-	bibStr, _ := a.ToBibTeXWithKeys(opts...)
+func (w Works) ToBibTeX(opts ...BibtexOption) string {
+	bibStr, _ := w.ToBibTeXWithKeys(opts...)
 	return bibStr
 }

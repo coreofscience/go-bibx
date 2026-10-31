@@ -14,23 +14,23 @@ import (
 func TestMarkdownRenderer_SimpleFormat(t *testing.T) {
 	tests := []struct {
 		name     string
-		article  *models.Article
+		work     *models.Work
 		expected string
 	}{
 		{
-			name: "article with permalink",
-			article: &models.Article{
+			name: "work with permalink",
+			work: &models.Work{
 				Title:     new("Test Title"),
 				Label:     "TestLabel",
-				Permalink: new("https://example.com/article"),
+				Permalink: new("https://example.com/work"),
 				Keywords:  collections.NewSet("A", "B"),
 				Abstract:  new("This is an abstract."),
 			},
-			expected: "# Test Title\n**link**: [https://example.com/article](https://example.com/article)\n\n**keywords**: A, B\n\n## Abstract\n\nThis is an abstract.\n",
+			expected: "# Test Title\n**link**: [https://example.com/work](https://example.com/work)\n\n**keywords**: A, B\n\n## Abstract\n\nThis is an abstract.\n",
 		},
 		{
-			name: "article without permalink but with DOI",
-			article: &models.Article{
+			name: "work without permalink but with DOI",
+			work: &models.Work{
 				Title:    new("Test Title"),
 				Label:    "TestLabel",
 				DOI:      new("10.1000/xyz123"),
@@ -40,8 +40,8 @@ func TestMarkdownRenderer_SimpleFormat(t *testing.T) {
 			expected: "# Test Title\n**link**: [https://doi.org/10.1000/xyz123](https://doi.org/10.1000/xyz123)\n\n**keywords**: A, B\n\n## Abstract\n\nThis is an abstract.\n",
 		},
 		{
-			name: "article without permalink or DOI",
-			article: &models.Article{
+			name: "work without permalink or DOI",
+			work: &models.Work{
 				Title:    new("Test Title"),
 				Label:    "TestLabel",
 				Keywords: collections.NewSet("A", "B"),
@@ -57,7 +57,7 @@ func TestMarkdownRenderer_SimpleFormat(t *testing.T) {
 			require.NoError(t, err)
 
 			var buf bytes.Buffer
-			err = renderer.Render(&buf, tt.article, "simple")
+			err = renderer.Render(&buf, tt.work, "simple")
 			require.NoError(t, err)
 
 			// Remove the separator suffix that render appends
@@ -76,30 +76,30 @@ func TestMarkdownRenderer_MarkdownFormat(t *testing.T) {
 	renderer, err := renderers.NewMarkdownRenderer("markdown")
 	require.NoError(t, err)
 
-	article := &models.Article{
+	work := &models.Work{
 		Title:    new("Test Title"),
 		Label:    "TestLabel",
 		Abstract: new("This is an abstract."),
 	}
 
 	var buf bytes.Buffer
-	err = renderer.Render(&buf, article, "markdown")
+	err = renderer.Render(&buf, work, "markdown")
 	require.NoError(t, err)
 	assert.NotContains(t, buf.String(), "keywords: []")
 
 	year := 2024
-	refArt := &models.Article{
+	refArt := &models.Work{
 		Label:   "openalex:W2",
 		Title:   new("Referenced Paper"),
 		Authors: []string{"Doe, Jane"},
-		Journal: new("Nature"),
+		Venue:   new("Nature"),
 		Year:    &year,
 		Rich:    true,
 	}
 	analysis := &models.Analysis{
 		Nodes: []*models.Node{
-			{ID: "openalex:W1", Article: article},
-			{ID: "openalex:W2", Article: refArt},
+			{ID: "openalex:W1", Work: work},
+			{ID: "openalex:W2", Work: refArt},
 		},
 		Links: []*models.Link{
 			{Source: "openalex:W1", Target: "openalex:W2", Weight: 1.0},
@@ -116,11 +116,11 @@ func TestMarkdownRenderer_MarkdownFormat(t *testing.T) {
 func TestMarkdownRenderer_ReferenceFormat(t *testing.T) {
 	year := 2024
 	doi := "10.1234/test"
-	articleWithDOI := &models.Article{
+	workWithDOI := &models.Work{
 		Rich:    true,
 		Authors: []string{"Smith, J."},
 		Title:   new("A Study on Citations"),
-		Journal: new("Nature"),
+		Venue:   new("Nature"),
 		Year:    &year,
 		DOI:     &doi,
 	}
@@ -129,7 +129,7 @@ func TestMarkdownRenderer_ReferenceFormat(t *testing.T) {
 	require.NoError(t, err)
 
 	var buf bytes.Buffer
-	err = renderer.Render(&buf, articleWithDOI, "reference")
+	err = renderer.Render(&buf, workWithDOI, "reference")
 	require.NoError(t, err)
 
 	output := buf.String()
@@ -137,15 +137,15 @@ func TestMarkdownRenderer_ReferenceFormat(t *testing.T) {
 	assert.Contains(t, output, "doi: 10.1234/test.")
 
 	// Test without DOI
-	articleWithoutDOI := &models.Article{
+	workWithoutDOI := &models.Work{
 		Rich:    true,
 		Authors: []string{"Doe, A."},
 		Title:   new("Another Study"),
-		Journal: new("Science"),
+		Venue:   new("Science"),
 		Year:    &year,
 	}
 	buf.Reset()
-	err = renderer.Render(&buf, articleWithoutDOI, "reference")
+	err = renderer.Render(&buf, workWithoutDOI, "reference")
 	require.NoError(t, err)
 
 	outputNoDOI := buf.String()

@@ -30,26 +30,26 @@ func TestCollectionBibtexResource(t *testing.T) {
 	colID := uuid.NewV7()
 	colName := "bpm-collection"
 	testCol := &services.Collection{
-		ID:           colID,
-		QueryHash:    services.ComputeQueryHash("bit-patterned media", 100),
-		Query:        "bit-patterned media",
-		ResultLimit:  100,
-		Name:         &colName,
-		ArticleCount: 1,
-		CreatedAt:    time.Now().UTC().Truncate(time.Second),
-		UpdatedAt:    time.Now().UTC().Truncate(time.Second),
+		ID:          colID,
+		QueryHash:   services.ComputeQueryHash("bit-patterned media", 100),
+		Query:       "bit-patterned media",
+		ResultLimit: 100,
+		Name:        &colName,
+		WorkCount:   1,
+		CreatedAt:   time.Now().UTC().Truncate(time.Second),
+		UpdatedAt:   time.Now().UTC().Truncate(time.Second),
 	}
 
 	year := 2021
 	title := "Advances in Bit-Patterned Media"
-	journal := "IEEE Transactions on Magnetics"
-	testArticles := []*models.Article{
+	venue := "IEEE Transactions on Magnetics"
+	testWorks := []*models.Work{
 		{
 			Label:   "openalex:W100",
 			Authors: []string{"Albrecht, Manfred"},
 			Year:    &year,
 			Title:   &title,
-			Journal: &journal,
+			Venue:   &venue,
 		},
 	}
 
@@ -73,8 +73,8 @@ func TestCollectionBibtexResource(t *testing.T) {
 			Once()
 
 		mockAnaSvc.EXPECT().
-			GetArticles(mock.Anything, colID, ([]string)(nil)).
-			Return(testArticles, nil, nil).
+			GetWorks(mock.Anything, colID, ([]string)(nil)).
+			Return(testWorks, nil, nil).
 			Once()
 
 		res, err := client.ReadResource(t.Context(), &mcp.ReadResourceParams{

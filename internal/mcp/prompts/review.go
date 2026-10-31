@@ -89,12 +89,12 @@ Systematically explore the field across its evolutionary dimensions using the `+
    - Identify recent frontier works, emerging subtopics, modern experimental validation, and specialized applications.
    - Group leaves by thematic focus and technological approaches.
 4. **Deep-Dive Abstract Inspection**:
-   - Because `+"`tos`"+` and `+"`search`"+` omit abstracts by default to save context window, call `+"`articles`"+` with the IDs of the most important papers to read their full abstracts and metadata.
+   - Because `+"`tos`"+` and `+"`search`"+` omit abstracts by default to save context window, call `+"`works`"+` with the IDs of the most important papers to read their full abstracts and metadata.
 
 ### Phase 3: Thematic Drill-Down via Graph Search
 - For key subtopics, conflicting paradigms, or specialized questions that emerge from your analysis of leaves and trunks, use the `+"`search`"+` tool:
   - Call `+"`search(query=\"<keyword>\", limit=10%s)`"+`
-  - Analyze the Steiner tree subgraph returned: examine connecting bridge nodes and citation paths between seed articles and the broader network.
+  - Analyze the Steiner tree subgraph returned: examine connecting bridge nodes and citation paths between seed works and the broader network.
 
 ### Phase 4: Literature Review Synthesis & Report Structure
 Synthesize your findings into a rigorous, publishable literature review structured as follows:
