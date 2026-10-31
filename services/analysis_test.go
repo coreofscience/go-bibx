@@ -257,15 +257,17 @@ func TestOpenAlexAnalysisService_AnalysisPersistenceAndQuery(t *testing.T) {
 		Trunkness: 0.1,
 		Leafness:  0.0,
 		Work: &models.Work{
-			Label:    "openalex:W1",
-			Title:    &title1,
-			Year:     &year1,
-			DOI:      &doi1,
-			Abstract: &abstract1,
-			Authors:  []string{"Turing, Alan", "Shannon, Claude"},
-			Keywords: collections.NewSet("graph theory", "foundations"),
-			IDs:      collections.NewSet("openalex:W1"),
-			Rich:     true,
+			Label:     "openalex:W1",
+			Title:     &title1,
+			Type:      new("conference-paper"),
+			VenueType: new("conference"),
+			Year:      &year1,
+			DOI:       &doi1,
+			Abstract:  &abstract1,
+			Authors:   []string{"Turing, Alan", "Shannon, Claude"},
+			Keywords:  collections.NewSet("graph theory", "foundations"),
+			IDs:       collections.NewSet("openalex:W1"),
+			Rich:      true,
 		},
 	}
 
@@ -338,10 +340,21 @@ func TestOpenAlexAnalysisService_AnalysisPersistenceAndQuery(t *testing.T) {
 	require.NotNil(t, loaded)
 	require.Len(t, loaded.Nodes, 3)
 	require.Len(t, loaded.Links, 2)
+	for _, node := range loaded.Nodes {
+		if node.ID == "openalex:W1" {
+			assert.Equal(t, new("conference-paper"), node.Work.Type)
+			assert.Equal(t, new("conference"), node.Work.VenueType)
+		} else {
+			assert.Nil(t, node.Work.Type)
+			assert.Nil(t, node.Work.VenueType)
+		}
+	}
 
 	// Verify QueryCategory
 	rootResults, err := anaSvc.QueryCategory(ctx, colID, "root", 5)
 	require.NoError(t, err)
+	require.NotEmpty(t, rootResults)
+	assert.Equal(t, new("conference-paper"), rootResults[0].Work.Type)
 	require.Len(t, rootResults, 2)
 	assert.Equal(t, "Seminal Graph Paper", *rootResults[0].Work.Title)
 

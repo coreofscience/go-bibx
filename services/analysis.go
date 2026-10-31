@@ -332,7 +332,7 @@ func (s *OpenAlexAnalysisService) LoadAnalysis(ctx context.Context, collectionID
 	nodeUUIDToLabel := make(map[uuid.UUID]string, len(nodeRows))
 
 	for _, r := range nodeRows {
-		work := buildWork(r.Label, r.Title, r.Venue, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
+		work := buildWork(r.Label, r.Title, r.Venue, r.Type, r.VenueType, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
 		nodeID := r.Label
 		if key := work.Key(); key != nil {
 			nodeID = *key
@@ -394,7 +394,7 @@ func (s *OpenAlexAnalysisService) QueryCategory(ctx context.Context, collectionI
 		}
 		results := make([]*models.Result, len(rows))
 		for i, r := range rows {
-			work := buildWork(r.Label, r.Title, r.Venue, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
+			work := buildWork(r.Label, r.Title, r.Venue, r.Type, r.VenueType, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
 			results[i] = &models.Result{Score: r.Trunkness, Work: work}
 		}
 		return results, nil
@@ -409,7 +409,7 @@ func (s *OpenAlexAnalysisService) QueryCategory(ctx context.Context, collectionI
 		}
 		results := make([]*models.Result, len(rows))
 		for i, r := range rows {
-			work := buildWork(r.Label, r.Title, r.Venue, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
+			work := buildWork(r.Label, r.Title, r.Venue, r.Type, r.VenueType, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
 			results[i] = &models.Result{Score: r.Leafness, Work: work}
 		}
 		return results, nil
@@ -424,7 +424,7 @@ func (s *OpenAlexAnalysisService) QueryCategory(ctx context.Context, collectionI
 		}
 		results := make([]*models.Result, len(rows))
 		for i, r := range rows {
-			work := buildWork(r.Label, r.Title, r.Venue, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
+			work := buildWork(r.Label, r.Title, r.Venue, r.Type, r.VenueType, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
 			results[i] = &models.Result{Score: r.Rootness, Work: work}
 		}
 		return results, nil
@@ -469,7 +469,7 @@ func (s *OpenAlexAnalysisService) Search(ctx context.Context, collectionID uuid.
 	}
 	terminals := make([]string, 0, len(rows))
 	for _, r := range rows {
-		work := buildWork(r.Label, r.Title, r.Venue, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
+		work := buildWork(r.Label, r.Title, r.Venue, r.Type, r.VenueType, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
 		nodeID := r.Label
 		if key := work.Key(); key != nil {
 			nodeID = *key
@@ -724,6 +724,8 @@ func persistNode(
 		Label:      work.Label,
 		Title:      toNullString(work.Title),
 		Venue:      toNullString(work.Venue),
+		Type:       toNullString(work.Type),
+		VenueType:  toNullString(work.VenueType),
 		Year:       toNullInt64(work.Year),
 		Volume:     toNullString(work.Volume),
 		Issue:      toNullString(work.Issue),
@@ -806,7 +808,7 @@ func cleanFTS5Query(query string) string {
 
 func buildWork(
 	label string,
-	title, venue sql.NullString,
+	title, venue, workType, venueType sql.NullString,
 	year sql.NullInt64,
 	volume, issue, page, doi, permalink sql.NullString,
 	timesCited sql.NullInt64,
@@ -848,6 +850,12 @@ func buildWork(
 	}
 	if venue.Valid {
 		work.Venue = &venue.String
+	}
+	if workType.Valid {
+		work.Type = &workType.String
+	}
+	if venueType.Valid {
+		work.VenueType = &venueType.String
 	}
 	if year.Valid {
 		y := int(year.Int64)

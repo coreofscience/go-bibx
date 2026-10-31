@@ -189,7 +189,7 @@ func (q *Queries) ListCollections(ctx context.Context, limit int64) ([]Collectio
 const listLeaves = `-- name: ListLeaves :many
 SELECT
     n.leafness,
-    w.id, w.label, w.title, w.venue, w.year, w.volume, w.issue, w.page,
+    w.id, w.label, w.title, w.venue, w.type, w.venue_type, w.year, w.volume, w.issue, w.page,
     w.doi, w.permalink, w.times_cited, w.abstract, w.rich,
     w.authors, w.keywords, w.ids
 FROM nodes n
@@ -210,6 +210,8 @@ type ListLeavesRow struct {
 	Label      string
 	Title      sql.NullString
 	Venue      sql.NullString
+	Type       sql.NullString
+	VenueType  sql.NullString
 	Year       sql.NullInt64
 	Volume     sql.NullString
 	Issue      sql.NullString
@@ -239,6 +241,8 @@ func (q *Queries) ListLeaves(ctx context.Context, arg ListLeavesParams) ([]ListL
 			&i.Label,
 			&i.Title,
 			&i.Venue,
+			&i.Type,
+			&i.VenueType,
 			&i.Year,
 			&i.Volume,
 			&i.Issue,
@@ -302,7 +306,7 @@ func (q *Queries) ListLinks(ctx context.Context, collectionID uuid.UUID) ([]Link
 const listNodes = `-- name: ListNodes :many
 SELECT
 	n.id, n.category, n.rootness, n.trunkness, n.leafness,
-	w.id, w.label, w.title, w.venue, w.year, w.volume, w.issue, w.page,
+	w.id, w.label, w.title, w.venue, w.type, w.venue_type, w.year, w.volume, w.issue, w.page,
 	w.doi, w.permalink, w.times_cited, w.abstract, w.rich,
 	w.authors, w.keywords, w.ids
 FROM nodes n
@@ -320,6 +324,8 @@ type ListNodesRow struct {
 	Label      string
 	Title      sql.NullString
 	Venue      sql.NullString
+	Type       sql.NullString
+	VenueType  sql.NullString
 	Year       sql.NullInt64
 	Volume     sql.NullString
 	Issue      sql.NullString
@@ -353,6 +359,8 @@ func (q *Queries) ListNodes(ctx context.Context, collectionID uuid.UUID) ([]List
 			&i.Label,
 			&i.Title,
 			&i.Venue,
+			&i.Type,
+			&i.VenueType,
 			&i.Year,
 			&i.Volume,
 			&i.Issue,
@@ -382,7 +390,7 @@ func (q *Queries) ListNodes(ctx context.Context, collectionID uuid.UUID) ([]List
 const listRoots = `-- name: ListRoots :many
 SELECT
     n.rootness,
-    w.id, w.label, w.title, w.venue, w.year, w.volume, w.issue, w.page,
+    w.id, w.label, w.title, w.venue, w.type, w.venue_type, w.year, w.volume, w.issue, w.page,
     w.doi, w.permalink, w.times_cited, w.abstract, w.rich,
     w.authors, w.keywords, w.ids
 FROM nodes n
@@ -403,6 +411,8 @@ type ListRootsRow struct {
 	Label      string
 	Title      sql.NullString
 	Venue      sql.NullString
+	Type       sql.NullString
+	VenueType  sql.NullString
 	Year       sql.NullInt64
 	Volume     sql.NullString
 	Issue      sql.NullString
@@ -432,6 +442,8 @@ func (q *Queries) ListRoots(ctx context.Context, arg ListRootsParams) ([]ListRoo
 			&i.Label,
 			&i.Title,
 			&i.Venue,
+			&i.Type,
+			&i.VenueType,
 			&i.Year,
 			&i.Volume,
 			&i.Issue,
@@ -461,7 +473,7 @@ func (q *Queries) ListRoots(ctx context.Context, arg ListRootsParams) ([]ListRoo
 const listTrunks = `-- name: ListTrunks :many
 SELECT
     n.trunkness,
-    w.id, w.label, w.title, w.venue, w.year, w.volume, w.issue, w.page,
+    w.id, w.label, w.title, w.venue, w.type, w.venue_type, w.year, w.volume, w.issue, w.page,
     w.doi, w.permalink, w.times_cited, w.abstract, w.rich,
     w.authors, w.keywords, w.ids
 FROM nodes n
@@ -482,6 +494,8 @@ type ListTrunksRow struct {
 	Label      string
 	Title      sql.NullString
 	Venue      sql.NullString
+	Type       sql.NullString
+	VenueType  sql.NullString
 	Year       sql.NullInt64
 	Volume     sql.NullString
 	Issue      sql.NullString
@@ -511,6 +525,8 @@ func (q *Queries) ListTrunks(ctx context.Context, arg ListTrunksParams) ([]ListT
 			&i.Label,
 			&i.Title,
 			&i.Venue,
+			&i.Type,
+			&i.VenueType,
 			&i.Year,
 			&i.Volume,
 			&i.Issue,
@@ -540,7 +556,7 @@ func (q *Queries) ListTrunks(ctx context.Context, arg ListTrunksParams) ([]ListT
 const search = `-- name: Search :many
 SELECT
     n.id, n.category, n.rootness, n.trunkness, n.leafness,
-    w.id, w.label, w.title, w.venue, w.year, w.volume, w.issue, w.page,
+    w.id, w.label, w.title, w.venue, w.type, w.venue_type, w.year, w.volume, w.issue, w.page,
     w.doi, w.permalink, w.times_cited, w.abstract, w.rich,
     w.authors, w.keywords, w.ids
 FROM works_fts(?) fts
@@ -567,6 +583,8 @@ type SearchRow struct {
 	Label      string
 	Title      sql.NullString
 	Venue      sql.NullString
+	Type       sql.NullString
+	VenueType  sql.NullString
 	Year       sql.NullInt64
 	Volume     sql.NullString
 	Issue      sql.NullString
@@ -600,6 +618,8 @@ func (q *Queries) Search(ctx context.Context, arg SearchParams) ([]SearchRow, er
 			&i.Label,
 			&i.Title,
 			&i.Venue,
+			&i.Type,
+			&i.VenueType,
 			&i.Year,
 			&i.Volume,
 			&i.Issue,
@@ -739,6 +759,8 @@ INSERT INTO works (
     label,
     title,
     venue,
+    type,
+    venue_type,
     year,
     volume,
     issue,
@@ -751,10 +773,12 @@ INSERT INTO works (
     authors,
     keywords,
     ids
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(label) DO UPDATE SET
     title=COALESCE(excluded.title, works.title),
     venue=COALESCE(excluded.venue, works.venue),
+    type=COALESCE(excluded.type, works.type),
+    venue_type=COALESCE(excluded.venue_type, works.venue_type),
     year=COALESCE(excluded.year, works.year),
     volume=COALESCE(excluded.volume, works.volume),
     issue=COALESCE(excluded.issue, works.issue),
@@ -775,6 +799,8 @@ type UpsertWorkParams struct {
 	Label      string
 	Title      sql.NullString
 	Venue      sql.NullString
+	Type       sql.NullString
+	VenueType  sql.NullString
 	Year       sql.NullInt64
 	Volume     sql.NullString
 	Issue      sql.NullString
@@ -795,6 +821,8 @@ func (q *Queries) UpsertWork(ctx context.Context, arg UpsertWorkParams) (uuid.UU
 		arg.Label,
 		arg.Title,
 		arg.Venue,
+		arg.Type,
+		arg.VenueType,
 		arg.Year,
 		arg.Volume,
 		arg.Issue,

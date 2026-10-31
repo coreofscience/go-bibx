@@ -63,7 +63,7 @@ func TestMigrate_RunsMigrations(t *testing.T) {
 	var dirty bool
 	err = db.QueryRow("SELECT version, dirty FROM schema_migrations").Scan(&version, &dirty)
 	require.NoError(t, err)
-	assert.Equal(t, 3, version)
+	assert.Equal(t, 4, version)
 	assert.False(t, dirty)
 
 	// Idempotency check: running Migrate again does nothing
@@ -84,7 +84,7 @@ func TestOpenAndMigrateSQLite(t *testing.T) {
 	var version int
 	err = db.QueryRow("SELECT version FROM schema_migrations").Scan(&version)
 	require.NoError(t, err)
-	assert.Equal(t, 3, version)
+	assert.Equal(t, 4, version)
 }
 
 // newMigrator returns a migrator that can move db to any schema version.
@@ -97,6 +97,37 @@ func newMigrator(t *testing.T, db *sql.DB) *migrate.Migrate {
 	m, err := migrate.NewWithInstance("iofs", sourceDriver, "sqlite", dbDriver)
 	require.NoError(t, err)
 	return m
+}
+
+func TestMigrate_AddsWorkTypes(t *testing.T) {
+	db, err := repository.OpenSQLite(filepath.Join(t.TempDir(), "test_work_types.db"))
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, db.Close())
+	}()
+	m := newMigrator(t, db)
+
+	require.NoError(t, m.Migrate(3))
+	_, err = db.Exec("INSERT INTO works (id, label, title) VALUES (x'03', 'old', 'Kafka logs')")
+	require.NoError(t, err)
+
+	require.NoError(t, m.Migrate(4))
+
+	var workType, venueType sql.NullString
+	err = db.QueryRow("SELECT type, venue_type FROM works WHERE label = 'old'").Scan(&workType, &venueType)
+	require.NoError(t, err)
+	assert.False(t, workType.Valid)
+	assert.False(t, venueType.Valid)
+
+	_, err = db.Exec("UPDATE works SET type = 'book', venue_type = 'journal' WHERE label = 'old'")
+	require.NoError(t, err)
+
+	require.NoError(t, m.Migrate(3))
+
+	var title string
+	err = db.QueryRow("SELECT title FROM works_fts WHERE works_fts MATCH 'kafka'").Scan(&title)
+	require.NoError(t, err)
+	assert.Equal(t, "Kafka logs", title)
 }
 
 func TestMigrate_RenamesDatabaseWithoutSearchTriggers(t *testing.T) {

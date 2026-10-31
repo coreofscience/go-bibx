@@ -1,0 +1,2 @@
+ALTER TABLE works DROP COLUMN venue_type;
+ALTER TABLE works DROP COLUMN type;

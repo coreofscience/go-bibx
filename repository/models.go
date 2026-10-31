@@ -57,6 +57,8 @@ type Work struct {
 	Keywords   []byte
 	Ids        []byte
 	CreatedAt  sql.NullTime
+	Type       sql.NullString
+	VenueType  sql.NullString
 }
 
 type WorksFt struct {

@@ -1,0 +1,2 @@
+ALTER TABLE works ADD COLUMN type TEXT;
+ALTER TABLE works ADD COLUMN venue_type TEXT;

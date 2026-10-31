@@ -20,7 +20,7 @@ Tree of Science (ToS) can use any work with citations as a seed.
 | Phase | Work                                      | State         |
 | ----- | ----------------------------------------- | ------------- |
 | 1     | Rename `Article` to `Work`                | Done          |
-| 2     | Change the `inquire` seed filter          | To do         |
+| 2     | Change the `inquire` seed filter          | Done          |
 | 3     | BibTeX entry types and venues             | To do         |
 | Later | Cut-off titles, off-topic roots, `lookup` | Not scheduled |
 
@@ -32,7 +32,7 @@ Checked against the live OpenAlex API on 2026-10-31.
 
 - **Conference papers have their own type.** For "stream processing", works
   with a conference source are 31,381 `conference-paper` and 414 `article`.
-- **`review` is also a separate type**, so the current filter excludes reviews.
+- **`review` is also a separate type**, so the old `article` filter excluded them.
 - **The type limit only applies to seeds.** `ListWorksByIDs` has no type
   filter, so collections already hold books and reports as references.
 - **Seeds without references add nothing to the graph.** `Clean` keeps only the
@@ -109,11 +109,11 @@ column, because BibTeX, the search index and sqlc all work with named fields.
 
 For works with more than one citation and an abstract:
 
-| Query           | `article` (today) | All types | All types with references |
-| --------------- | ----------------- | --------- | ------------------------- |
-| apache kafka    | 233               | 526       | 420                       |
-| nosql databases | 957               | 2,265     | 1,894                     |
-| cloud computing | 48,914            | 94,824    | 81,733                    |
+| Query           | `article` (before) | All types | All types with references |
+| --------------- | ------------------ | --------- | ------------------------- |
+| apache kafka    | 233                | 526       | 420                       |
+| nosql databases | 957                | 2,265     | 1,894                     |
+| cloud computing | 48,914             | 94,824    | 81,733                    |
 
 With the new filter, the top 200 for "cloud computing" are 100 articles, 85
 conference papers, 4 book chapters, 3 reviews, 3 `other`, 2 preprints, 2 reports
@@ -149,11 +149,11 @@ works.
 **Done when:**
 
 - `go test ./...` and golangci-lint pass.
-- A live `inquire` returns a work that today's filter excludes, such as the
+- A live `inquire` returns a work that the old filter excluded, such as the
   `conference-paper` "Parallel visualization on large clusters using MapReduce"
   (W2116018104), which has 32 references.
 - `tos` on a live collection, e.g. "apache kafka", still has sensible roots,
-  trunks and leaves. This has not been run through bibx yet.
+  trunks and leaves.
 
 ## Phase 3: BibTeX entry types and venues
 

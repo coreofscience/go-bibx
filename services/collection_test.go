@@ -2,6 +2,7 @@ package services_test
 
 import (
 	"context"
+	"crypto/sha256"
 	"path/filepath"
 	"testing"
 	"time"
@@ -86,6 +87,12 @@ func TestComputeQueryHash(t *testing.T) {
 		h2 := services.ComputeQueryHash("classical computing", 100)
 
 		assert.NotEqual(t, h1, h2)
+	})
+
+	t.Run("does not match collections stored with the unversioned hash", func(t *testing.T) {
+		unversioned := sha256.Sum256([]byte(`{"limit":100,"query":"quantum computing"}`))
+
+		assert.NotEqual(t, unversioned, services.ComputeQueryHash("quantum computing", 100))
 	})
 }
 

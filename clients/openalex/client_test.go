@@ -142,6 +142,11 @@ func TestSearchWorks(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			filter := r.URL.Query().Get("filter")
 			assert.Contains(t, filter, "title_and_abstract.search:covid+19+review+study")
+			assert.Contains(t, filter, "referenced_works_count:>0")
+			assert.Contains(t, filter, "cited_by_count:>1")
+			assert.Contains(t, filter, "has_abstract:true")
+			assert.NotContains(t, filter, "type:")
+			assert.Contains(t, strings.Split(r.URL.Query().Get("select"), ","), "type")
 			assert.Equal(t, "relevance_score:desc", r.URL.Query().Get("sort"))
 
 			page := r.URL.Query().Get("page")
@@ -190,6 +195,26 @@ func TestReferenceToWork_DoesNotShadowRichPermalink(t *testing.T) {
 	merged := stub.Merge(rich)
 	require.NotNil(t, merged.Permalink)
 	assert.Equal(t, landingURL, *merged.Permalink)
+}
+
+func TestToWork_Types(t *testing.T) {
+	t.Run("keeps the work and venue types", func(t *testing.T) {
+		work := openalex.ToWork(&openalex.Work{
+			ID:   "https://openalex.org/W1",
+			Type: "conference-paper",
+			PrimaryLocation: &openalex.WorkLocation{
+				Source: &openalex.WorkLocationSource{DisplayName: "SOSP", Type: "conference"},
+			},
+		})
+		assert.Equal(t, new("conference-paper"), work.Type)
+		assert.Equal(t, new("conference"), work.VenueType)
+	})
+
+	t.Run("leaves unknown types empty", func(t *testing.T) {
+		work := openalex.ToWork(&openalex.Work{ID: "https://openalex.org/W1"})
+		assert.Nil(t, work.Type)
+		assert.Nil(t, work.VenueType)
+	})
 }
 
 func TestToWork_PageRange(t *testing.T) {

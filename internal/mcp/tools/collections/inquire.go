@@ -38,14 +38,15 @@ type InquireOutput struct {
 const lowSeedRatio = 0.5
 
 // seedFilters describes the fixed OpenAlex filters applied by inquire.
-const seedFilters = "journal articles that have an abstract and more than one citation"
+const seedFilters = "works that have an abstract, at least one reference and more than one citation"
 
 // inquireDescription tells the agent how queries are matched and what gets fetched.
 const inquireDescription = "Fetch the OpenAlex works most relevant to a research topic, add the works they cite, " +
 	"run Tree of Science (SAP) network analysis, and store the collection locally. " +
 	"The query is matched against titles and abstracts and every term must match, so use one concept of 1-3 words per call. " +
-	"Only " + seedFilters + " are fetched directly; conference papers, books and reports enter the collection " +
-	"only when a fetched work cites them. Results for the same query and limit are cached; pass force to re-fetch."
+	"Only " + seedFilters + " are fetched directly, whatever their type (journal articles, conference papers, reviews and so on). " +
+	"Works without references, such as many books, enter the collection only when a fetched work cites them. " +
+	"Results for the same query and limit are cached; pass force to re-fetch."
 
 // Inquire holds the inquire tool.
 type Inquire struct {
