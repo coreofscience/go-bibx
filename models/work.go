@@ -12,24 +12,26 @@ import (
 // Work represents a bibliographic work, containing citation metadata, identifiers,
 // author information, and references to cited works.
 type Work struct {
-	Label      string                   `json:"label"`
-	IDs        *collections.Set[string] `json:"ids,omitempty"`
-	Authors    []string                 `json:"authors,omitempty"`
-	Year       *int                     `json:"year,omitempty"`
-	Title      *string                  `json:"title,omitempty"`
-	Venue      *string                  `json:"venue,omitempty"`
-	Type       *string                  `json:"type,omitempty"`
-	VenueType  *string                  `json:"venue_type,omitempty"`
-	Volume     *string                  `json:"volume,omitempty"`
-	Issue      *string                  `json:"issue,omitempty"`
-	Page       *string                  `json:"page,omitempty"`
-	DOI        *string                  `json:"doi,omitempty"`
-	Permalink  *string                  `json:"permalink,omitempty"`
-	TimesCited *int                     `json:"times_cited,omitempty"`
-	Keywords   *collections.Set[string] `json:"keywords,omitempty"`
-	Abstract   *string                  `json:"abstract,omitempty"`
-	References References               `json:"references,omitempty"`
-	Rich       bool                     `json:"rich"`
+	Label       string                   `json:"label"`
+	IDs         *collections.Set[string] `json:"ids,omitempty"`
+	Authors     []string                 `json:"authors,omitempty"`
+	Year        *int                     `json:"year,omitempty"`
+	Title       *string                  `json:"title,omitempty"`
+	Venue       *string                  `json:"venue,omitempty"`
+	Type        *string                  `json:"type,omitempty"`
+	VenueType   *string                  `json:"venue_type,omitempty"`
+	Publisher   *string                  `json:"publisher,omitempty"`
+	Institution *string                  `json:"institution,omitempty"`
+	Volume      *string                  `json:"volume,omitempty"`
+	Issue       *string                  `json:"issue,omitempty"`
+	Page        *string                  `json:"page,omitempty"`
+	DOI         *string                  `json:"doi,omitempty"`
+	Permalink   *string                  `json:"permalink,omitempty"`
+	TimesCited  *int                     `json:"times_cited,omitempty"`
+	Keywords    *collections.Set[string] `json:"keywords,omitempty"`
+	Abstract    *string                  `json:"abstract,omitempty"`
+	References  References               `json:"references,omitempty"`
+	Rich        bool                     `json:"rich"`
 }
 
 // WorkOption specifies a functional option for configuring an [Work].
@@ -48,24 +50,26 @@ func (w *Work) Clone(options ...WorkOption) *Work {
 		return nil
 	}
 	copied := &Work{
-		Label:      w.Label,
-		IDs:        w.IDs.Clone(),
-		Authors:    slices.Clone(w.Authors),
-		Year:       w.Year,
-		Title:      w.Title,
-		Venue:      w.Venue,
-		Type:       w.Type,
-		VenueType:  w.VenueType,
-		Volume:     w.Volume,
-		Issue:      w.Issue,
-		Page:       w.Page,
-		DOI:        w.DOI,
-		Permalink:  w.Permalink,
-		TimesCited: w.TimesCited,
-		Keywords:   w.Keywords.Clone(),
-		Abstract:   w.Abstract,
-		References: slices.Clone(w.References),
-		Rich:       w.Rich,
+		Label:       w.Label,
+		IDs:         w.IDs.Clone(),
+		Authors:     slices.Clone(w.Authors),
+		Year:        w.Year,
+		Title:       w.Title,
+		Venue:       w.Venue,
+		Type:        w.Type,
+		VenueType:   w.VenueType,
+		Publisher:   w.Publisher,
+		Institution: w.Institution,
+		Volume:      w.Volume,
+		Issue:       w.Issue,
+		Page:        w.Page,
+		DOI:         w.DOI,
+		Permalink:   w.Permalink,
+		TimesCited:  w.TimesCited,
+		Keywords:    w.Keywords.Clone(),
+		Abstract:    w.Abstract,
+		References:  slices.Clone(w.References),
+		Rich:        w.Rich,
 	}
 	for _, option := range options {
 		option(copied)
@@ -85,24 +89,26 @@ func (w *Work) Merge(other *Work) *Work {
 		return other.Merge(w)
 	}
 	merged := &Work{
-		Label:      utils.KeepLongestString(w.Label, other.Label),
-		IDs:        w.IDs.Union(other.IDs),
-		Authors:    utils.KeepLongestSlice(w.Authors, other.Authors),
-		Year:       utils.Keep(w.Year, other.Year),
-		Title:      utils.Keep(w.Title, other.Title),
-		Venue:      utils.Keep(w.Venue, other.Venue),
-		Type:       utils.Keep(w.Type, other.Type),
-		VenueType:  utils.Keep(w.VenueType, other.VenueType),
-		Volume:     utils.Keep(w.Volume, other.Volume),
-		Issue:      utils.Keep(w.Issue, other.Issue),
-		Page:       utils.Keep(w.Page, other.Page),
-		DOI:        utils.Keep(w.DOI, other.DOI),
-		Permalink:  utils.Keep(w.Permalink, other.Permalink),
-		TimesCited: utils.Keep(w.TimesCited, other.TimesCited),
-		Keywords:   w.Keywords.Union(other.Keywords),
-		Abstract:   utils.Keep(w.Abstract, other.Abstract),
-		References: utils.KeepLongestSlice(w.References, other.References),
-		Rich:       w.Rich || other.Rich,
+		Label:       utils.KeepLongestString(w.Label, other.Label),
+		IDs:         w.IDs.Union(other.IDs),
+		Authors:     utils.KeepLongestSlice(w.Authors, other.Authors),
+		Year:        utils.Keep(w.Year, other.Year),
+		Title:       utils.Keep(w.Title, other.Title),
+		Venue:       utils.Keep(w.Venue, other.Venue),
+		Type:        utils.Keep(w.Type, other.Type),
+		VenueType:   utils.Keep(w.VenueType, other.VenueType),
+		Publisher:   utils.Keep(w.Publisher, other.Publisher),
+		Institution: utils.Keep(w.Institution, other.Institution),
+		Volume:      utils.Keep(w.Volume, other.Volume),
+		Issue:       utils.Keep(w.Issue, other.Issue),
+		Page:        utils.Keep(w.Page, other.Page),
+		DOI:         utils.Keep(w.DOI, other.DOI),
+		Permalink:   utils.Keep(w.Permalink, other.Permalink),
+		TimesCited:  utils.Keep(w.TimesCited, other.TimesCited),
+		Keywords:    w.Keywords.Union(other.Keywords),
+		Abstract:    utils.Keep(w.Abstract, other.Abstract),
+		References:  utils.KeepLongestSlice(w.References, other.References),
+		Rich:        w.Rich || other.Rich,
 	}
 	return merged
 }

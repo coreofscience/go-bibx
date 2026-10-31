@@ -69,6 +69,8 @@ INSERT INTO works (
     venue,
     type,
     venue_type,
+    publisher,
+    institution,
     year,
     volume,
     issue,
@@ -81,12 +83,14 @@ INSERT INTO works (
     authors,
     keywords,
     ids
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(label) DO UPDATE SET
     title=COALESCE(excluded.title, works.title),
     venue=COALESCE(excluded.venue, works.venue),
     type=COALESCE(excluded.type, works.type),
     venue_type=COALESCE(excluded.venue_type, works.venue_type),
+    publisher=COALESCE(excluded.publisher, works.publisher),
+    institution=COALESCE(excluded.institution, works.institution),
     year=COALESCE(excluded.year, works.year),
     volume=COALESCE(excluded.volume, works.volume),
     issue=COALESCE(excluded.issue, works.issue),
@@ -139,7 +143,7 @@ INSERT OR REPLACE INTO links (
 -- name: ListNodes :many
 SELECT
 	n.id, n.category, n.rootness, n.trunkness, n.leafness,
-	w.id, w.label, w.title, w.venue, w.type, w.venue_type, w.year, w.volume, w.issue, w.page,
+	w.id, w.label, w.title, w.venue, w.type, w.venue_type, w.publisher, w.institution, w.year, w.volume, w.issue, w.page,
 	w.doi, w.permalink, w.times_cited, w.abstract, w.rich,
 	w.authors, w.keywords, w.ids
 FROM nodes n
@@ -154,7 +158,7 @@ WHERE collection_id = ?;
 -- name: ListRoots :many
 SELECT
     n.rootness,
-    w.id, w.label, w.title, w.venue, w.type, w.venue_type, w.year, w.volume, w.issue, w.page,
+    w.id, w.label, w.title, w.venue, w.type, w.venue_type, w.publisher, w.institution, w.year, w.volume, w.issue, w.page,
     w.doi, w.permalink, w.times_cited, w.abstract, w.rich,
     w.authors, w.keywords, w.ids
 FROM nodes n
@@ -166,7 +170,7 @@ LIMIT ?;
 -- name: ListTrunks :many
 SELECT
     n.trunkness,
-    w.id, w.label, w.title, w.venue, w.type, w.venue_type, w.year, w.volume, w.issue, w.page,
+    w.id, w.label, w.title, w.venue, w.type, w.venue_type, w.publisher, w.institution, w.year, w.volume, w.issue, w.page,
     w.doi, w.permalink, w.times_cited, w.abstract, w.rich,
     w.authors, w.keywords, w.ids
 FROM nodes n
@@ -178,7 +182,7 @@ LIMIT ?;
 -- name: ListLeaves :many
 SELECT
     n.leafness,
-    w.id, w.label, w.title, w.venue, w.type, w.venue_type, w.year, w.volume, w.issue, w.page,
+    w.id, w.label, w.title, w.venue, w.type, w.venue_type, w.publisher, w.institution, w.year, w.volume, w.issue, w.page,
     w.doi, w.permalink, w.times_cited, w.abstract, w.rich,
     w.authors, w.keywords, w.ids
 FROM nodes n
@@ -190,7 +194,7 @@ LIMIT ?;
 -- name: Search :many
 SELECT
     n.id, n.category, n.rootness, n.trunkness, n.leafness,
-    w.id, w.label, w.title, w.venue, w.type, w.venue_type, w.year, w.volume, w.issue, w.page,
+    w.id, w.label, w.title, w.venue, w.type, w.venue_type, w.publisher, w.institution, w.year, w.volume, w.issue, w.page,
     w.doi, w.permalink, w.times_cited, w.abstract, w.rich,
     w.authors, w.keywords, w.ids
 FROM works_fts(?) fts

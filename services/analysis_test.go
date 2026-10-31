@@ -384,17 +384,19 @@ func TestOpenAlexAnalysisService_AnalysisPersistenceAndQuery(t *testing.T) {
 		Trunkness: 0.1,
 		Leafness:  0.0,
 		Work: &models.Work{
-			Label:     "openalex:W1",
-			Title:     &title1,
-			Type:      new("conference-paper"),
-			VenueType: new("conference"),
-			Year:      &year1,
-			DOI:       &doi1,
-			Abstract:  &abstract1,
-			Authors:   []string{"Turing, Alan", "Shannon, Claude"},
-			Keywords:  collections.NewSet("graph theory", "foundations"),
-			IDs:       collections.NewSet("openalex:W1"),
-			Rich:      true,
+			Label:       "openalex:W1",
+			Title:       &title1,
+			Type:        new("conference-paper"),
+			VenueType:   new("conference"),
+			Publisher:   new("ACM"),
+			Institution: new("Princeton"),
+			Year:        &year1,
+			DOI:         &doi1,
+			Abstract:    &abstract1,
+			Authors:     []string{"Turing, Alan", "Shannon, Claude"},
+			Keywords:    collections.NewSet("graph theory", "foundations"),
+			IDs:         collections.NewSet("openalex:W1"),
+			Rich:        true,
 		},
 	}
 
@@ -471,9 +473,13 @@ func TestOpenAlexAnalysisService_AnalysisPersistenceAndQuery(t *testing.T) {
 		if node.ID == "openalex:W1" {
 			assert.Equal(t, new("conference-paper"), node.Work.Type)
 			assert.Equal(t, new("conference"), node.Work.VenueType)
+			assert.Equal(t, new("ACM"), node.Work.Publisher)
+			assert.Equal(t, new("Princeton"), node.Work.Institution)
 		} else {
 			assert.Nil(t, node.Work.Type)
 			assert.Nil(t, node.Work.VenueType)
+			assert.Nil(t, node.Work.Publisher)
+			assert.Nil(t, node.Work.Institution)
 		}
 	}
 

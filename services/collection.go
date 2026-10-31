@@ -233,7 +233,7 @@ func NormalizeQuery(q string) string {
 
 // queryFingerprintVersion changes whenever the works fetched for a query change, so
 // that old queries fetch again instead of returning collections built the old way.
-const queryFingerprintVersion = 2
+const queryFingerprintVersion = 3
 
 type queryFingerprint struct {
 	Version int    `json:"version"`

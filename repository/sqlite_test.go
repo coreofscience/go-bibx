@@ -63,7 +63,7 @@ func TestMigrate_RunsMigrations(t *testing.T) {
 	var dirty bool
 	err = db.QueryRow("SELECT version, dirty FROM schema_migrations").Scan(&version, &dirty)
 	require.NoError(t, err)
-	assert.Equal(t, 4, version)
+	assert.Equal(t, 5, version)
 	assert.False(t, dirty)
 
 	// Idempotency check: running Migrate again does nothing
@@ -84,7 +84,7 @@ func TestOpenAndMigrateSQLite(t *testing.T) {
 	var version int
 	err = db.QueryRow("SELECT version FROM schema_migrations").Scan(&version)
 	require.NoError(t, err)
-	assert.Equal(t, 4, version)
+	assert.Equal(t, 5, version)
 }
 
 // newMigrator returns a migrator that can move db to any schema version.

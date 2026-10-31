@@ -297,10 +297,11 @@ func ToWork(work *Work) *models.Work {
 	for _, author := range work.Authorships {
 		authors = append(authors, utils.InvertName(author.Author.DisplayName))
 	}
-	var venue, venueType *string
-	if work.PrimaryLocation != nil && work.PrimaryLocation.Source != nil {
-		venue = &work.PrimaryLocation.Source.DisplayName
-		venueType = nonEmpty(work.PrimaryLocation.Source.Type)
+	var venue, venueType, publisher *string
+	if source := venueSource(work); source != nil {
+		venue = &source.DisplayName
+		venueType = nonEmpty(source.Type)
+		publisher = source.HostOrganizationName
 	}
 	var doi *string
 	if work.DOI != nil {
@@ -321,25 +322,57 @@ func ToWork(work *Work) *models.Work {
 	}
 	abstract := utils.InvertAbstract(work.AbstractInvertedIndex)
 	return &models.Work{
-		Label:      work.ID,
-		IDs:        ids,
-		Authors:    authors,
-		Year:       work.PublicationYear,
-		Title:      work.Title,
-		Venue:      venue,
-		Type:       nonEmpty(work.Type),
-		VenueType:  venueType,
-		Volume:     work.Biblio.Volume,
-		Issue:      work.Biblio.Issue,
-		Page:       pageRange(work.Biblio),
-		DOI:        doi,
-		Permalink:  permalink,
-		TimesCited: &work.CitedByCount,
-		References: references,
-		Keywords:   keywords,
-		Abstract:   &abstract,
-		Rich:       true,
+		Label:       work.ID,
+		IDs:         ids,
+		Authors:     authors,
+		Year:        work.PublicationYear,
+		Title:       work.Title,
+		Venue:       venue,
+		Type:        nonEmpty(work.Type),
+		VenueType:   venueType,
+		Publisher:   publisher,
+		Institution: firstInstitution(work),
+		Volume:      work.Biblio.Volume,
+		Issue:       work.Biblio.Issue,
+		Page:        pageRange(work.Biblio),
+		DOI:         doi,
+		Permalink:   permalink,
+		TimesCited:  &work.CitedByCount,
+		References:  references,
+		Keywords:    keywords,
+		Abstract:    &abstract,
+		Rich:        true,
 	}
+}
+
+// venueSource returns the source to cite for a work. Works often point to a repository copy
+// first, so it prefers a journal or conference from any of their locations.
+func venueSource(work *Work) *WorkLocationSource {
+	var primary *WorkLocationSource
+	if work.PrimaryLocation != nil {
+		primary = work.PrimaryLocation.Source
+	}
+	if primary != nil && primary.Type != "repository" {
+		return primary
+	}
+	for _, location := range work.Locations {
+		if location.Source != nil && (location.Source.Type == "journal" || location.Source.Type == "conference") {
+			return location.Source
+		}
+	}
+	return primary
+}
+
+// firstInstitution returns the first institution listed for the authors of a work.
+func firstInstitution(work *Work) *string {
+	for _, authorship := range work.Authorships {
+		for _, institution := range authorship.Institutions {
+			if institution.DisplayName != "" {
+				return &institution.DisplayName
+			}
+		}
+	}
+	return nil
 }
 
 // nonEmpty returns nil for an empty string, which OpenAlex uses for unknown values.
