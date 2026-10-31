@@ -231,17 +231,23 @@ func NormalizeQuery(q string) string {
 	return multiSpaceRegex.ReplaceAllString(q, " ")
 }
 
+// queryFingerprintVersion changes whenever the works fetched for a query change, so
+// that old queries fetch again instead of returning collections built the old way.
+const queryFingerprintVersion = 2
+
 type queryFingerprint struct {
-	Limit int    `json:"limit"`
-	Query string `json:"query"`
+	Version int    `json:"version"`
+	Limit   int    `json:"limit"`
+	Query   string `json:"query"`
 }
 
 // ComputeQueryHash calculates a deterministic SHA-256 idempotency key for a query and limit.
 func ComputeQueryHash(query string, limit int) [32]byte {
 	norm := NormalizeQuery(query)
 	raw, _ := json.Marshal(queryFingerprint{
-		Limit: limit,
-		Query: norm,
+		Version: queryFingerprintVersion,
+		Limit:   limit,
+		Query:   norm,
 	})
 	return sha256.Sum256(raw)
 }

@@ -86,27 +86,40 @@ func (s *OpenAlexAnalysisService) Inquire(
 ) (*InquireResult, error) {
 	queryHash := ComputeQueryHash(query, limit)
 
-	existingRow, err := s.queries.GetCollectionByHash(ctx, queryHash[:])
-	var existing *Collection
-	if err == nil {
-		existing = toCollection(existingRow)
-		if !opts.Force {
-			slog.InfoContext(ctx, "collection already exists for query; skipping remote inquiry",
-				"collection_id", existing.ID,
-				"query", query,
-				"limit", limit,
-			)
-			return &InquireResult{
-				Collection: existing,
-				IsNew:      false,
-			}, nil
-		}
+	existing, outdated, err := s.findCollection(ctx, query, limit, queryHash)
+	if err != nil {
+		return nil, err
+	}
+	switch {
+	case existing == nil:
+	case outdated:
+		slog.InfoContext(ctx, "refreshing collection built by an older version",
+			"collection_id", existing.ID,
+			"query", query,
+		)
+	case !opts.Force:
+		slog.InfoContext(ctx, "collection already exists for query; skipping remote inquiry",
+			"collection_id", existing.ID,
+			"query", query,
+			"limit", limit,
+		)
+		return &InquireResult{
+			Collection: existing,
+			IsNew:      false,
+		}, nil
+	default:
 		slog.InfoContext(ctx, "collection already exists for query; force re-run enabled",
 			"collection_id", existing.ID,
 			"query", query,
 		)
-	} else if !errors.Is(err, sql.ErrNoRows) {
-		return nil, fmt.Errorf("failed to check existing collection: %w", err)
+	}
+
+	var colName *string
+	if trimmed := strings.TrimSpace(opts.Name); trimmed != "" {
+		colName = &trimmed
+		if err := s.checkNameAvailable(ctx, trimmed, existing); err != nil {
+			return nil, err
+		}
 	}
 
 	slog.InfoContext(ctx, "fetching initial works")
@@ -187,26 +200,14 @@ func (s *OpenAlexAnalysisService) Inquire(
 		Links: links,
 	}
 
-	var colName *string
-	if trimmed := strings.TrimSpace(opts.Name); trimmed != "" {
-		colName = &trimmed
-	}
-
-	colID := uuid.NewV7()
+	var colID uuid.UUID
 	if existing != nil {
 		colID = existing.ID
-		if colName != nil {
-			if err := s.queries.UpdateCollectionName(ctx, repository.UpdateCollectionNameParams{
-				Name: toNullString(colName),
-				ID:   colID,
-			}); err != nil {
-				if strings.Contains(err.Error(), "UNIQUE constraint failed") {
-					return nil, ErrCollectionExists
-				}
-				return nil, fmt.Errorf("failed to update collection name: %w", err)
-			}
+		if err := s.renameCollection(ctx, colID, colName); err != nil {
+			return nil, err
 		}
 	} else {
+		colID = uuid.NewV7()
 		var nameNull sql.NullString
 		if colName != nil {
 			nameNull = sql.NullString{String: *colName, Valid: true}
@@ -232,6 +233,16 @@ func (s *OpenAlexAnalysisService) Inquire(
 		return nil, fmt.Errorf("failed to store analysis: %w", err)
 	}
 
+	// Only after the analysis is stored, so that a failed refresh is retried.
+	if outdated {
+		if err := s.queries.UpdateCollectionHash(ctx, repository.UpdateCollectionHashParams{
+			QueryHash: queryHash[:],
+			ID:        colID,
+		}); err != nil {
+			return nil, fmt.Errorf("failed to update collection hash: %w", err)
+		}
+	}
+
 	savedRow, err := s.queries.GetCollectionByID(ctx, colID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load saved collection: %w", err)
@@ -241,6 +252,69 @@ func (s *OpenAlexAnalysisService) Inquire(
 		IsNew:      true,
 		SeedCount:  len(fetched),
 	}, nil
+}
+
+// findCollection returns the collection stored for a query and limit, if any. It reports the
+// collection as outdated when an older fingerprint version built it, in which case inquire
+// refreshes it in place so that it keeps its ID and name.
+func (s *OpenAlexAnalysisService) findCollection(
+	ctx context.Context,
+	query string,
+	limit int,
+	queryHash [32]byte,
+) (*Collection, bool, error) {
+	current, err := s.queries.GetCollectionByHash(ctx, queryHash[:])
+	if err == nil {
+		return toCollection(current), false, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return nil, false, fmt.Errorf("failed to check existing collection: %w", err)
+	}
+
+	older, err := s.queries.GetCollectionByQuery(ctx, repository.GetCollectionByQueryParams{
+		Query:       NormalizeQuery(query),
+		ResultLimit: int64(limit),
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to check outdated collection: %w", err)
+	}
+	return toCollection(older), true, nil
+}
+
+// renameCollection sets the name of a collection, or leaves it as it is when name is nil.
+func (s *OpenAlexAnalysisService) renameCollection(ctx context.Context, id uuid.UUID, name *string) error {
+	if name == nil {
+		return nil
+	}
+	if err := s.queries.UpdateCollectionName(ctx, repository.UpdateCollectionNameParams{
+		Name: toNullString(name),
+		ID:   id,
+	}); err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			return ErrCollectionExists
+		}
+		return fmt.Errorf("failed to update collection name: %w", err)
+	}
+	return nil
+}
+
+// checkNameAvailable returns [ErrCollectionExists] when name belongs to a collection other than
+// target, so that inquire fails before it fetches anything.
+func (s *OpenAlexAnalysisService) checkNameAvailable(ctx context.Context, name string, target *Collection) error {
+	holder, err := s.queries.GetCollectionByName(ctx, sql.NullString{String: name, Valid: true})
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("failed to check collection name: %w", err)
+	}
+	if target != nil && holder.ID == target.ID {
+		return nil
+	}
+	return fmt.Errorf("name %q is used by the collection for query %q: %w", name, holder.Query, ErrCollectionExists)
 }
 
 // StoreAnalysis persists an analysis graph (works, scored nodes, links, and FTS5 entries) for a collection.
@@ -332,7 +406,7 @@ func (s *OpenAlexAnalysisService) LoadAnalysis(ctx context.Context, collectionID
 	nodeUUIDToLabel := make(map[uuid.UUID]string, len(nodeRows))
 
 	for _, r := range nodeRows {
-		work := buildWork(r.Label, r.Title, r.Venue, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
+		work := buildWork(r.Label, r.Title, r.Venue, r.Type, r.VenueType, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
 		nodeID := r.Label
 		if key := work.Key(); key != nil {
 			nodeID = *key
@@ -394,7 +468,7 @@ func (s *OpenAlexAnalysisService) QueryCategory(ctx context.Context, collectionI
 		}
 		results := make([]*models.Result, len(rows))
 		for i, r := range rows {
-			work := buildWork(r.Label, r.Title, r.Venue, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
+			work := buildWork(r.Label, r.Title, r.Venue, r.Type, r.VenueType, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
 			results[i] = &models.Result{Score: r.Trunkness, Work: work}
 		}
 		return results, nil
@@ -409,7 +483,7 @@ func (s *OpenAlexAnalysisService) QueryCategory(ctx context.Context, collectionI
 		}
 		results := make([]*models.Result, len(rows))
 		for i, r := range rows {
-			work := buildWork(r.Label, r.Title, r.Venue, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
+			work := buildWork(r.Label, r.Title, r.Venue, r.Type, r.VenueType, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
 			results[i] = &models.Result{Score: r.Leafness, Work: work}
 		}
 		return results, nil
@@ -424,7 +498,7 @@ func (s *OpenAlexAnalysisService) QueryCategory(ctx context.Context, collectionI
 		}
 		results := make([]*models.Result, len(rows))
 		for i, r := range rows {
-			work := buildWork(r.Label, r.Title, r.Venue, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
+			work := buildWork(r.Label, r.Title, r.Venue, r.Type, r.VenueType, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
 			results[i] = &models.Result{Score: r.Rootness, Work: work}
 		}
 		return results, nil
@@ -469,7 +543,7 @@ func (s *OpenAlexAnalysisService) Search(ctx context.Context, collectionID uuid.
 	}
 	terminals := make([]string, 0, len(rows))
 	for _, r := range rows {
-		work := buildWork(r.Label, r.Title, r.Venue, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
+		work := buildWork(r.Label, r.Title, r.Venue, r.Type, r.VenueType, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
 		nodeID := r.Label
 		if key := work.Key(); key != nil {
 			nodeID = *key
@@ -724,6 +798,8 @@ func persistNode(
 		Label:      work.Label,
 		Title:      toNullString(work.Title),
 		Venue:      toNullString(work.Venue),
+		Type:       toNullString(work.Type),
+		VenueType:  toNullString(work.VenueType),
 		Year:       toNullInt64(work.Year),
 		Volume:     toNullString(work.Volume),
 		Issue:      toNullString(work.Issue),
@@ -806,7 +882,7 @@ func cleanFTS5Query(query string) string {
 
 func buildWork(
 	label string,
-	title, venue sql.NullString,
+	title, venue, workType, venueType sql.NullString,
 	year sql.NullInt64,
 	volume, issue, page, doi, permalink sql.NullString,
 	timesCited sql.NullInt64,
@@ -848,6 +924,12 @@ func buildWork(
 	}
 	if venue.Valid {
 		work.Venue = &venue.String
+	}
+	if workType.Valid {
+		work.Type = &workType.String
+	}
+	if venueType.Valid {
+		work.VenueType = &venueType.String
 	}
 	if year.Valid {
 		y := int(year.Int64)

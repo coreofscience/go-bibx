@@ -2,6 +2,8 @@ package services_test
 
 import (
 	"context"
+	"crypto/sha256"
+	"errors"
 	"path/filepath"
 	"testing"
 	"uuid"
@@ -153,6 +155,131 @@ func TestOpenAlexAnalysisService_InquireAndSearch(t *testing.T) {
 	assert.Equal(t, "renamed-alias", *renamedRes.Collection.Name)
 }
 
+func TestOpenAlexAnalysisService_InquireRefreshesOutdatedCollection(t *testing.T) {
+	w1 := &openalex.Work{
+		ID:              "https://openalex.org/W1",
+		IDs:             map[string]string{"openalex": "https://openalex.org/W1"},
+		ReferencedWorks: []string{"https://openalex.org/W2", "https://openalex.org/W3"},
+	}
+	w2 := &openalex.Work{
+		ID:              "https://openalex.org/W2",
+		IDs:             map[string]string{"openalex": "https://openalex.org/W2"},
+		ReferencedWorks: []string{"https://openalex.org/W3"},
+	}
+	w3 := &openalex.Work{
+		ID:  "https://openalex.org/W3",
+		IDs: map[string]string{"openalex": "https://openalex.org/W3"},
+	}
+
+	setup := func(t *testing.T) (*openalexmocks.MockClient, services.AnalysisService, *services.SQLiteCollectionService, *services.Collection) {
+		t.Helper()
+		db, err := repository.OpenAndMigrateSQLite(filepath.Join(t.TempDir(), "outdated.db"))
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			require.NoError(t, db.Close())
+		})
+
+		oaClient := openalexmocks.NewMockClient(t)
+		oaClient.EXPECT().
+			ListWorksByIDs(mock.Anything, mock.Anything).
+			Return([]*openalex.Work{w1, w2, w3}, nil).
+			Maybe()
+
+		colSvc := services.NewCollectionService(db)
+		outdated := &services.Collection{
+			ID:          uuid.NewV7(),
+			QueryHash:   sha256.Sum256([]byte(`{"limit":10,"query":"apache kafka"}`)),
+			Query:       "apache kafka",
+			ResultLimit: 10,
+			Name:        new("kafka"),
+		}
+		require.NoError(t, colSvc.Create(context.Background(), outdated))
+		return oaClient, services.NewAnalysisService(db, oaClient), colSvc, outdated
+	}
+	ctx := context.Background()
+
+	t.Run("reuses the name of an outdated collection for the same query", func(t *testing.T) {
+		oaClient, svc, colSvc, outdated := setup(t)
+		oaClient.EXPECT().SearchWorks(mock.Anything, "apache kafka", 10).Return([]*openalex.Work{w1, w2, w3}, nil).Once()
+
+		res, err := svc.Inquire(ctx, "apache kafka", 10, services.InquireOptions{Name: "kafka"})
+		require.NoError(t, err)
+		assert.True(t, res.IsNew)
+		assert.Equal(t, outdated.ID, res.Collection.ID)
+		assert.Equal(t, new("kafka"), res.Collection.Name)
+		assert.Positive(t, res.Collection.WorkCount)
+		assert.Equal(t, services.ComputeQueryHash("apache kafka", 10), res.Collection.QueryHash)
+
+		all, err := colSvc.List(ctx)
+		require.NoError(t, err)
+		assert.Len(t, all, 1)
+
+		// The refreshed collection is now the cached result for the query.
+		cached, err := svc.Inquire(ctx, "apache kafka", 10, services.InquireOptions{})
+		require.NoError(t, err)
+		assert.False(t, cached.IsNew)
+		assert.Equal(t, outdated.ID, cached.Collection.ID)
+	})
+
+	t.Run("keeps the name when none is given", func(t *testing.T) {
+		oaClient, svc, _, outdated := setup(t)
+		oaClient.EXPECT().SearchWorks(mock.Anything, "apache kafka", 10).Return([]*openalex.Work{w1, w2, w3}, nil).Once()
+
+		res, err := svc.Inquire(ctx, "apache kafka", 10, services.InquireOptions{})
+		require.NoError(t, err)
+		assert.Equal(t, outdated.ID, res.Collection.ID)
+		assert.Equal(t, new("kafka"), res.Collection.Name)
+	})
+
+	t.Run("applies a new name", func(t *testing.T) {
+		oaClient, svc, _, outdated := setup(t)
+		oaClient.EXPECT().SearchWorks(mock.Anything, "apache kafka", 10).Return([]*openalex.Work{w1, w2, w3}, nil).Once()
+
+		res, err := svc.Inquire(ctx, "apache kafka", 10, services.InquireOptions{Name: "streams"})
+		require.NoError(t, err)
+		assert.Equal(t, outdated.ID, res.Collection.ID)
+		assert.Equal(t, new("streams"), res.Collection.Name)
+	})
+
+	t.Run("rejects a name used by another query before fetching", func(t *testing.T) {
+		_, svc, colSvc, outdated := setup(t)
+
+		_, err := svc.Inquire(ctx, "apache spark", 10, services.InquireOptions{Name: "kafka"})
+		require.ErrorIs(t, err, services.ErrCollectionExists)
+		assert.Contains(t, err.Error(), `"apache kafka"`)
+
+		all, err := colSvc.List(ctx)
+		require.NoError(t, err)
+		require.Len(t, all, 1)
+		assert.Equal(t, outdated.ID, all[0].ID)
+	})
+
+	t.Run("leaves a collection with another limit alone", func(t *testing.T) {
+		oaClient, svc, colSvc, outdated := setup(t)
+		oaClient.EXPECT().SearchWorks(mock.Anything, "apache kafka", 20).Return([]*openalex.Work{w1, w2, w3}, nil).Once()
+
+		res, err := svc.Inquire(ctx, "apache kafka", 20, services.InquireOptions{})
+		require.NoError(t, err)
+		assert.NotEqual(t, outdated.ID, res.Collection.ID)
+
+		kept, err := colSvc.FindByID(ctx, outdated.ID)
+		require.NoError(t, err)
+		assert.Equal(t, outdated.QueryHash, kept.QueryHash)
+	})
+
+	t.Run("retries after a failed refresh", func(t *testing.T) {
+		oaClient, svc, colSvc, outdated := setup(t)
+		oaClient.EXPECT().SearchWorks(mock.Anything, "apache kafka", 10).Return(nil, errors.New("upstream")).Once()
+
+		_, err := svc.Inquire(ctx, "apache kafka", 10, services.InquireOptions{})
+		require.Error(t, err)
+
+		kept, err := colSvc.FindByID(ctx, outdated.ID)
+		require.NoError(t, err)
+		assert.Equal(t, outdated.QueryHash, kept.QueryHash)
+	})
+}
+
 func TestOpenAlexAnalysisService_ReCleansAfterEnrichDiscardsMissingReferences(t *testing.T) {
 	// W1 and W2 cite W3 (surviving initial Clean), and W4 & W5 only connect to the giant component via W_MISSING.
 	// When enrich discards W_MISSING, re-running Clean() removes the now-disconnected W4 & W5 and dangling nodes.
@@ -257,15 +384,17 @@ func TestOpenAlexAnalysisService_AnalysisPersistenceAndQuery(t *testing.T) {
 		Trunkness: 0.1,
 		Leafness:  0.0,
 		Work: &models.Work{
-			Label:    "openalex:W1",
-			Title:    &title1,
-			Year:     &year1,
-			DOI:      &doi1,
-			Abstract: &abstract1,
-			Authors:  []string{"Turing, Alan", "Shannon, Claude"},
-			Keywords: collections.NewSet("graph theory", "foundations"),
-			IDs:      collections.NewSet("openalex:W1"),
-			Rich:     true,
+			Label:     "openalex:W1",
+			Title:     &title1,
+			Type:      new("conference-paper"),
+			VenueType: new("conference"),
+			Year:      &year1,
+			DOI:       &doi1,
+			Abstract:  &abstract1,
+			Authors:   []string{"Turing, Alan", "Shannon, Claude"},
+			Keywords:  collections.NewSet("graph theory", "foundations"),
+			IDs:       collections.NewSet("openalex:W1"),
+			Rich:      true,
 		},
 	}
 
@@ -338,10 +467,21 @@ func TestOpenAlexAnalysisService_AnalysisPersistenceAndQuery(t *testing.T) {
 	require.NotNil(t, loaded)
 	require.Len(t, loaded.Nodes, 3)
 	require.Len(t, loaded.Links, 2)
+	for _, node := range loaded.Nodes {
+		if node.ID == "openalex:W1" {
+			assert.Equal(t, new("conference-paper"), node.Work.Type)
+			assert.Equal(t, new("conference"), node.Work.VenueType)
+		} else {
+			assert.Nil(t, node.Work.Type)
+			assert.Nil(t, node.Work.VenueType)
+		}
+	}
 
 	// Verify QueryCategory
 	rootResults, err := anaSvc.QueryCategory(ctx, colID, "root", 5)
 	require.NoError(t, err)
+	require.NotEmpty(t, rootResults)
+	assert.Equal(t, new("conference-paper"), rootResults[0].Work.Type)
 	require.Len(t, rootResults, 2)
 	assert.Equal(t, "Seminal Graph Paper", *rootResults[0].Work.Title)
 

@@ -129,7 +129,7 @@ func (c *RestyClient) SearchWorks(ctx context.Context, query string, limit int) 
 	)
 	filterParts := []string{
 		queryFilter,
-		"type:types/article",
+		"referenced_works_count:>0",
 		"cited_by_count:>1",
 		"has_abstract:true",
 	}
@@ -283,7 +283,7 @@ func jsonFields(t any) []string {
 	return fields
 }
 
-// ToWork transforms a Work to a Work.
+// ToWork transforms an OpenAlex [Work] to a [models.Work].
 func ToWork(work *Work) *models.Work {
 	ids := collections.NewSet[string]()
 	for source, id := range work.IDs {
@@ -297,9 +297,10 @@ func ToWork(work *Work) *models.Work {
 	for _, author := range work.Authorships {
 		authors = append(authors, utils.InvertName(author.Author.DisplayName))
 	}
-	var venue *string
+	var venue, venueType *string
 	if work.PrimaryLocation != nil && work.PrimaryLocation.Source != nil {
 		venue = &work.PrimaryLocation.Source.DisplayName
+		venueType = nonEmpty(work.PrimaryLocation.Source.Type)
 	}
 	var doi *string
 	if work.DOI != nil {
@@ -326,6 +327,8 @@ func ToWork(work *Work) *models.Work {
 		Year:       work.PublicationYear,
 		Title:      work.Title,
 		Venue:      venue,
+		Type:       nonEmpty(work.Type),
+		VenueType:  venueType,
 		Volume:     work.Biblio.Volume,
 		Issue:      work.Biblio.Issue,
 		Page:       pageRange(work.Biblio),
@@ -337,6 +340,14 @@ func ToWork(work *Work) *models.Work {
 		Abstract:   &abstract,
 		Rich:       true,
 	}
+}
+
+// nonEmpty returns nil for an empty string, which OpenAlex uses for unknown values.
+func nonEmpty(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
 }
 
 // pageRange returns "first-last" when both pages are known and differ,

@@ -62,6 +62,7 @@ type Work struct {
 	IDs                   map[string]string `json:"ids"`
 	DOI                   *string           `json:"doi"`
 	Title                 *string           `json:"title"`
+	Type                  string            `json:"type"`
 	PublicationYear       *int              `json:"publication_year"`
 	Authorships           []WorkAuthorship  `json:"authorships"`
 	CitedByCount          int               `json:"cited_by_count"`

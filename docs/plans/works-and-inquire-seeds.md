@@ -20,9 +20,10 @@ Tree of Science (ToS) can use any work with citations as a seed.
 | Phase | Work                                      | State         |
 | ----- | ----------------------------------------- | ------------- |
 | 1     | Rename `Article` to `Work`                | Done          |
-| 2     | Change the `inquire` seed filter          | To do         |
+| 2     | Change the `inquire` seed filter          | Done          |
 | 3     | BibTeX entry types and venues             | To do         |
-| Later | Cut-off titles, off-topic roots, `lookup` | Not scheduled |
+| 4     | Explain why roots can look off topic      | To do         |
+| Later | Cut-off titles, `lookup`                  | Not scheduled |
 
 Each phase is its own PR, in this order.
 
@@ -32,7 +33,7 @@ Checked against the live OpenAlex API on 2026-10-31.
 
 - **Conference papers have their own type.** For "stream processing", works
   with a conference source are 31,381 `conference-paper` and 414 `article`.
-- **`review` is also a separate type**, so the current filter excludes reviews.
+- **`review` is also a separate type**, so the old `article` filter excluded them.
 - **The type limit only applies to seeds.** `ListWorksByIDs` has no type
   filter, so collections already hold books and reports as references.
 - **Seeds without references add nothing to the graph.** `Clean` keeps only the
@@ -109,11 +110,11 @@ column, because BibTeX, the search index and sqlc all work with named fields.
 
 For works with more than one citation and an abstract:
 
-| Query           | `article` (today) | All types | All types with references |
-| --------------- | ----------------- | --------- | ------------------------- |
-| apache kafka    | 233               | 526       | 420                       |
-| nosql databases | 957               | 2,265     | 1,894                     |
-| cloud computing | 48,914            | 94,824    | 81,733                    |
+| Query           | `article` (before) | All types | All types with references |
+| --------------- | ------------------ | --------- | ------------------------- |
+| apache kafka    | 233                | 526       | 420                       |
+| nosql databases | 957                | 2,265     | 1,894                     |
+| cloud computing | 48,914             | 94,824    | 81,733                    |
 
 With the new filter, the top 200 for "cloud computing" are 100 articles, 85
 conference papers, 4 book chapters, 3 reviews, 3 `other`, 2 preprints, 2 reports
@@ -124,9 +125,10 @@ and 1 conference abstract.
 1. In `SearchWorks` (`clients/openalex/client.go`), replace `type:types/article`
    with `referenced_works_count:>0`. Keep `cited_by_count:>1` and
    `has_abstract:true`.
-2. Add a version to `queryFingerprint`, so that old queries fetch again. Old
-   collections stop matching their queries and can be removed with `delete`. Say
-   so in the PR.
+2. Add a version to `queryFingerprint`, so that old queries fetch again. An
+   `inquire` for the same query and limit refreshes the older collection in place,
+   keeping its ID and name. A name held by a collection for another query fails
+   before anything is fetched.
 3. Update `seedFilters` and the `inquire` description
    (`internal/mcp/tools/collections/inquire.go`). Both currently say that only
    journal articles are fetched directly.
@@ -149,11 +151,11 @@ works.
 **Done when:**
 
 - `go test ./...` and golangci-lint pass.
-- A live `inquire` returns a work that today's filter excludes, such as the
+- A live `inquire` returns a work that the old filter excluded, such as the
   `conference-paper` "Parallel visualization on large clusters using MapReduce"
   (W2116018104), which has 32 references.
 - `tos` on a live collection, e.g. "apache kafka", still has sensible roots,
-  trunks and leaves. This has not been run through bibx yet.
+  trunks and leaves.
 
 ## Phase 3: BibTeX entry types and venues
 
@@ -200,10 +202,45 @@ using repository names as venues.
 - "Parallel visualization on large clusters using MapReduce" as `@inproceedings`
   with its venue in `booktitle`.
 
+## Phase 4: explain why roots can look off topic
+
+**Goal:** make the docs and MCP guidance say that roots are expected to be a bit
+off topic, so that agents and readers do not treat them as noise.
+
+Topics seldom start under their conventional modern names, so the works they grew
+from often do not use those names. For "apache kafka", 5 of the 20 roots mention
+Kafka in the title or abstract. The others include ZooKeeper, Spark and MapReduce,
+which fit as foundations of the topic.
+
+This is a change to text only. `tos` keeps returning roots as it does now, and
+nothing filters them by query terms, because that would remove these works.
+
+Not every off-topic root is a precursor, though. The top root for a "cloud
+computing" collection was the PRISMA 2020 reporting guideline, because many papers
+in the collection cite it. It describes how those papers report their reviews, not
+where the topic came from. The guidance should ask the reader to tell these two
+cases apart rather than expect a query match.
+
+**Changes:**
+
+1. Say that roots can use other names and come from neighbouring fields, and how
+   to judge them, in:
+   - `internal/cli/commands/mcp/instructions.txt`;
+   - the theory summary in `internal/mcp/resources/theory/summary.go`;
+   - the root steps of the prompts in `internal/mcp/prompts/review.go` and
+     `internal/mcp/prompts/gaps.go`;
+   - the `tos` description and `category` field in
+     `internal/mcp/tools/analysis/tos.go`;
+   - the `rootness` field in `internal/mcp/models/node.go`;
+   - the Tree of Science section of `README.md`.
+2. Update any prompt or resource tests that check this text.
+
+**Done when:** `go test ./...` and golangci-lint pass, and each place above tells
+the reader not to judge a root by whether it mentions the query.
+
 ## Later
 
-These come from the same session and are not scheduled. The first two are the
-most useful.
+These come from the same session and are not scheduled.
 
 - **`lookup` tool.** A narrow `inquire` is the only way to verify a known paper
   today, and it leaves a throwaway collection behind. Fetch one work by DOI or
@@ -216,8 +253,3 @@ most useful.
   three-word titles that have a `10.1145/` DOI in the `bibtex` and `works` output.
   Filling in the full title from Crossref adds a second outside service and needs
   its own decision.
-- **Off-topic roots.** The top `tos` root for a "cloud computing" collection was
-  the PRISMA 2020 reporting guideline, because many papers in the collection cite
-  it. Either add an optional filter on `tos` that drops roots sharing no terms
-  with the collection query, or return a relevance score with each root. Decide
-  this before building it.

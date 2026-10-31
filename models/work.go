@@ -18,6 +18,8 @@ type Work struct {
 	Year       *int                     `json:"year,omitempty"`
 	Title      *string                  `json:"title,omitempty"`
 	Venue      *string                  `json:"venue,omitempty"`
+	Type       *string                  `json:"type,omitempty"`
+	VenueType  *string                  `json:"venue_type,omitempty"`
 	Volume     *string                  `json:"volume,omitempty"`
 	Issue      *string                  `json:"issue,omitempty"`
 	Page       *string                  `json:"page,omitempty"`
@@ -52,6 +54,8 @@ func (w *Work) Clone(options ...WorkOption) *Work {
 		Year:       w.Year,
 		Title:      w.Title,
 		Venue:      w.Venue,
+		Type:       w.Type,
+		VenueType:  w.VenueType,
 		Volume:     w.Volume,
 		Issue:      w.Issue,
 		Page:       w.Page,
@@ -87,6 +91,8 @@ func (w *Work) Merge(other *Work) *Work {
 		Year:       utils.Keep(w.Year, other.Year),
 		Title:      utils.Keep(w.Title, other.Title),
 		Venue:      utils.Keep(w.Venue, other.Venue),
+		Type:       utils.Keep(w.Type, other.Type),
+		VenueType:  utils.Keep(w.VenueType, other.VenueType),
 		Volume:     utils.Keep(w.Volume, other.Volume),
 		Issue:      utils.Keep(w.Issue, other.Issue),
 		Page:       utils.Keep(w.Page, other.Page),
