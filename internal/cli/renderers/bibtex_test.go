@@ -35,17 +35,17 @@ func TestBibtexRenderer_RenderResults(t *testing.T) {
 	t.Run("renders scored results as bibtex", func(t *testing.T) {
 		year := 2020
 		title := "Graph Attention Networks"
-		journal := "ICLR"
-		art := &models.Article{
+		venue := "ICLR"
+		work := &models.Work{
 			Authors: []string{"Veličković, Petar"},
 			Year:    &year,
 			Title:   &title,
-			Journal: &journal,
+			Venue:   &venue,
 		}
 
 		results := []*models.Result{
-			{Score: 0.95, Article: art},
-			{Score: 0.80, Article: nil}, // nil article handled gracefully
+			{Score: 0.95, Work: work},
+			{Score: 0.80, Work: nil}, // nil work handled gracefully
 		}
 
 		var buf bytes.Buffer
@@ -75,35 +75,35 @@ func TestBibtexRenderer_RenderAnalysis(t *testing.T) {
 	t.Run("renders analysis nodes as bibtex", func(t *testing.T) {
 		year1 := 2017
 		title1 := "Attention Is All You Need"
-		journal1 := "NeurIPS"
+		venue1 := "NeurIPS"
 
 		year2 := 2018
 		title2 := "BERT"
-		journal2 := "NAACL"
+		venue2 := "NAACL"
 
 		analysis := &models.Analysis{
 			Nodes: []*models.Node{
 				{
 					ID: "w1",
-					Article: &models.Article{
+					Work: &models.Work{
 						Authors: []string{"Vaswani, Ashish"},
 						Year:    &year1,
 						Title:   &title1,
-						Journal: &journal1,
+						Venue:   &venue1,
 					},
 				},
 				{
 					ID: "w2",
-					Article: &models.Article{
+					Work: &models.Work{
 						Authors: []string{"Devlin, Jacob"},
 						Year:    &year2,
 						Title:   &title2,
-						Journal: &journal2,
+						Venue:   &venue2,
 					},
 				},
 				{
-					ID:      "w3",
-					Article: nil, // nil article handled gracefully
+					ID:   "w3",
+					Work: nil, // nil work handled gracefully
 				},
 			},
 		}

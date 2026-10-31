@@ -19,15 +19,15 @@ sql:
         go_type:
           slice: true
           type: byte
-      - column: articles.authors
+      - column: works.authors
         go_type:
           slice: true
           type: byte
-      - column: articles.keywords
+      - column: works.keywords
         go_type:
           slice: true
           type: byte
-      - column: articles.ids
+      - column: works.ids
         go_type:
           slice: true
           type: byte

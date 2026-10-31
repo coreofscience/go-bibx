@@ -28,13 +28,13 @@ func TestShowTool(t *testing.T) {
 	colID := uuid.NewV7()
 	alias := "transformers-study"
 	testCol := &services.Collection{
-		ID:           colID,
-		Query:        "attention is all you need",
-		ResultLimit:  100,
-		Name:         &alias,
-		ArticleCount: 20,
-		CreatedAt:    time.Now().UTC(),
-		UpdatedAt:    time.Now().UTC(),
+		ID:          colID,
+		Query:       "attention is all you need",
+		ResultLimit: 100,
+		Name:        &alias,
+		WorkCount:   20,
+		CreatedAt:   time.Now().UTC(),
+		UpdatedAt:   time.Now().UTC(),
 	}
 
 	t.Run("lists tool metadata", func(t *testing.T) {

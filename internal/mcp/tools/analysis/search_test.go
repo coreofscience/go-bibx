@@ -42,7 +42,7 @@ func TestSearchTool(t *testing.T) {
 				Category:  models.CategoryRoot,
 				Rootness:  0.9,
 				Trunkness: 0.1,
-				Article: &models.Article{
+				Work: &models.Work{
 					Label:    "openalex:W1",
 					Title:    &paperTitle,
 					Abstract: &paperAbstract,
@@ -96,8 +96,8 @@ func TestSearchTool(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, out.Nodes, 1)
 		assert.Equal(t, "openalex:W1", out.Nodes[0].ID)
-		assert.Equal(t, "Shortest Path Algorithms", *out.Nodes[0].Article.Title)
-		assert.Nil(t, out.Nodes[0].Article.Abstract)
+		assert.Equal(t, "Shortest Path Algorithms", *out.Nodes[0].Work.Title)
+		assert.Nil(t, out.Nodes[0].Work.Abstract)
 		require.Len(t, out.Links, 1)
 		assert.Equal(t, "openalex:W1", out.Links[0].Source)
 	})
@@ -128,8 +128,8 @@ func TestSearchTool(t *testing.T) {
 		err = json.Unmarshal([]byte(res.Content[0].(*mcp.TextContent).Text), &out)
 		require.NoError(t, err)
 		require.Len(t, out.Nodes, 1)
-		require.NotNil(t, out.Nodes[0].Article.Abstract)
-		assert.Equal(t, paperAbstract, *out.Nodes[0].Article.Abstract)
+		require.NotNil(t, out.Nodes[0].Work.Abstract)
+		assert.Equal(t, paperAbstract, *out.Nodes[0].Work.Abstract)
 	})
 
 	t.Run("search empty target defaults to latest", func(t *testing.T) {

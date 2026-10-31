@@ -12,73 +12,73 @@ import (
 )
 
 func TestGenerateCitationKey(t *testing.T) {
-	t.Run("nil article returns fallback", func(t *testing.T) {
+	t.Run("nil work returns fallback", func(t *testing.T) {
 		assert.Equal(t, "article", models.GenerateCitationKey(nil))
 	})
 
 	t.Run("generates from SimpleId", func(t *testing.T) {
 		year := 2017
-		art := &models.Article{
+		work := &models.Work{
 			Authors: []string{"Vaswani, Ashish", "Shazeer, Noam"},
 			Year:    &year,
 		}
-		assert.Equal(t, "vaswani2017", models.GenerateCitationKey(art))
+		assert.Equal(t, "vaswani2017", models.GenerateCitationKey(work))
 	})
 
 	t.Run("generates from DOI when SimpleId is missing", func(t *testing.T) {
 		doi := "10.1145/3295222"
-		art := &models.Article{
+		work := &models.Work{
 			DOI: &doi,
 		}
-		assert.Equal(t, "doi_10_1145_3295222", models.GenerateCitationKey(art))
+		assert.Equal(t, "doi_10_1145_3295222", models.GenerateCitationKey(work))
 	})
 
 	t.Run("generates from OpenAlex ID when DOI and SimpleId missing", func(t *testing.T) {
-		art := &models.Article{
+		work := &models.Work{
 			IDs: collections.NewSet("openalex:https://openalex.org/W2741809807"),
 		}
-		assert.Equal(t, "w2741809807", models.GenerateCitationKey(art))
+		assert.Equal(t, "w2741809807", models.GenerateCitationKey(work))
 	})
 
 	t.Run("generates from Key when others missing", func(t *testing.T) {
-		art := &models.Article{
+		work := &models.Work{
 			IDs: collections.NewSet("mag:123456"),
 		}
-		assert.Equal(t, "mag_123456", models.GenerateCitationKey(art))
+		assert.Equal(t, "mag_123456", models.GenerateCitationKey(work))
 	})
 
 	t.Run("generates from Label when IDs missing", func(t *testing.T) {
-		art := &models.Article{
+		work := &models.Work{
 			Label: "My Custom-Label/2024",
 		}
-		assert.Equal(t, "my_custom-label_2024", models.GenerateCitationKey(art))
+		assert.Equal(t, "my_custom-label_2024", models.GenerateCitationKey(work))
 	})
 
 	t.Run("sanitizes special characters and diacritics", func(t *testing.T) {
 		year := 2022
-		art := &models.Article{
+		work := &models.Work{
 			Authors: []string{"Müller, Hans", "François, Jean", "Nuñez, Carlos", "Åström, Karl"},
 			Year:    &year,
 		}
-		assert.Equal(t, "muller2022", models.GenerateCitationKey(art))
+		assert.Equal(t, "muller2022", models.GenerateCitationKey(work))
 
-		art2 := &models.Article{
+		art2 := &models.Work{
 			Label: "???special!@#characters$$$here",
 		}
 		assert.Equal(t, "special_characters_here", models.GenerateCitationKey(art2))
 	})
 }
 
-func TestArticle_ToBibEntry(t *testing.T) {
-	t.Run("nil article returns nil", func(t *testing.T) {
-		var a *models.Article
+func TestWork_ToBibEntry(t *testing.T) {
+	t.Run("nil work returns nil", func(t *testing.T) {
+		var a *models.Work
 		assert.Nil(t, a.ToBibEntry())
 	})
 
-	t.Run("full article with journal becomes article type", func(t *testing.T) {
+	t.Run("full work with journal becomes work type", func(t *testing.T) {
 		year := 2021
 		title := "Graph Attention Networks in Practice"
-		journal := "IEEE Transactions on Pattern Analysis and Machine Intelligence"
+		venue := "IEEE Transactions on Pattern Analysis and Machine Intelligence"
 		vol := "43"
 		issue := "5"
 		page := "1500-1512"
@@ -86,12 +86,12 @@ func TestArticle_ToBibEntry(t *testing.T) {
 		permalink := "https://doi.org/10.1109/TPAMI.2020.1234567"
 		abstract := "This paper introduces practical considerations for graph attention networks.\nWith line breaks."
 
-		art := &models.Article{
+		work := &models.Work{
 			Label:     "openalex:W123",
 			Authors:   []string{"Veličković, Petar", "Cucurull, Guillem"},
 			Year:      &year,
 			Title:     &title,
-			Journal:   &journal,
+			Venue:     &venue,
 			Volume:    &vol,
 			Issue:     &issue,
 			Page:      &page,
@@ -101,7 +101,7 @@ func TestArticle_ToBibEntry(t *testing.T) {
 			Keywords:  collections.NewSet("deep learning", "graph neural networks"),
 		}
 
-		entry := art.ToBibEntry()
+		entry := work.ToBibEntry()
 		require.NotNil(t, entry)
 		assert.Equal(t, "article", entry.Type)
 		assert.Equal(t, "velickovic2021", entry.CiteName)
@@ -119,61 +119,61 @@ func TestArticle_ToBibEntry(t *testing.T) {
 		assert.Equal(t, "This paper introduces practical considerations for graph attention networks. With line breaks.", entry.Fields["abstract"].String())
 	})
 
-	t.Run("article without journal becomes misc type", func(t *testing.T) {
+	t.Run("work without journal becomes misc type", func(t *testing.T) {
 		year := 2023
 		title := "ArXiv Preprint on Transformers"
-		art := &models.Article{
+		work := &models.Work{
 			Authors: []string{"Smith, John"},
 			Year:    &year,
 			Title:   &title,
 		}
 
-		entry := art.ToBibEntry(models.WithCiteKey("customKey2023"))
+		entry := work.ToBibEntry(models.WithCiteKey("customKey2023"))
 		require.NotNil(t, entry)
 		assert.Equal(t, "misc", entry.Type)
 		assert.Equal(t, "customKey2023", entry.CiteName)
-		_, hasJournal := entry.Fields["journal"]
-		assert.False(t, hasJournal)
+		_, hasVenue := entry.Fields["journal"]
+		assert.False(t, hasVenue)
 	})
 
 	t.Run("omits abstract when WithOmitAbstracts is true", func(t *testing.T) {
 		year := 2024
 		title := "Test Paper"
 		abstract := "Very long abstract text."
-		art := &models.Article{
+		work := &models.Work{
 			Authors:  []string{"Doe, Jane"},
 			Year:     &year,
 			Title:    &title,
 			Abstract: &abstract,
 		}
 
-		entry := art.ToBibEntry(models.WithOmitAbstracts(true))
+		entry := work.ToBibEntry(models.WithOmitAbstracts(true))
 		require.NotNil(t, entry)
 		_, hasAbstract := entry.Fields["abstract"]
 		assert.False(t, hasAbstract)
 	})
 }
 
-func TestArticle_ToBibTeX(t *testing.T) {
-	t.Run("nil article returns empty string", func(t *testing.T) {
-		var a *models.Article
+func TestWork_ToBibTeX(t *testing.T) {
+	t.Run("nil work returns empty string", func(t *testing.T) {
+		var a *models.Work
 		assert.Empty(t, a.ToBibTeX())
 	})
 
 	t.Run("formats valid parseable BibTeX string", func(t *testing.T) {
 		year := 2017
 		title := "Attention Is All You Need"
-		journal := "NeurIPS"
+		venue := "NeurIPS"
 		doi := "10.5555/3295222"
-		art := &models.Article{
+		work := &models.Work{
 			Authors: []string{"Vaswani, Ashish", "Shazeer, Noam"},
 			Year:    &year,
 			Title:   &title,
-			Journal: &journal,
+			Venue:   &venue,
 			DOI:     &doi,
 		}
 
-		rawBib := art.ToBibTeX()
+		rawBib := work.ToBibTeX()
 		require.NotEmpty(t, rawBib)
 		assert.Contains(t, rawBib, "@article{vaswani2017,")
 		assert.Contains(t, rawBib, "author")
@@ -194,32 +194,32 @@ func TestArticle_ToBibTeX(t *testing.T) {
 	})
 }
 
-func TestArticles_ToBibTeX(t *testing.T) {
+func TestWorks_ToBibTeX(t *testing.T) {
 	t.Run("empty slice returns empty string", func(t *testing.T) {
-		var articles models.Articles
-		assert.Empty(t, articles.ToBibTeX())
+		var works models.Works
+		assert.Empty(t, works.ToBibTeX())
 	})
 
-	t.Run("slice with only nil articles returns empty string", func(t *testing.T) {
-		articles := models.Articles{nil, nil}
-		assert.Empty(t, articles.ToBibTeX())
+	t.Run("slice with only nil works returns empty string", func(t *testing.T) {
+		works := models.Works{nil, nil}
+		assert.Empty(t, works.ToBibTeX())
 	})
 
 	t.Run("disambiguates duplicate citation keys beyond 26", func(t *testing.T) {
 		year := 2024
-		journal := "Science"
-		articles := make(models.Articles, 30)
+		venue := "Science"
+		works := make(models.Works, 30)
 		for i := range 30 {
 			title := "Paper"
-			articles[i] = &models.Article{
+			works[i] = &models.Work{
 				Authors: []string{"Doe, Jane"},
 				Year:    &year,
 				Title:   &title,
-				Journal: &journal,
+				Venue:   &venue,
 			}
 		}
 
-		rawBib := articles.ToBibTeX()
+		rawBib := works.ToBibTeX()
 		require.NotEmpty(t, rawBib)
 
 		parsed, err := bibtex.Parse(strings.NewReader(rawBib))
@@ -239,30 +239,30 @@ func TestArticles_ToBibTeX(t *testing.T) {
 		title1 := "First Paper by Smith"
 		title2 := "Second Paper by Smith"
 		title3 := "Third Paper by Smith"
-		journal := "Nature"
+		venue := "Nature"
 
-		articles := models.Articles{
+		works := models.Works{
 			{
 				Authors: []string{"Smith, John"},
 				Year:    &year,
 				Title:   &title1,
-				Journal: &journal,
+				Venue:   &venue,
 			},
 			{
 				Authors: []string{"Smith, John"},
 				Year:    &year,
 				Title:   &title2,
-				Journal: &journal,
+				Venue:   &venue,
 			},
 			{
 				Authors: []string{"Smith, John"},
 				Year:    &year,
 				Title:   &title3,
-				Journal: &journal,
+				Venue:   &venue,
 			},
 		}
 
-		rawBib := articles.ToBibTeX()
+		rawBib := works.ToBibTeX()
 		require.NotEmpty(t, rawBib)
 
 		assert.Contains(t, rawBib, "@article{smith2020,")
@@ -328,30 +328,30 @@ func TestSanitizeLaTeX(t *testing.T) {
 	}
 }
 
-func TestArticles_ToBibTeXWithKeys(t *testing.T) {
+func TestWorks_ToBibTeXWithKeys(t *testing.T) {
 	year := 2021
 	title1 := "Research on 8% efficiency in BPM"
 	title2 := "R&D in deep_learning #1"
-	journal := "Science & Technology"
+	venue := "Science & Technology"
 
-	articles := models.Articles{
+	works := models.Works{
 		{
 			Label:   "openalex:W1",
 			Authors: []string{"Albrecht, Manfred"},
 			Year:    &year,
 			Title:   &title1,
-			Journal: &journal,
+			Venue:   &venue,
 		},
 		{
 			Label:   "openalex:W2",
 			Authors: []string{"Albrecht, Manfred"},
 			Year:    &year,
 			Title:   &title2,
-			Journal: &journal,
+			Venue:   &venue,
 		},
 	}
 
-	bibStr, keys := articles.ToBibTeXWithKeys()
+	bibStr, keys := works.ToBibTeXWithKeys()
 	require.NotEmpty(t, bibStr)
 	require.Len(t, keys, 2)
 

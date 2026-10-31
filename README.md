@@ -14,7 +14,7 @@ with zero CGO requirements.
 
 ## The Tree of Science & SAP Algorithm
 
-At its core, `go-bibx` implements the **SAP algorithm** (`algorithms/sap.go`), which analyzes citation graph topology to map the evolutionary structure of a research field. Using the "Tree of Science" metaphor, it categorizes articles into:
+At its core, `go-bibx` implements the **SAP algorithm** (`algorithms/sap.go`), which analyzes citation graph topology to map the evolutionary structure of a research field. Using the "Tree of Science" metaphor, it categorizes works into:
 
 - **Roots**: Foundational, seminal works that established the field.
 - **Trunk**: Core papers that provide the structural backbone and consolidate the topic.
@@ -29,7 +29,7 @@ At its core, `go-bibx` implements the **SAP algorithm** (`algorithms/sap.go`), w
 - **Collection Management**: Inspect, list, and delete inquiry collections by UUIDv7 or human-readable name aliases.
 - **Visualize**: Interactive, browser-based graph exploration of any collection.
 - **Keyword Search**: Graph search combining SQLite FTS5 (BM25 ranking) with pseudo-Steiner graph reduction to isolate subnetworks related to specific keywords.
-- **ToS Category Queries**: Filter and rank articles by relevance across Tree of Science categories (*Root*, *Trunk*, *Leaf*).
+- **ToS Category Queries**: Filter and rank works by relevance across Tree of Science categories (*Root*, *Trunk*, *Leaf*).
 - **Pure Go & Cross-Platform**: Fully builds and runs with `CGO_ENABLED=0` on Linux, macOS, and Windows.
 
 ## Installation
@@ -99,7 +99,7 @@ bibx collection delete transformers
 
 ### 3. Query by Tree of Science category
 
-Query top articles in a collection by category score (`root`, `trunk`, or `leaf`):
+Query top works in a collection by category score (`root`, `trunk`, or `leaf`):
 
 ```bash
 # Query the latest collection
@@ -174,7 +174,7 @@ func main() {
 	}
 
 	for _, col := range collections {
-		fmt.Printf("Collection: %s, Articles: %d\n", col.ID, col.ArticleCount)
+		fmt.Printf("Collection: %s, Works: %d\n", col.ID, col.WorkCount)
 	}
 }
 ```

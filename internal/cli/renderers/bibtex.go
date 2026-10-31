@@ -17,13 +17,13 @@ func NewBibtexRenderer() *BibtexRenderer {
 
 // RenderResults implements the [ResultRenderer] interface.
 func (b *BibtexRenderer) RenderResults(w io.Writer, results []*models.Result) error {
-	articles := make(models.Articles, 0, len(results))
+	works := make(models.Works, 0, len(results))
 	for _, res := range results {
-		if res != nil && res.Article != nil {
-			articles = append(articles, res.Article)
+		if res != nil && res.Work != nil {
+			works = append(works, res.Work)
 		}
 	}
-	output := articles.ToBibTeX()
+	output := works.ToBibTeX()
 	if output != "" {
 		if _, err := io.WriteString(w, output); err != nil {
 			return fmt.Errorf("error writing bibtex results: %w", err)
@@ -37,13 +37,13 @@ func (b *BibtexRenderer) RenderAnalysis(w io.Writer, analysis *models.Analysis) 
 	if analysis == nil {
 		return nil
 	}
-	articles := make(models.Articles, 0, len(analysis.Nodes))
+	works := make(models.Works, 0, len(analysis.Nodes))
 	for _, node := range analysis.Nodes {
-		if node != nil && node.Article != nil {
-			articles = append(articles, node.Article)
+		if node != nil && node.Work != nil {
+			works = append(works, node.Work)
 		}
 	}
-	output := articles.ToBibTeX()
+	output := works.ToBibTeX()
 	if output != "" {
 		if _, err := io.WriteString(w, output); err != nil {
 			return fmt.Errorf("error writing bibtex analysis: %w", err)

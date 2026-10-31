@@ -12,7 +12,7 @@ import (
 )
 
 // Sap represents the Tree of Science SAP algorithm for citation network analysis.
-// It calculates rootness, trunkness, and leafness scores to classify articles into
+// It calculates rootness, trunkness, and leafness scores to classify works into
 // roots, trunk, and leaves.
 type Sap struct {
 	graph         gograph.Graph[string]
@@ -23,11 +23,11 @@ type Sap struct {
 	invertedOrder []*gograph.Vertex[string]
 }
 
-// Category represents the Tree of Science classification of an article node.
+// Category represents the Tree of Science classification of a work node.
 type Category string
 
 const (
-	// CategoryNone indicates that the article is not classified into any Tree of Science category.
+	// CategoryNone indicates that the work is not classified into any Tree of Science category.
 	CategoryNone Category = "none"
 	// CategoryRoot indicates foundational, seminal works that established the research field.
 	CategoryRoot Category = "root"
@@ -103,7 +103,7 @@ func NewSapAlgorithm(graph gograph.Graph[string], opts ...SapOption) (*Sap, erro
 	return s, nil
 }
 
-// Run executes the SAP algorithm and returns the [SapResult] containing article categories and scores.
+// Run executes the SAP algorithm and returns the [SapResult] containing work categories and scores.
 func (s *Sap) Run() (*SapResult, error) {
 	rootness := s.computeRootness()
 	leafness := s.computeLeafness(rootness)

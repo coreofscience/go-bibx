@@ -1,5 +1,5 @@
 {{- if .Rich -}}
-{{- range $i, $a := .Authors }}{{ if $i }}, {{ end }}{{ $a }}{{ end -}}, "{{ if .Title }}{{ .Title }}{{ end }}", {{ if .Journal }}*{{ .Journal }}*{{ end -}}
+{{- range $i, $a := .Authors }}{{ if $i }}, {{ end }}{{ $a }}{{ end -}}, "{{ if .Title }}{{ .Title }}{{ end }}", {{ if .Venue }}*{{ .Venue }}*{{ end -}}
 {{- if .Volume }}, vol. {{ .Volume }}{{ end -}}
 {{- if .Issue }}, no. {{ .Issue }}{{ end -}}
 {{- if .Page }}, pp. {{ .Page }}{{ end -}}

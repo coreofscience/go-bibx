@@ -55,11 +55,11 @@ func TestExportCommand(t *testing.T) {
 
 	year := 2021
 	title := "Attention Mechanism in Vision"
-	journal := "CVPR"
-	art := &models.Article{
+	venue := "CVPR"
+	work := &models.Work{
 		Label:   "openalex:W999",
 		Title:   &title,
-		Journal: &journal,
+		Venue:   &venue,
 		Authors: []string{"Dosovitskiy, Alexey"},
 		Year:    &year,
 		IDs:     collections.NewSet("openalex:W999"),
@@ -72,7 +72,7 @@ func TestExportCommand(t *testing.T) {
 				ID:       "openalex:W999",
 				Category: models.CategoryRoot,
 				Rootness: 0.99,
-				Article:  art,
+				Work:     work,
 			},
 		},
 	}

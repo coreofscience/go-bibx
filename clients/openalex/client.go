@@ -29,11 +29,11 @@ const (
 
 // Client is the interface for the OpenAlex client.
 type Client interface {
-	// SearchArticles lists the articles most relevant to the given query, up to limit.
-	SearchArticles(ctx context.Context, query string, limit int) ([]*Work, error)
+	// SearchWorks lists the works most relevant to the given query, up to limit.
+	SearchWorks(ctx context.Context, query string, limit int) ([]*Work, error)
 
-	// ListArticlesByIDs lists articles by their IDs.
-	ListArticlesByIDs(ctx context.Context, ids []string) ([]*Work, error)
+	// ListWorksByIDs lists works by their IDs.
+	ListWorksByIDs(ctx context.Context, ids []string) ([]*Work, error)
 }
 
 // RestyClient is the concrete implementation of the OpenAlex client using resty.
@@ -119,8 +119,8 @@ func getWorkFields() []string {
 	return workFields
 }
 
-// SearchArticles implements [Client]
-func (c *RestyClient) SearchArticles(ctx context.Context, query string, limit int) ([]*Work, error) {
+// SearchWorks implements [Client]
+func (c *RestyClient) SearchWorks(ctx context.Context, query string, limit int) ([]*Work, error) {
 	selectFields := getWorkFields()
 	sanitizedQuery := strings.NewReplacer(",", " ", ":", " ").Replace(query)
 	queryFilter := fmt.Sprintf(
@@ -164,8 +164,8 @@ func (c *RestyClient) SearchArticles(ctx context.Context, query string, limit in
 	return works, nil
 }
 
-// ListArticlesByIDs implements [Client]
-func (c *RestyClient) ListArticlesByIDs(ctx context.Context, ids []string) ([]*Work, error) {
+// ListWorksByIDs implements [Client]
+func (c *RestyClient) ListWorksByIDs(ctx context.Context, ids []string) ([]*Work, error) {
 	if len(ids) == 0 {
 		return []*Work{}, nil
 	}
@@ -283,8 +283,8 @@ func jsonFields(t any) []string {
 	return fields
 }
 
-// WorkToArticle transforms a Work to an Article.
-func WorkToArticle(work *Work) *models.Article {
+// ToWork transforms a Work to a Work.
+func ToWork(work *Work) *models.Work {
 	ids := collections.NewSet[string]()
 	for source, id := range work.IDs {
 		realID := id
@@ -297,9 +297,9 @@ func WorkToArticle(work *Work) *models.Article {
 	for _, author := range work.Authorships {
 		authors = append(authors, utils.InvertName(author.Author.DisplayName))
 	}
-	var journal *string
+	var venue *string
 	if work.PrimaryLocation != nil && work.PrimaryLocation.Source != nil {
-		journal = &work.PrimaryLocation.Source.DisplayName
+		venue = &work.PrimaryLocation.Source.DisplayName
 	}
 	var doi *string
 	if work.DOI != nil {
@@ -310,22 +310,22 @@ func WorkToArticle(work *Work) *models.Article {
 	if work.PrimaryLocation != nil && work.PrimaryLocation.LandingPageURL != nil {
 		permalink = work.PrimaryLocation.LandingPageURL
 	}
-	references := make([]*models.Article, len(work.ReferencedWorks))
+	references := make([]*models.Work, len(work.ReferencedWorks))
 	for i, reference := range work.ReferencedWorks {
-		references[i] = ReferenceToArticle(reference)
+		references[i] = ReferenceToWork(reference)
 	}
 	keywords := collections.NewSet[string]()
 	for _, keyword := range work.Keywords {
 		keywords.Add(keyword.DisplayName)
 	}
 	abstract := utils.InvertAbstract(work.AbstractInvertedIndex)
-	return &models.Article{
+	return &models.Work{
 		Label:      work.ID,
 		IDs:        ids,
 		Authors:    authors,
 		Year:       work.PublicationYear,
 		Title:      work.Title,
-		Journal:    journal,
+		Venue:      venue,
 		Volume:     work.Biblio.Volume,
 		Issue:      work.Biblio.Issue,
 		Page:       pageRange(work.Biblio),
@@ -353,9 +353,9 @@ func pageRange(biblio WorkBiblio) *string {
 	return &pages
 }
 
-// ReferenceToArticle transforms an OpenAlex ID to an Article.
-func ReferenceToArticle(reference string) *models.Article {
-	return &models.Article{
+// ReferenceToWork transforms an OpenAlex ID to a Work.
+func ReferenceToWork(reference string) *models.Work {
+	return &models.Work{
 		Label: reference,
 		IDs:   collections.NewSet(fmt.Sprintf("openalex:%s", reference)),
 		Rich:  false,

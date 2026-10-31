@@ -31,7 +31,7 @@ func (s *Summary) ResourceTemplate() *mcp.ResourceTemplate {
 			Audience: []mcp.Role{"user", "assistant"},
 			Priority: 0.7,
 		},
-		Description: "JSON metadata summary for a bibliographic collection by its UUID (query, article count, limits, timestamps).",
+		Description: "JSON metadata summary for a bibliographic collection by its UUID (query, work count, limits, timestamps).",
 		MIMEType:    "application/json",
 		Name:        "collection summary",
 		Title:       "Collection Summary",

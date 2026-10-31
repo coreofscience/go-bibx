@@ -17,12 +17,12 @@ Tree of Science (ToS) can use any work with citations as a seed.
 
 ## Status
 
-| Phase | Work                                      | State                                                                |
-| ----- | ----------------------------------------- | -------------------------------------------------------------------- |
-| 1     | Rename `Article` to `Work`                | In review in [PR #52](https://github.com/coreofscience/go-bibx/pull/52) |
-| 2     | Change the `inquire` seed filter          | To do                                                                |
-| 3     | BibTeX entry types and venues             | To do                                                                |
-| Later | Cut-off titles, off-topic roots, `lookup` | Not scheduled                                                        |
+| Phase | Work                                      | State         |
+| ----- | ----------------------------------------- | ------------- |
+| 1     | Rename `Article` to `Work`                | Done          |
+| 2     | Change the `inquire` seed filter          | To do         |
+| 3     | BibTeX entry types and venues             | To do         |
+| Later | Cut-off titles, off-topic roots, `lookup` | Not scheduled |
 
 Each phase is its own PR, in this order.
 
@@ -33,7 +33,7 @@ Checked against the live OpenAlex API on 2026-10-31.
 - **Conference papers have their own type.** For "stream processing", works
   with a conference source are 31,381 `conference-paper` and 414 `article`.
 - **`review` is also a separate type**, so the current filter excludes reviews.
-- **The type limit only applies to seeds.** `ListArticlesByIDs` has no type
+- **The type limit only applies to seeds.** `ListWorksByIDs` has no type
   filter, so collections already hold books and reports as references.
 - **Seeds without references add nothing to the graph.** `Clean` keeps only the
   largest connected component, so such a seed stays only if another seed cites

@@ -14,22 +14,22 @@ bibx implements the Tree of Science (ToS) methodology for bibliographic data
 research. It divides a bibliographic topic into 3 categories root, trunk and
 leaves.
 
-A "root" article is a seminal article, foundational to the given topic. These
-articles are identified mainly because lots of citation lineages end up with it
+A "root" work is a seminal work, foundational to the given topic. These
+works are identified mainly because lots of citation lineages end up with it
 as an original resource.
 
-A "trunk" article gives structure to the topic, it is where the topic became
-the way it is today. These articles are characterized by being join points
-between two or more seminal articles. These articles are identified by having
+A "trunk" work gives structure to the topic, it is where the topic became
+the way it is today. These works are characterized by being join points
+between two or more seminal works. These works are identified by having
 lots of citation lineages crossing them.
 
-A "leaf" article is a modern, state of the art, research paper about the given
+A "leaf" work is a modern, state of the art, research paper about the given
 topic. They might include meta-analysis papers, or just modern papers that cite
-all the correct papers. These articles are identified by having lots of outgoing
+all the correct papers. These works are identified by having lots of outgoing
 citation lineages that end up in the "root" papers.
 
 Using the root, trunk and leaves you can build strong and useful literature
-reviews. And identify which articles need to be read to understand an specific
+reviews. And identify which works need to be read to understand an specific
 topic.
 `
 

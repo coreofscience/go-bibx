@@ -18,11 +18,11 @@ import (
 type Category string
 
 const (
-	// CategoryRoot represents foundational, seminal articles.
+	// CategoryRoot represents foundational, seminal works.
 	CategoryRoot Category = "root"
-	// CategoryTrunk represents core structural articles connecting the field.
+	// CategoryTrunk represents core structural works connecting the field.
 	CategoryTrunk Category = "trunk"
-	// CategoryLeaf represents recent and specialized articles at the frontier.
+	// CategoryLeaf represents recent and specialized works at the frontier.
 	CategoryLeaf Category = "leaf"
 )
 
@@ -31,7 +31,7 @@ var (
 	spaceReg           = regexp.MustCompile(`[\s_-]+`)
 )
 
-// Node represents an article entity within an analysis, containing its metadata
+// Node represents a work entity within an analysis, containing its metadata
 // and Tree of Science category and scores.
 type Node struct {
 	ID        string   `json:"id"`
@@ -39,7 +39,7 @@ type Node struct {
 	Rootness  float64  `json:"rootness"`
 	Trunkness float64  `json:"trunkness"`
 	Leafness  float64  `json:"leafness"`
-	Article   *Article `json:"article"`
+	Work      *Work    `json:"work"`
 }
 
 // NodeMetadata represents the YAML-serializable metadata of a [Node], commonly
@@ -54,7 +54,7 @@ type NodeMetadata struct {
 	Rich       bool                `yaml:"rich"`
 	Title      *utils.FoldedString `yaml:"title,omitempty"`
 	Year       *int                `yaml:"year,omitempty"`
-	Journal    *utils.FoldedString `yaml:"journal,omitempty"`
+	Venue      *utils.FoldedString `yaml:"venue,omitempty"`
 	Volume     *string             `yaml:"volume,omitempty"`
 	Issue      *string             `yaml:"issue,omitempty"`
 	Page       *string             `yaml:"page,omitempty"`
@@ -70,8 +70,8 @@ func (n *Node) Metadata() *NodeMetadata {
 	if n == nil {
 		return nil
 	}
-	art := n.Article
-	if art == nil {
+	work := n.Work
+	if work == nil {
 		return &NodeMetadata{
 			ID:        n.ID,
 			Category:  string(n.Category),
@@ -81,27 +81,27 @@ func (n *Node) Metadata() *NodeMetadata {
 		}
 	}
 	var ids []string
-	if art.IDs != nil {
-		ids = art.IDs.Items()
+	if work.IDs != nil {
+		ids = work.IDs.Items()
 	}
 	return &NodeMetadata{
 		ID:         n.ID,
-		Label:      art.Label,
+		Label:      work.Label,
 		Category:   string(n.Category),
 		Rootness:   n.Rootness,
 		Trunkness:  n.Trunkness,
 		Leafness:   n.Leafness,
-		Rich:       art.Rich,
-		Title:      utils.NewFoldedString(art.Title),
-		Year:       art.Year,
-		Journal:    utils.NewFoldedString(art.Journal),
-		Volume:     art.Volume,
-		Issue:      art.Issue,
-		Page:       art.Page,
-		DOI:        art.DOI,
-		Permalink:  art.Permalink,
-		TimesCited: art.TimesCited,
-		Authors:    art.Authors,
+		Rich:       work.Rich,
+		Title:      utils.NewFoldedString(work.Title),
+		Year:       work.Year,
+		Venue:      utils.NewFoldedString(work.Venue),
+		Volume:     work.Volume,
+		Issue:      work.Issue,
+		Page:       work.Page,
+		DOI:        work.DOI,
+		Permalink:  work.Permalink,
+		TimesCited: work.TimesCited,
+		Authors:    work.Authors,
 		IDs:        ids,
 	}
 }
@@ -113,11 +113,11 @@ func (n *Node) Filename() string {
 	hashStr := hex.EncodeToString(hashBytes[:])[:8]
 
 	var title string
-	if n.Article != nil && n.Article.Title != nil {
-		title = *n.Article.Title
+	if n.Work != nil && n.Work.Title != nil {
+		title = *n.Work.Title
 	}
-	if title == "" && n.Article != nil {
-		title = n.Article.Label
+	if title == "" && n.Work != nil {
+		title = n.Work.Label
 	}
 	if title == "" {
 		title = "article"
@@ -148,10 +148,10 @@ func (n *Node) Filename() string {
 	return fmt.Sprintf("%s-%s.md", slug, hashStr)
 }
 
-// Result represents a scored search or query result pointing to an [Article].
+// Result represents a scored search or query result pointing to an [Work].
 type Result struct {
-	Score   float64  `json:"score"`
-	Article *Article `json:"article"`
+	Score float64 `json:"score"`
+	Work  *Work   `json:"work"`
 }
 
 // Link represents a directed, weighted citation edge between two nodes in an [Analysis].
@@ -232,8 +232,8 @@ func (a *Analysis) Query(category string, top int) ([]*Result, error) {
 			continue
 		}
 		scored = append(scored, &Result{
-			Score:   score,
-			Article: node.Article,
+			Score: score,
+			Work:  node.Work,
 		})
 	}
 	slices.SortFunc(scored, func(a, b *Result) int {

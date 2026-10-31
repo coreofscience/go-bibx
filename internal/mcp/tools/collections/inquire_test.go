@@ -28,12 +28,12 @@ func TestInquireTool(t *testing.T) {
 
 	colID := uuid.NewV7()
 	testCol := &services.Collection{
-		ID:           colID,
-		Query:        "graph algorithms",
-		ResultLimit:  200,
-		ArticleCount: 30,
-		CreatedAt:    time.Now().UTC(),
-		UpdatedAt:    time.Now().UTC(),
+		ID:          colID,
+		Query:       "graph algorithms",
+		ResultLimit: 200,
+		WorkCount:   30,
+		CreatedAt:   time.Now().UTC(),
+		UpdatedAt:   time.Now().UTC(),
 	}
 
 	t.Run("lists tool metadata", func(t *testing.T) {

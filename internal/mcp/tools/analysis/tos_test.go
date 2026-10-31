@@ -38,7 +38,7 @@ func TestTosTool(t *testing.T) {
 	mockResults := []*models.Result{
 		{
 			Score: 0.95,
-			Article: &models.Article{
+			Work: &models.Work{
 				Label:    "openalex:W1",
 				Title:    &paperTitle,
 				Abstract: &paperAbstract,
@@ -84,8 +84,8 @@ func TestTosTool(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, out.Results, 1)
 		assert.Equal(t, 0.95, out.Results[0].Score)
-		assert.Equal(t, "Foundational Network Paper", *out.Results[0].Article.Title)
-		assert.Nil(t, out.Results[0].Article.Abstract)
+		assert.Equal(t, "Foundational Network Paper", *out.Results[0].Work.Title)
+		assert.Nil(t, out.Results[0].Work.Abstract)
 	})
 
 	t.Run("query category with include_abstracts true includes abstract", func(t *testing.T) {
@@ -114,8 +114,8 @@ func TestTosTool(t *testing.T) {
 		err = json.Unmarshal([]byte(res.Content[0].(*mcp.TextContent).Text), &out)
 		require.NoError(t, err)
 		require.Len(t, out.Results, 1)
-		require.NotNil(t, out.Results[0].Article.Abstract)
-		assert.Equal(t, paperAbstract, *out.Results[0].Article.Abstract)
+		require.NotNil(t, out.Results[0].Work.Abstract)
+		assert.Equal(t, paperAbstract, *out.Results[0].Work.Abstract)
 	})
 
 	t.Run("query trunk category with custom limit", func(t *testing.T) {

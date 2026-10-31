@@ -16,10 +16,10 @@ import (
 	"resty.dev/v3"
 )
 
-func TestListArticlesByIDs(t *testing.T) {
+func TestListWorksByIDs(t *testing.T) {
 	t.Run("empty ids", func(t *testing.T) {
 		client := openalex.NewRestyClient()
-		works, err := client.ListArticlesByIDs(context.Background(), []string{})
+		works, err := client.ListWorksByIDs(context.Background(), []string{})
 		assert.NoError(t, err)
 		assert.Empty(t, works)
 	})
@@ -42,7 +42,7 @@ func TestListArticlesByIDs(t *testing.T) {
 		defer server.Close()
 
 		client := openalex.NewRestyClient(openalex.WithBaseURL(server.URL))
-		works, err := client.ListArticlesByIDs(context.Background(), []string{"W1", "W2"})
+		works, err := client.ListWorksByIDs(context.Background(), []string{"W1", "W2"})
 
 		assert.NoError(t, err)
 		if assert.Len(t, works, 2) {
@@ -61,7 +61,7 @@ func TestListArticlesByIDs(t *testing.T) {
 			openalex.WithBaseURL(server.URL),
 			openalex.WithHTTPClient(resty.New()), // Disable retries
 		)
-		_, err := client.ListArticlesByIDs(context.Background(), []string{"W1"})
+		_, err := client.ListWorksByIDs(context.Background(), []string{"W1"})
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "500 Internal Server Error")
@@ -91,14 +91,14 @@ func TestListArticlesByIDs(t *testing.T) {
 		defer server.Close()
 
 		client := openalex.NewRestyClient(openalex.WithBaseURL(server.URL))
-		works, err := client.ListArticlesByIDs(context.Background(), ids)
+		works, err := client.ListWorksByIDs(context.Background(), ids)
 
 		assert.NoError(t, err)
 		assert.Len(t, works, 85)
 	})
 }
 
-func TestSearchArticles(t *testing.T) {
+func TestSearchWorks(t *testing.T) {
 	t.Run("successful fetch with pagination", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			page := r.URL.Query().Get("page")
@@ -115,7 +115,7 @@ func TestSearchArticles(t *testing.T) {
 
 		client := openalex.NewRestyClient(openalex.WithBaseURL(server.URL))
 		// MaxWorksPerPage is 200, so limit 250 should request 2 pages
-		works, err := client.SearchArticles(context.Background(), "test query", 250)
+		works, err := client.SearchWorks(context.Background(), "test query", 250)
 
 		assert.NoError(t, err)
 		// Since our mock returns 1 work per page, we expect 2 works total
@@ -132,7 +132,7 @@ func TestSearchArticles(t *testing.T) {
 			openalex.WithBaseURL(server.URL),
 			openalex.WithHTTPClient(resty.New()), // Disable retries
 		)
-		_, err := client.SearchArticles(context.Background(), "query", 10)
+		_, err := client.SearchWorks(context.Background(), "query", 10)
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "503 Service Unavailable")
@@ -163,7 +163,7 @@ func TestSearchArticles(t *testing.T) {
 		defer server.Close()
 
 		client := openalex.NewRestyClient(openalex.WithBaseURL(server.URL))
-		works, err := client.SearchArticles(context.Background(), "covid: 19, review study", 250)
+		works, err := client.SearchWorks(context.Background(), "covid: 19, review study", 250)
 		require.NoError(t, err)
 		require.Len(t, works, 250)
 		// First 200 items must be from page 1, next 50 from page 2
@@ -174,12 +174,12 @@ func TestSearchArticles(t *testing.T) {
 	})
 }
 
-func TestReferenceToArticle_DoesNotShadowRichPermalink(t *testing.T) {
-	stub := openalex.ReferenceToArticle("https://openalex.org/W999")
+func TestReferenceToWork_DoesNotShadowRichPermalink(t *testing.T) {
+	stub := openalex.ReferenceToWork("https://openalex.org/W999")
 	assert.Nil(t, stub.Permalink)
 
 	landingURL := "https://publisher.example.com/paper"
-	rich := openalex.WorkToArticle(&openalex.Work{
+	rich := openalex.ToWork(&openalex.Work{
 		ID:  "https://openalex.org/W999",
 		IDs: map[string]string{"openalex": "https://openalex.org/W999"},
 		PrimaryLocation: &openalex.WorkLocation{
@@ -192,7 +192,7 @@ func TestReferenceToArticle_DoesNotShadowRichPermalink(t *testing.T) {
 	assert.Equal(t, landingURL, *merged.Permalink)
 }
 
-func TestWorkToArticle_PageRange(t *testing.T) {
+func TestToWork_PageRange(t *testing.T) {
 	tests := []struct {
 		name  string
 		first *string
@@ -208,11 +208,11 @@ func TestWorkToArticle_PageRange(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			article := openalex.WorkToArticle(&openalex.Work{
+			work := openalex.ToWork(&openalex.Work{
 				ID:     "https://openalex.org/W1",
 				Biblio: openalex.WorkBiblio{FirstPage: tt.first, LastPage: tt.last},
 			})
-			assert.Equal(t, tt.want, article.Page)
+			assert.Equal(t, tt.want, work.Page)
 		})
 	}
 }

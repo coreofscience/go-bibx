@@ -18,7 +18,7 @@ func NewFilenameRenderer() *FilenameRenderer {
 // RenderAnalysis outputs the generated markdown filename for each node in the analysis.
 func (r *FilenameRenderer) RenderAnalysis(w io.Writer, analysis *models.Analysis) error {
 	for _, node := range analysis.Nodes {
-		if node.Article == nil {
+		if node.Work == nil {
 			continue
 		}
 		filename := node.Filename()

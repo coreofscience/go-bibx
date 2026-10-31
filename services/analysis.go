@@ -40,7 +40,7 @@ type AnalysisService interface {
 	LoadAnalysis(ctx context.Context, collectionID uuid.UUID) (*models.Analysis, error)
 	QueryCategory(ctx context.Context, collectionID uuid.UUID, category string, limit int) ([]*models.Result, error)
 	Search(ctx context.Context, collectionID uuid.UUID, query string, limit int) (*models.Analysis, error)
-	GetArticles(ctx context.Context, collectionID uuid.UUID, ids []string) ([]*models.Article, []string, error)
+	GetWorks(ctx context.Context, collectionID uuid.UUID, ids []string) ([]*models.Work, []string, error)
 }
 
 // OpenAlexAnalysisService coordinates literature fetching from OpenAlex,
@@ -109,18 +109,18 @@ func (s *OpenAlexAnalysisService) Inquire(
 		return nil, fmt.Errorf("failed to check existing collection: %w", err)
 	}
 
-	slog.InfoContext(ctx, "fetching initial articles")
-	works, err := s.openalexClient.SearchArticles(ctx, query, limit)
+	slog.InfoContext(ctx, "fetching initial works")
+	fetched, err := s.openalexClient.SearchWorks(ctx, query, limit)
 	if err != nil {
-		return nil, fmt.Errorf("failed to search articles: %w", err)
+		return nil, fmt.Errorf("failed to search works: %w", err)
 	}
-	articles := make(models.Articles, len(works))
-	for i, w := range works {
-		articles[i] = openalex.WorkToArticle(w)
+	works := make(models.Works, len(fetched))
+	for i, w := range fetched {
+		works[i] = openalex.ToWork(w)
 	}
 
 	slog.InfoContext(ctx, "creating and cleaning collection")
-	collection, err := models.NewCollection(articles)
+	collection, err := models.NewCollection(works)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create collection: %w", err)
 	}
@@ -154,20 +154,20 @@ func (s *OpenAlexAnalysisService) Inquire(
 	}
 
 	nodes := make([]*models.Node, 0, collection.Len())
-	for article := range collection.All() {
-		articleKey := article.Key()
-		if articleKey == nil {
-			slog.WarnContext(ctx, "article without key, skipping", "label", article.Label)
+	for work := range collection.All() {
+		workKey := work.Key()
+		if workKey == nil {
+			slog.WarnContext(ctx, "work without key, skipping", "label", work.Label)
 			continue
 		}
-		key := *articleKey
+		key := *workKey
 		category := result.Categories[key]
 		if category == "" {
 			category = algorithms.CategoryNone
 		}
 		nodes = append(nodes, &models.Node{
 			ID:        key,
-			Article:   article,
+			Work:      work,
 			Category:  models.Category(category),
 			Rootness:  result.Rootness[key],
 			Trunkness: result.Trunkness[key],
@@ -212,13 +212,13 @@ func (s *OpenAlexAnalysisService) Inquire(
 			nameNull = sql.NullString{String: *colName, Valid: true}
 		}
 		if err := s.queries.CreateCollection(ctx, repository.CreateCollectionParams{
-			ID:           colID,
-			QueryHash:    queryHash[:],
-			Query:        NormalizeQuery(query),
-			ResultLimit:  int64(limit),
-			Parameters:   nil,
-			Name:         nameNull,
-			ArticleCount: sql.NullInt64{Int64: int64(len(nodes)), Valid: true},
+			ID:          colID,
+			QueryHash:   queryHash[:],
+			Query:       NormalizeQuery(query),
+			ResultLimit: int64(limit),
+			Parameters:  nil,
+			Name:        nameNull,
+			WorkCount:   sql.NullInt64{Int64: int64(len(nodes)), Valid: true},
 		}); err != nil {
 			if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 				return nil, ErrCollectionExists
@@ -239,11 +239,11 @@ func (s *OpenAlexAnalysisService) Inquire(
 	return &InquireResult{
 		Collection: toCollection(savedRow),
 		IsNew:      true,
-		SeedCount:  len(works),
+		SeedCount:  len(fetched),
 	}, nil
 }
 
-// StoreAnalysis persists an analysis graph (articles, scored nodes, links, and FTS5 entries) for a collection.
+// StoreAnalysis persists an analysis graph (works, scored nodes, links, and FTS5 entries) for a collection.
 func (s *OpenAlexAnalysisService) StoreAnalysis(ctx context.Context, collectionID uuid.UUID, a *models.Analysis) error {
 	if a == nil {
 		return errors.New("cannot store nil analysis")
@@ -275,7 +275,7 @@ func (s *OpenAlexAnalysisService) StoreAnalysis(ctx context.Context, collectionI
 		return fmt.Errorf("failed to clear existing collection nodes: %w", err)
 	}
 
-	// 3. Insert/update Articles & Nodes
+	// 3. Insert/update Works & Nodes
 	nodeIDToUUID := make(map[string]uuid.UUID, len(a.Nodes))
 	for _, node := range a.Nodes {
 		resolvedNodeID, err := persistNode(ctx, qtx, collectionID, node)
@@ -284,11 +284,11 @@ func (s *OpenAlexAnalysisService) StoreAnalysis(ctx context.Context, collectionI
 		}
 
 		nodeIDToUUID[node.ID] = resolvedNodeID
-		if node.Article != nil && node.Article.Label != "" {
-			nodeIDToUUID[node.Article.Label] = resolvedNodeID
+		if node.Work != nil && node.Work.Label != "" {
+			nodeIDToUUID[node.Work.Label] = resolvedNodeID
 		}
-		if node.Article != nil {
-			if key := node.Article.Key(); key != nil {
+		if node.Work != nil {
+			if key := node.Work.Key(); key != nil {
 				nodeIDToUUID[*key] = resolvedNodeID
 			}
 		}
@@ -299,8 +299,8 @@ func (s *OpenAlexAnalysisService) StoreAnalysis(ctx context.Context, collectionI
 		return err
 	}
 
-	// 5. Update collection article count
-	if err := qtx.UpdateArticleCount(ctx, repository.UpdateArticleCountParams{
+	// 5. Update collection work count
+	if err := qtx.UpdateWorkCount(ctx, repository.UpdateWorkCountParams{
 		CollectionID: collectionID,
 		ID:           collectionID,
 	}); err != nil {
@@ -332,9 +332,9 @@ func (s *OpenAlexAnalysisService) LoadAnalysis(ctx context.Context, collectionID
 	nodeUUIDToLabel := make(map[uuid.UUID]string, len(nodeRows))
 
 	for _, r := range nodeRows {
-		art := buildArticle(r.Label, r.Title, r.Journal, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
+		work := buildWork(r.Label, r.Title, r.Venue, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
 		nodeID := r.Label
-		if key := art.Key(); key != nil {
+		if key := work.Key(); key != nil {
 			nodeID = *key
 		}
 
@@ -344,7 +344,7 @@ func (s *OpenAlexAnalysisService) LoadAnalysis(ctx context.Context, collectionID
 			Rootness:  r.Rootness,
 			Trunkness: r.Trunkness,
 			Leafness:  r.Leafness,
-			Article:   art,
+			Work:      work,
 		})
 		nodeUUIDToLabel[r.ID] = nodeID
 	}
@@ -394,8 +394,8 @@ func (s *OpenAlexAnalysisService) QueryCategory(ctx context.Context, collectionI
 		}
 		results := make([]*models.Result, len(rows))
 		for i, r := range rows {
-			art := buildArticle(r.Label, r.Title, r.Journal, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
-			results[i] = &models.Result{Score: r.Trunkness, Article: art}
+			work := buildWork(r.Label, r.Title, r.Venue, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
+			results[i] = &models.Result{Score: r.Trunkness, Work: work}
 		}
 		return results, nil
 
@@ -409,8 +409,8 @@ func (s *OpenAlexAnalysisService) QueryCategory(ctx context.Context, collectionI
 		}
 		results := make([]*models.Result, len(rows))
 		for i, r := range rows {
-			art := buildArticle(r.Label, r.Title, r.Journal, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
-			results[i] = &models.Result{Score: r.Leafness, Article: art}
+			work := buildWork(r.Label, r.Title, r.Venue, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
+			results[i] = &models.Result{Score: r.Leafness, Work: work}
 		}
 		return results, nil
 
@@ -424,8 +424,8 @@ func (s *OpenAlexAnalysisService) QueryCategory(ctx context.Context, collectionI
 		}
 		results := make([]*models.Result, len(rows))
 		for i, r := range rows {
-			art := buildArticle(r.Label, r.Title, r.Journal, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
-			results[i] = &models.Result{Score: r.Rootness, Article: art}
+			work := buildWork(r.Label, r.Title, r.Venue, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
+			results[i] = &models.Result{Score: r.Rootness, Work: work}
 		}
 		return results, nil
 	}
@@ -443,7 +443,7 @@ func (s *OpenAlexAnalysisService) Search(ctx context.Context, collectionID uuid.
 	}
 
 	rows, err := s.queries.Search(ctx, repository.SearchParams{
-		ArticlesFts:  ftsQuery,
+		WorksFts:     ftsQuery,
 		CollectionID: collectionID,
 		Limit:        int64(limit),
 	})
@@ -469,9 +469,9 @@ func (s *OpenAlexAnalysisService) Search(ctx context.Context, collectionID uuid.
 	}
 	terminals := make([]string, 0, len(rows))
 	for _, r := range rows {
-		art := buildArticle(r.Label, r.Title, r.Journal, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
+		work := buildWork(r.Label, r.Title, r.Venue, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
 		nodeID := r.Label
-		if key := art.Key(); key != nil {
+		if key := work.Key(); key != nil {
 			nodeID = *key
 		}
 		terminals = append(terminals, nodeID)
@@ -487,10 +487,10 @@ func (s *OpenAlexAnalysisService) Search(ctx context.Context, collectionID uuid.
 	return analysis.Keep(ids), nil
 }
 
-// GetArticles retrieves articles belonging to a collection matching the provided IDs or labels.
-// If ids is empty or nil, all articles belonging to the collection are returned.
+// GetWorks retrieves works belonging to a collection matching the provided IDs or labels.
+// If ids is empty or nil, all works belonging to the collection are returned.
 // Any requested ID that cannot be resolved is returned in the notFound slice.
-func (s *OpenAlexAnalysisService) GetArticles(ctx context.Context, collectionID uuid.UUID, ids []string) ([]*models.Article, []string, error) {
+func (s *OpenAlexAnalysisService) GetWorks(ctx context.Context, collectionID uuid.UUID, ids []string) ([]*models.Work, []string, error) {
 	analysis, err := s.LoadAnalysis(ctx, collectionID)
 	if err != nil {
 		return nil, nil, err
@@ -500,17 +500,17 @@ func (s *OpenAlexAnalysisService) GetArticles(ctx context.Context, collectionID 
 	}
 
 	if len(ids) == 0 {
-		articles := make([]*models.Article, 0, len(analysis.Nodes))
+		works := make([]*models.Work, 0, len(analysis.Nodes))
 		for _, node := range analysis.Nodes {
-			if node != nil && node.Article != nil {
-				articles = append(articles, node.Article)
+			if node != nil && node.Work != nil {
+				works = append(works, node.Work)
 			}
 		}
-		return articles, nil, nil
+		return works, nil, nil
 	}
 
-	foundArticles := make([]*models.Article, 0, len(ids))
-	seen := make(map[*models.Article]bool)
+	foundWorks := make([]*models.Work, 0, len(ids))
+	seen := make(map[*models.Work]bool)
 	var notFound []string
 
 	for _, id := range ids {
@@ -518,27 +518,27 @@ func (s *OpenAlexAnalysisService) GetArticles(ctx context.Context, collectionID 
 		if trimmed == "" {
 			continue
 		}
-		var matched *models.Article
+		var matched *models.Work
 		for _, node := range analysis.Nodes {
-			if matchArticle(node, trimmed) {
-				matched = node.Article
+			if matchWork(node, trimmed) {
+				matched = node.Work
 				break
 			}
 		}
 		if matched != nil {
 			if !seen[matched] {
 				seen[matched] = true
-				foundArticles = append(foundArticles, matched)
+				foundWorks = append(foundWorks, matched)
 			}
 		} else {
 			notFound = append(notFound, trimmed)
 		}
 	}
 
-	return foundArticles, notFound, nil
+	return foundWorks, notFound, nil
 }
 
-func matchArticle(node *models.Node, target string) bool {
+func matchWork(node *models.Node, target string) bool {
 	if node == nil {
 		return false
 	}
@@ -552,24 +552,24 @@ func matchArticle(node *models.Node, target string) bool {
 		return true
 	}
 
-	art := node.Article
-	if art == nil {
+	work := node.Work
+	if work == nil {
 		return false
 	}
 
-	// 2. Direct match on article Label
-	if strings.EqualFold(art.Label, target) {
+	// 2. Direct match on work Label
+	if strings.EqualFold(work.Label, target) {
 		return true
 	}
 
 	// 3. Match on SimpleId (e.g. "vaswani2017")
-	if sID := art.SimpleId(); sID != nil && strings.EqualFold(*sID, target) {
+	if sID := work.SimpleId(); sID != nil && strings.EqualFold(*sID, target) {
 		return true
 	}
 
 	// 4. Match on DOI
-	if art.DOI != nil && *art.DOI != "" {
-		cleanArtDOI := utils.ExtractDOI(*art.DOI)
+	if work.DOI != nil && *work.DOI != "" {
+		cleanArtDOI := utils.ExtractDOI(*work.DOI)
 		cleanTargetDOI := utils.ExtractDOI(target)
 		if strings.EqualFold(cleanArtDOI, cleanTargetDOI) {
 			return true
@@ -577,8 +577,8 @@ func matchArticle(node *models.Node, target string) bool {
 	}
 
 	// 5. Match on IDs set
-	if art.IDs != nil {
-		for _, id := range art.IDs.Items() {
+	if work.IDs != nil {
+		for _, id := range work.IDs.Items() {
 			if matchID(id, target) {
 				return true
 			}
@@ -586,7 +586,7 @@ func matchArticle(node *models.Node, target string) bool {
 	}
 
 	// 6. Match on Key
-	if key := art.Key(); key != nil && matchID(*key, target) {
+	if key := work.Key(); key != nil && matchID(*key, target) {
 		return true
 	}
 
@@ -628,39 +628,39 @@ func (s *OpenAlexAnalysisService) enrich(
 	ctx context.Context,
 	c *models.Collection,
 ) (*models.Collection, error) {
-	toEnrich := make(models.Articles, 0)
-	for article := range c.All() {
-		if !article.Rich {
-			toEnrich = append(toEnrich, article)
+	toEnrich := make(models.Works, 0)
+	for work := range c.All() {
+		if !work.Rich {
+			toEnrich = append(toEnrich, work)
 		}
 	}
-	slog.DebugContext(ctx, "enriching articles", "count", len(toEnrich))
+	slog.DebugContext(ctx, "enriching works", "count", len(toEnrich))
 	ids := make([]string, 0, len(toEnrich))
-	for _, article := range toEnrich {
-		id, ok := article.ID("openalex")
+	for _, work := range toEnrich {
+		id, ok := work.ID("openalex")
 		if ok {
 			ids = append(ids, id)
 		}
 	}
-	slog.DebugContext(ctx, "listing works by ids", "count", len(ids), "articles", len(toEnrich))
-	works, err := s.openalexClient.ListArticlesByIDs(ctx, ids)
+	slog.DebugContext(ctx, "listing works by ids", "count", len(ids), "works", len(toEnrich))
+	fetched, err := s.openalexClient.ListWorksByIDs(ctx, ids)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list articles by ids: %w", err)
+		return nil, fmt.Errorf("failed to list works by ids: %w", err)
 	}
-	idToArticle := make(map[string]*models.Article, len(works))
-	slog.DebugContext(ctx, "mapping works to articles", "count", len(works))
-	for _, work := range works {
-		idToArticle[work.ID] = openalex.WorkToArticle(work)
+	idToWork := make(map[string]*models.Work, len(fetched))
+	slog.DebugContext(ctx, "mapping fetched works", "count", len(fetched))
+	for _, result := range fetched {
+		idToWork[result.ID] = openalex.ToWork(result)
 	}
-	newArticles := make(models.Articles, 0)
+	newWorks := make(models.Works, 0)
 	discarded := 0
-	for article := range c.Main() {
-		if !article.Rich {
+	for work := range c.Main() {
+		if !work.Rich {
 			slog.WarnContext(ctx, "found a main work still to enrich, which is weird")
 		}
-		newArticle := article.Clone()
-		newReferences := make(models.References, 0, len(article.References))
-		for _, ref := range article.References {
+		newWork := work.Clone()
+		newReferences := make(models.References, 0, len(work.References))
+		for _, ref := range work.References {
 			if ref.Rich {
 				newReferences = append(newReferences, ref)
 				continue
@@ -671,17 +671,17 @@ func (s *OpenAlexAnalysisService) enrich(
 				newReferences = append(newReferences, ref)
 				continue
 			}
-			if enriched, ok := idToArticle[id]; ok {
+			if enriched, ok := idToWork[id]; ok {
 				newReferences = append(newReferences, enriched)
 			} else {
 				discarded++
 			}
 		}
-		newArticle.References = newReferences
-		newArticles = append(newArticles, newArticle)
+		newWork.References = newReferences
+		newWorks = append(newWorks, newWork)
 	}
-	slog.DebugContext(ctx, "enriched articles", "enriched", len(newArticles), "discarded", discarded)
-	collection, err := models.NewCollection(newArticles)
+	slog.DebugContext(ctx, "enriched works", "enriched", len(newWorks), "discarded", discarded)
+	collection, err := models.NewCollection(newWorks)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create enriched collection: %w", err)
 	}
@@ -694,57 +694,57 @@ func persistNode(
 	collectionID uuid.UUID,
 	node *models.Node,
 ) (uuid.UUID, error) {
-	art := node.Article
-	if art == nil {
-		art = &models.Article{
+	work := node.Work
+	if work == nil {
+		work = &models.Work{
 			Label: node.ID,
 		}
 	}
-	if art.Label == "" {
-		if key := art.Key(); key != nil {
-			art.Label = *key
+	if work.Label == "" {
+		if key := work.Key(); key != nil {
+			work.Label = *key
 		} else {
-			art.Label = node.ID
+			work.Label = node.ID
 		}
 	}
 
 	var authorsJSON, keywordsJSON, idsJSON []byte
-	if len(art.Authors) > 0 {
-		authorsJSON, _ = json.Marshal(art.Authors)
+	if len(work.Authors) > 0 {
+		authorsJSON, _ = json.Marshal(work.Authors)
 	}
-	if art.Keywords != nil && art.Keywords.Len() > 0 {
-		keywordsJSON, _ = json.Marshal(art.Keywords.Items())
+	if work.Keywords != nil && work.Keywords.Len() > 0 {
+		keywordsJSON, _ = json.Marshal(work.Keywords.Items())
 	}
-	if art.IDs != nil && art.IDs.Len() > 0 {
-		idsJSON, _ = json.Marshal(art.IDs.Items())
+	if work.IDs != nil && work.IDs.Len() > 0 {
+		idsJSON, _ = json.Marshal(work.IDs.Items())
 	}
 
-	resolvedArtID, err := qtx.UpsertArticle(ctx, repository.UpsertArticleParams{
+	resolvedArtID, err := qtx.UpsertWork(ctx, repository.UpsertWorkParams{
 		ID:         uuid.NewV7(),
-		Label:      art.Label,
-		Title:      toNullString(art.Title),
-		Journal:    toNullString(art.Journal),
-		Year:       toNullInt64(art.Year),
-		Volume:     toNullString(art.Volume),
-		Issue:      toNullString(art.Issue),
-		Page:       toNullString(art.Page),
-		Doi:        toNullString(art.DOI),
-		Permalink:  toNullString(art.Permalink),
-		TimesCited: toNullInt64(art.TimesCited),
-		Abstract:   toNullString(art.Abstract),
-		Rich:       sql.NullBool{Bool: art.Rich, Valid: true},
+		Label:      work.Label,
+		Title:      toNullString(work.Title),
+		Venue:      toNullString(work.Venue),
+		Year:       toNullInt64(work.Year),
+		Volume:     toNullString(work.Volume),
+		Issue:      toNullString(work.Issue),
+		Page:       toNullString(work.Page),
+		Doi:        toNullString(work.DOI),
+		Permalink:  toNullString(work.Permalink),
+		TimesCited: toNullInt64(work.TimesCited),
+		Abstract:   toNullString(work.Abstract),
+		Rich:       sql.NullBool{Bool: work.Rich, Valid: true},
 		Authors:    authorsJSON,
 		Keywords:   keywordsJSON,
 		Ids:        idsJSON,
 	})
 	if err != nil {
-		return uuid.Nil(), fmt.Errorf("failed to upsert article %s: %w", art.Label, err)
+		return uuid.Nil(), fmt.Errorf("failed to upsert work %s: %w", work.Label, err)
 	}
 
 	resolvedNodeID, err := qtx.UpsertNode(ctx, repository.UpsertNodeParams{
 		ID:           uuid.NewV7(),
 		CollectionID: collectionID,
-		ArticleID:    resolvedArtID,
+		WorkID:       resolvedArtID,
 		Category:     string(node.Category),
 		Rootness:     node.Rootness,
 		Trunkness:    node.Trunkness,
@@ -804,16 +804,16 @@ func cleanFTS5Query(query string) string {
 	return strings.Join(cleaned, " ")
 }
 
-func buildArticle(
+func buildWork(
 	label string,
-	title, journal sql.NullString,
+	title, venue sql.NullString,
 	year sql.NullInt64,
 	volume, issue, page, doi, permalink sql.NullString,
 	timesCited sql.NullInt64,
 	abstract sql.NullString,
 	rich bool,
 	authorsRaw, keywordsRaw, idsRaw []byte,
-) *models.Article {
+) *models.Work {
 	var authors []string
 	if len(authorsRaw) > 0 {
 		_ = json.Unmarshal(authorsRaw, &authors)
@@ -835,7 +835,7 @@ func buildArticle(
 		}
 	}
 
-	art := &models.Article{
+	work := &models.Work{
 		Label:    label,
 		Authors:  authors,
 		Keywords: keywords,
@@ -844,37 +844,37 @@ func buildArticle(
 	}
 
 	if title.Valid {
-		art.Title = &title.String
+		work.Title = &title.String
 	}
-	if journal.Valid {
-		art.Journal = &journal.String
+	if venue.Valid {
+		work.Venue = &venue.String
 	}
 	if year.Valid {
 		y := int(year.Int64)
-		art.Year = &y
+		work.Year = &y
 	}
 	if volume.Valid {
-		art.Volume = &volume.String
+		work.Volume = &volume.String
 	}
 	if issue.Valid {
-		art.Issue = &issue.String
+		work.Issue = &issue.String
 	}
 	if page.Valid {
-		art.Page = &page.String
+		work.Page = &page.String
 	}
 	if doi.Valid {
-		art.DOI = &doi.String
+		work.DOI = &doi.String
 	}
 	if permalink.Valid {
-		art.Permalink = &permalink.String
+		work.Permalink = &permalink.String
 	}
 	if timesCited.Valid {
 		tc := int(timesCited.Int64)
-		art.TimesCited = &tc
+		work.TimesCited = &tc
 	}
 	if abstract.Valid {
-		art.Abstract = &abstract.String
+		work.Abstract = &abstract.String
 	}
 
-	return art
+	return work
 }

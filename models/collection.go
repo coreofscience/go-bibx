@@ -9,57 +9,57 @@ import (
 	"github.com/hmdsefi/gograph"
 )
 
-// Collection represents a collection of articles with methods to manage them.
+// Collection represents a collection of works with methods to manage them.
 type Collection struct {
-	articles Articles
+	works Works
 }
 
-// NewCollection creates a new Collection instance with deduplicated articles.
-func NewCollection(a Articles) (*Collection, error) {
+// NewCollection creates a new Collection instance with deduplicated works.
+func NewCollection(a Works) (*Collection, error) {
 	a, err := a.Deduplicate()
 	if err != nil {
-		return nil, fmt.Errorf("failed to deduplicate articles: %w", err)
+		return nil, fmt.Errorf("failed to deduplicate works: %w", err)
 	}
-	return &Collection{articles: a}, nil
+	return &Collection{works: a}, nil
 }
 
-// Len returns the number of articles in the collection.
+// Len returns the number of works in the collection.
 func (c *Collection) Len() int {
-	if c == nil || c.articles == nil {
+	if c == nil || c.works == nil {
 		return 0
 	}
-	return len(c.articles)
+	return len(c.works)
 }
 
-// Main returns an iterator over the main articles in the collection, excluding duplicates.
-func (c *Collection) Main() iter.Seq[*Article] {
-	return func(yield func(*Article) bool) {
-		seen := make(map[*Article]struct{}, 0)
-		for _, article := range c.articles {
-			if _, ok := seen[article]; ok {
+// Main returns an iterator over the main works in the collection, excluding duplicates.
+func (c *Collection) Main() iter.Seq[*Work] {
+	return func(yield func(*Work) bool) {
+		seen := make(map[*Work]struct{}, 0)
+		for _, work := range c.works {
+			if _, ok := seen[work]; ok {
 				continue
 			}
-			seen[article] = struct{}{}
-			if !yield(article) {
+			seen[work] = struct{}{}
+			if !yield(work) {
 				return
 			}
 		}
 	}
 }
 
-// All returns an iterator over all articles in the collection, including their references.
-func (c *Collection) All() iter.Seq[*Article] {
-	return func(yield func(*Article) bool) {
-		seen := make(map[*Article]struct{}, 0)
-		for _, article := range c.articles {
-			if _, ok := seen[article]; ok {
+// All returns an iterator over all works in the collection, including their references.
+func (c *Collection) All() iter.Seq[*Work] {
+	return func(yield func(*Work) bool) {
+		seen := make(map[*Work]struct{}, 0)
+		for _, work := range c.works {
+			if _, ok := seen[work]; ok {
 				continue
 			}
-			seen[article] = struct{}{}
-			if !yield(article) {
+			seen[work] = struct{}{}
+			if !yield(work) {
 				return
 			}
-			for _, ref := range article.References {
+			for _, ref := range work.References {
 				if _, ok := seen[ref]; ok {
 					continue
 				}
@@ -72,43 +72,43 @@ func (c *Collection) All() iter.Seq[*Article] {
 	}
 }
 
-// Keep filters the collection, returning a new [Collection] containing only articles whose keys match the provided labels.
+// Keep filters the collection, returning a new [Collection] containing only works whose keys match the provided labels.
 func (c *Collection) Keep(labels ...string) (*Collection, error) {
 	toKeep := collections.NewSet(labels...)
-	newArticles := make([]*Article, 0, len(c.articles))
-	for _, article := range c.articles {
-		key := article.Key()
+	newWorks := make([]*Work, 0, len(c.works))
+	for _, work := range c.works {
+		key := work.Key()
 		if key == nil || !toKeep.Contains(*key) {
 			continue
 		}
-		newArticle := article.KeepReferences(labels...)
-		newReferences := make([]*Article, 0, len(newArticle.References))
-		for _, ref := range newArticle.References {
+		newWork := work.KeepReferences(labels...)
+		newReferences := make([]*Work, 0, len(newWork.References))
+		for _, ref := range newWork.References {
 			newReferences = append(newReferences, ref.KeepReferences(labels...))
 		}
-		newArticle.References = newReferences
-		newArticles = append(newArticles, newArticle)
+		newWork.References = newReferences
+		newWorks = append(newWorks, newWork)
 	}
-	return NewCollection(newArticles)
+	return NewCollection(newWorks)
 }
 
-// CitationGraph returns a directed graph representing the citation relationships between articles in the collection.
+// CitationGraph returns a directed graph representing the citation relationships between works in the collection.
 func (c *Collection) CitationGraph() (gograph.Graph[string], error) {
 	graph := gograph.New[string](gograph.Directed())
-	for _, article := range c.articles {
-		articleKey := article.Key()
-		if articleKey == nil {
+	for _, work := range c.works {
+		workKey := work.Key()
+		if workKey == nil {
 			continue
 		}
-		articleVertex := gograph.NewVertex(*articleKey)
-		graph.AddVertex(articleVertex)
-		for _, ref := range article.References {
+		workVertex := gograph.NewVertex(*workKey)
+		graph.AddVertex(workVertex)
+		for _, ref := range work.References {
 			refKey := ref.Key()
 			if refKey == nil {
 				continue
 			}
 			refVertex := gograph.NewVertex(*refKey)
-			_, err := graph.AddEdge(articleVertex, refVertex)
+			_, err := graph.AddEdge(workVertex, refVertex)
 			if err != nil {
 				return nil, fmt.Errorf("failed to add edge: %w", err)
 			}

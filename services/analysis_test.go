@@ -56,11 +56,11 @@ func TestOpenAlexAnalysisService_InquireAndSearch(t *testing.T) {
 
 	oaClient := openalexmocks.NewMockClient(t)
 	oaClient.EXPECT().
-		SearchArticles(mock.Anything, mock.Anything, mock.Anything).
+		SearchWorks(mock.Anything, mock.Anything, mock.Anything).
 		Return(worksMapToSlice(w1, w2, w3, w4), nil).
 		Times(4)
 	oaClient.EXPECT().
-		ListArticlesByIDs(mock.Anything, mock.Anything).
+		ListWorksByIDs(mock.Anything, mock.Anything).
 		RunAndReturn(func(ctx context.Context, ids []string) ([]*openalex.Work, error) {
 			var results []*openalex.Work
 			for _, id := range ids {
@@ -89,8 +89,8 @@ func TestOpenAlexAnalysisService_InquireAndSearch(t *testing.T) {
 	require.True(t, res.IsNew)
 	assert.Equal(t, 4, res.SeedCount)
 	col := res.Collection
-	oaClient.AssertNumberOfCalls(t, "SearchArticles", 1)
-	assert.Equal(t, 4, col.ArticleCount)
+	oaClient.AssertNumberOfCalls(t, "SearchWorks", 1)
+	assert.Equal(t, 4, col.WorkCount)
 
 	// 2. Query Idempotency: re-running identical query (with whitespace variation) skips remote fetch
 	res2, err := svc.Inquire(context.Background(), "  test   query  ", 10, services.InquireOptions{})
@@ -99,14 +99,14 @@ func TestOpenAlexAnalysisService_InquireAndSearch(t *testing.T) {
 	assert.False(t, res2.IsNew)
 	assert.Zero(t, res2.SeedCount, "cached collections do not report a seed count")
 	assert.Equal(t, col.ID, res2.Collection.ID, "idempotent query must return the existing collection")
-	oaClient.AssertNumberOfCalls(t, "SearchArticles", 1)
+	oaClient.AssertNumberOfCalls(t, "SearchWorks", 1)
 
 	// 3. Force re-run: with force=true, OpenAlex is called again
 	res3, err := svc.Inquire(context.Background(), "test query", 10, services.InquireOptions{Force: true})
 	require.NoError(t, err)
 	require.NotNil(t, res3)
 	assert.True(t, res3.IsNew)
-	oaClient.AssertNumberOfCalls(t, "SearchArticles", 2)
+	oaClient.AssertNumberOfCalls(t, "SearchWorks", 2)
 
 	// 4. Test QueryCategory
 	results, err := svc.QueryCategory(context.Background(), col.ID, "root", 2)
@@ -182,11 +182,11 @@ func TestOpenAlexAnalysisService_ReCleansAfterEnrichDiscardsMissingReferences(t 
 
 	oaClient := openalexmocks.NewMockClient(t)
 	oaClient.EXPECT().
-		SearchArticles(mock.Anything, mock.Anything, mock.Anything).
+		SearchWorks(mock.Anything, mock.Anything, mock.Anything).
 		Return(worksMapToSlice(w1, w2, w3, w4), nil).
 		Once()
 	oaClient.EXPECT().
-		ListArticlesByIDs(mock.Anything, mock.Anything).
+		ListWorksByIDs(mock.Anything, mock.Anything).
 		Return([]*openalex.Work{}, nil). // W_MISSING is not returned by OpenAlex
 		Once()
 
@@ -203,7 +203,7 @@ func TestOpenAlexAnalysisService_ReCleansAfterEnrichDiscardsMissingReferences(t 
 	require.NotNil(t, res)
 	col := res.Collection
 	// W4 became disconnected after W_MISSING was discarded during enrichment, so only W1, W2, W3 remain
-	assert.Equal(t, 3, col.ArticleCount)
+	assert.Equal(t, 3, col.WorkCount)
 
 	loaded, err := svc.LoadAnalysis(context.Background(), col.ID)
 	require.NoError(t, err)
@@ -256,7 +256,7 @@ func TestOpenAlexAnalysisService_AnalysisPersistenceAndQuery(t *testing.T) {
 		Rootness:  0.95,
 		Trunkness: 0.1,
 		Leafness:  0.0,
-		Article: &models.Article{
+		Work: &models.Work{
 			Label:    "openalex:W1",
 			Title:    &title1,
 			Year:     &year1,
@@ -275,7 +275,7 @@ func TestOpenAlexAnalysisService_AnalysisPersistenceAndQuery(t *testing.T) {
 		Rootness:  0.1,
 		Trunkness: 0.88,
 		Leafness:  0.2,
-		Article: &models.Article{
+		Work: &models.Work{
 			Label:    "openalex:W2",
 			Title:    &title2,
 			Year:     &year2,
@@ -293,7 +293,7 @@ func TestOpenAlexAnalysisService_AnalysisPersistenceAndQuery(t *testing.T) {
 		Rootness:  0.0,
 		Trunkness: 0.2,
 		Leafness:  0.92,
-		Article: &models.Article{
+		Work: &models.Work{
 			Label:    "openalex:W3",
 			Title:    &title3,
 			Year:     &year3,
@@ -327,10 +327,10 @@ func TestOpenAlexAnalysisService_AnalysisPersistenceAndQuery(t *testing.T) {
 	err = anaSvc.StoreAnalysis(ctx, colID, analysis)
 	require.NoError(t, err)
 
-	// Verify article count updated on collection
+	// Verify work count updated on collection
 	col, err := colSvc.FindByID(ctx, colID)
 	require.NoError(t, err)
-	assert.Equal(t, 3, col.ArticleCount)
+	assert.Equal(t, 3, col.WorkCount)
 
 	// 6. LoadAnalysis: successful reconstruction
 	loaded, err := anaSvc.LoadAnalysis(ctx, colID)
@@ -343,21 +343,21 @@ func TestOpenAlexAnalysisService_AnalysisPersistenceAndQuery(t *testing.T) {
 	rootResults, err := anaSvc.QueryCategory(ctx, colID, "root", 5)
 	require.NoError(t, err)
 	require.Len(t, rootResults, 2)
-	assert.Equal(t, "Seminal Graph Paper", *rootResults[0].Article.Title)
+	assert.Equal(t, "Seminal Graph Paper", *rootResults[0].Work.Title)
 
 	// Verify Search
 	searchResults, err := anaSvc.Search(ctx, colID, "neural networks", 10)
 	require.NoError(t, err)
 	require.NotEmpty(t, searchResults.Nodes)
 
-	// 7. Verify re-storing a smaller analysis removes stale nodes/links and preserves existing article authors/keywords when nil
+	// 7. Verify re-storing a smaller analysis removes stale nodes/links and preserves existing work authors/keywords when nil
 	stubNode1 := &models.Node{
 		ID:        "openalex:W1",
 		Category:  models.CategoryRoot,
 		Rootness:  0.80,
 		Trunkness: 0.0,
 		Leafness:  0.0,
-		Article: &models.Article{
+		Work: &models.Work{
 			Label:    "openalex:W1",
 			Authors:  nil,
 			Keywords: collections.NewSet[string](),
@@ -375,7 +375,7 @@ func TestOpenAlexAnalysisService_AnalysisPersistenceAndQuery(t *testing.T) {
 
 	colAfterUpdate, err := colSvc.FindByID(ctx, colID)
 	require.NoError(t, err)
-	assert.Equal(t, 2, colAfterUpdate.ArticleCount, "stale node W3 should be removed from collection count")
+	assert.Equal(t, 2, colAfterUpdate.WorkCount, "stale node W3 should be removed from collection count")
 
 	reloaded, err := anaSvc.LoadAnalysis(ctx, colID)
 	require.NoError(t, err)
@@ -422,7 +422,7 @@ func TestOpenAlexAnalysisService_SearchHighLimitPerformance(t *testing.T) {
 			ID:        lbl,
 			Category:  models.CategoryTrunk,
 			Trunkness: 0.5,
-			Article: &models.Article{
+			Work: &models.Work{
 				Label:    lbl,
 				Title:    &title,
 				Abstract: &abstract,
@@ -452,9 +452,9 @@ func TestOpenAlexAnalysisService_SearchHighLimitPerformance(t *testing.T) {
 	assert.NotEmpty(t, res.Nodes)
 }
 
-func TestOpenAlexAnalysisService_GetArticles(t *testing.T) {
+func TestOpenAlexAnalysisService_GetWorks(t *testing.T) {
 	tempDir := t.TempDir()
-	db, err := repository.OpenAndMigrateSQLite(filepath.Join(tempDir, "get_articles_test.db"))
+	db, err := repository.OpenAndMigrateSQLite(filepath.Join(tempDir, "get_works_test.db"))
 	require.NoError(t, err)
 	defer func() {
 		require.NoError(t, db.Close())
@@ -467,19 +467,19 @@ func TestOpenAlexAnalysisService_GetArticles(t *testing.T) {
 
 	t.Run("non-existent collection returns ErrCollectionNotFound", func(t *testing.T) {
 		unknownID := uuid.NewV7()
-		articles, notFound, err := anaSvc.GetArticles(ctx, unknownID, []string{"W1"})
+		works, notFound, err := anaSvc.GetWorks(ctx, unknownID, []string{"W1"})
 		require.ErrorIs(t, err, services.ErrCollectionNotFound)
-		assert.Nil(t, articles)
+		assert.Nil(t, works)
 		assert.Nil(t, notFound)
 	})
 
-	// Setup a collection with test articles
+	// Setup a collection with test works
 	colID := uuid.NewV7()
-	hash := services.ComputeQueryHash("article lookup test", 10)
+	hash := services.ComputeQueryHash("work lookup test", 10)
 	require.NoError(t, colSvc.Create(ctx, &services.Collection{
 		ID:          colID,
 		QueryHash:   hash,
-		Query:       "article lookup test",
+		Query:       "work lookup test",
 		ResultLimit: 10,
 	}))
 
@@ -488,7 +488,7 @@ func TestOpenAlexAnalysisService_GetArticles(t *testing.T) {
 	doi1 := "10.5555/3295222"
 	permalink1 := "https://doi.org/10.5555/3295222"
 
-	art1 := &models.Article{
+	art1 := &models.Work{
 		Label:     "https://openalex.org/W100",
 		Title:     &title1,
 		Authors:   []string{"Vaswani, Ashish", "Shazeer, Noam"},
@@ -503,7 +503,7 @@ func TestOpenAlexAnalysisService_GetArticles(t *testing.T) {
 	title2 := "Deep Residual Learning"
 	doi2 := "10.1109/CVPR.2016.90"
 
-	art2 := &models.Article{
+	art2 := &models.Work{
 		Label:   "custom-resnet-label",
 		Title:   &title2,
 		Authors: []string{"He, Kaiming", "Zhang, Xiangyu"},
@@ -519,13 +519,13 @@ func TestOpenAlexAnalysisService_GetArticles(t *testing.T) {
 				ID:       "openalex:https://openalex.org/W100",
 				Category: models.CategoryRoot,
 				Rootness: 0.9,
-				Article:  art1,
+				Work:     art1,
 			},
 			{
 				ID:        "node-resnet-id",
 				Category:  models.CategoryTrunk,
 				Trunkness: 0.8,
-				Article:   art2,
+				Work:      art2,
 			},
 		},
 		Links: []*models.Link{
@@ -539,84 +539,84 @@ func TestOpenAlexAnalysisService_GetArticles(t *testing.T) {
 
 	require.NoError(t, anaSvc.StoreAnalysis(ctx, colID, analysis))
 
-	t.Run("empty ids returns all articles in collection", func(t *testing.T) {
-		articles, notFound, err := anaSvc.GetArticles(ctx, colID, nil)
+	t.Run("empty ids returns all works in collection", func(t *testing.T) {
+		works, notFound, err := anaSvc.GetWorks(ctx, colID, nil)
 		require.NoError(t, err)
 		assert.Empty(t, notFound)
-		require.Len(t, articles, 2)
+		require.Len(t, works, 2)
 	})
 
 	t.Run("match by node ID", func(t *testing.T) {
-		articles, notFound, err := anaSvc.GetArticles(ctx, colID, []string{"openalex:W200"})
+		works, notFound, err := anaSvc.GetWorks(ctx, colID, []string{"openalex:W200"})
 		require.NoError(t, err)
 		assert.Empty(t, notFound)
-		require.Len(t, articles, 1)
-		assert.Equal(t, "custom-resnet-label", articles[0].Label)
+		require.Len(t, works, 1)
+		assert.Equal(t, "custom-resnet-label", works[0].Label)
 	})
 
-	t.Run("match by article label", func(t *testing.T) {
-		articles, notFound, err := anaSvc.GetArticles(ctx, colID, []string{"custom-resnet-label"})
+	t.Run("match by work label", func(t *testing.T) {
+		works, notFound, err := anaSvc.GetWorks(ctx, colID, []string{"custom-resnet-label"})
 		require.NoError(t, err)
 		assert.Empty(t, notFound)
-		require.Len(t, articles, 1)
-		assert.Equal(t, "Deep Residual Learning", *articles[0].Title)
+		require.Len(t, works, 1)
+		assert.Equal(t, "Deep Residual Learning", *works[0].Title)
 	})
 
 	t.Run("match by SimpleId", func(t *testing.T) {
-		articles, notFound, err := anaSvc.GetArticles(ctx, colID, []string{"vaswani2017"})
+		works, notFound, err := anaSvc.GetWorks(ctx, colID, []string{"vaswani2017"})
 		require.NoError(t, err)
 		assert.Empty(t, notFound)
-		require.Len(t, articles, 1)
-		assert.Equal(t, "Attention Is All You Need", *articles[0].Title)
+		require.Len(t, works, 1)
+		assert.Equal(t, "Attention Is All You Need", *works[0].Title)
 	})
 
 	t.Run("match by DOI variations", func(t *testing.T) {
 		// Clean DOI
-		articles, notFound, err := anaSvc.GetArticles(ctx, colID, []string{"10.5555/3295222"})
+		works, notFound, err := anaSvc.GetWorks(ctx, colID, []string{"10.5555/3295222"})
 		require.NoError(t, err)
 		assert.Empty(t, notFound)
-		require.Len(t, articles, 1)
+		require.Len(t, works, 1)
 
 		// Prefixed with doi:
-		articles, notFound, err = anaSvc.GetArticles(ctx, colID, []string{"doi:10.5555/3295222"})
+		works, notFound, err = anaSvc.GetWorks(ctx, colID, []string{"doi:10.5555/3295222"})
 		require.NoError(t, err)
 		assert.Empty(t, notFound)
-		require.Len(t, articles, 1)
+		require.Len(t, works, 1)
 
 		// Prefixed with https://doi.org/
-		articles, notFound, err = anaSvc.GetArticles(ctx, colID, []string{"https://doi.org/10.5555/3295222"})
+		works, notFound, err = anaSvc.GetWorks(ctx, colID, []string{"https://doi.org/10.5555/3295222"})
 		require.NoError(t, err)
 		assert.Empty(t, notFound)
-		require.Len(t, articles, 1)
+		require.Len(t, works, 1)
 	})
 
 	t.Run("match by OpenAlex ID variations", func(t *testing.T) {
 		// W-number only
-		articles, notFound, err := anaSvc.GetArticles(ctx, colID, []string{"W100"})
+		works, notFound, err := anaSvc.GetWorks(ctx, colID, []string{"W100"})
 		require.NoError(t, err)
 		assert.Empty(t, notFound)
-		require.Len(t, articles, 1)
+		require.Len(t, works, 1)
 
 		// OpenAlex URL
-		articles, notFound, err = anaSvc.GetArticles(ctx, colID, []string{"https://openalex.org/W100"})
+		works, notFound, err = anaSvc.GetWorks(ctx, colID, []string{"https://openalex.org/W100"})
 		require.NoError(t, err)
 		assert.Empty(t, notFound)
-		require.Len(t, articles, 1)
+		require.Len(t, works, 1)
 
 		// Prefixed W-number
-		articles, notFound, err = anaSvc.GetArticles(ctx, colID, []string{"openalex:W200"})
+		works, notFound, err = anaSvc.GetWorks(ctx, colID, []string{"openalex:W200"})
 		require.NoError(t, err)
 		assert.Empty(t, notFound)
-		require.Len(t, articles, 1)
+		require.Len(t, works, 1)
 	})
 
 	t.Run("partial match returns found and notFound", func(t *testing.T) {
-		articles, notFound, err := anaSvc.GetArticles(ctx, colID, []string{"W100", "unknown-id-xyz", "vaswani2017"})
+		works, notFound, err := anaSvc.GetWorks(ctx, colID, []string{"W100", "unknown-id-xyz", "vaswani2017"})
 		require.NoError(t, err)
 		require.Len(t, notFound, 1)
 		assert.Equal(t, "unknown-id-xyz", notFound[0])
-		// Note that W100 and vaswani2017 are the same article, so deduplication yields 1 article
-		require.Len(t, articles, 1)
+		// Note that W100 and vaswani2017 are the same work, so deduplication yields 1 work
+		require.Len(t, works, 1)
 	})
 }
 

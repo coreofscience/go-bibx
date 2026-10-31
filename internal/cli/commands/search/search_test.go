@@ -72,12 +72,12 @@ func TestSearchCommand_BibtexFormat(t *testing.T) {
 
 	year := 2020
 	title := "Deep Learning on Graphs"
-	journal := "Cambridge University Press"
+	venue := "Cambridge University Press"
 	abstract := "Comprehensive overview of graph representation learning and neural networks."
-	art := &models.Article{
+	work := &models.Work{
 		Label:    "openalex:W300",
 		Title:    &title,
-		Journal:  &journal,
+		Venue:    &venue,
 		Abstract: &abstract,
 		Authors:  []string{"Hamilton, William"},
 		Year:     &year,
@@ -91,7 +91,7 @@ func TestSearchCommand_BibtexFormat(t *testing.T) {
 				ID:       "openalex:W300",
 				Category: models.CategoryRoot,
 				Rootness: 0.99,
-				Article:  art,
+				Work:     work,
 			},
 		},
 	}

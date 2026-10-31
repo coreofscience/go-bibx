@@ -17,13 +17,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestArticlesTool(t *testing.T) {
+func TestWorksTool(t *testing.T) {
 	mockAnaSvc := servicesmocks.NewMockAnalysisService(t)
 	mockColSvc := servicesmocks.NewMockCollectionService(t)
 	server := mcp.NewServer(&mcp.Implementation{Name: "test-server", Version: "0.1.0"}, nil)
 
-	articlesTool := analysis.NewArticles(mockAnaSvc, mockColSvc)
-	articlesTool.Register(server)
+	worksTool := analysis.NewWorks(mockAnaSvc, mockColSvc)
+	worksTool.Register(server)
 
 	client := mcptest.Connect(t, server)
 
@@ -35,13 +35,13 @@ func TestArticlesTool(t *testing.T) {
 
 	year := 2017
 	paperTitle := "Attention Is All You Need"
-	journal := "NeurIPS"
+	venue := "NeurIPS"
 	abstract := "The dominant sequence transduction models are based on complex recurrent or convolutional neural networks."
 	timesCited := 120000
-	art := &models.Article{
+	work := &models.Work{
 		Label:      "openalex:W1",
 		Title:      &paperTitle,
-		Journal:    &journal,
+		Venue:      &venue,
 		Authors:    []string{"Vaswani, Ashish", "Shazeer, Noam"},
 		Year:       &year,
 		Abstract:   &abstract,
@@ -53,26 +53,26 @@ func TestArticlesTool(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, res)
 		require.Len(t, res.Tools, 1)
-		assert.Equal(t, "articles", res.Tools[0].Name)
-		assert.Equal(t, "Get Articles", res.Tools[0].Title)
+		assert.Equal(t, "works", res.Tools[0].Name)
+		assert.Equal(t, "Get Works", res.Tools[0].Title)
 		assert.False(t, *res.Tools[0].Annotations.OpenWorldHint)
 		mcptest.AssertPropertyDescriptions(t, res.Tools[0].InputSchema, "ids", "target")
-		mcptest.AssertPropertyDescriptions(t, res.Tools[0].OutputSchema, "articles", "not_found")
+		mcptest.AssertPropertyDescriptions(t, res.Tools[0].OutputSchema, "works", "not_found")
 	})
 
-	t.Run("retrieves articles including abstract with target collection", func(t *testing.T) {
+	t.Run("retrieves works including abstract with target collection", func(t *testing.T) {
 		mockColSvc.EXPECT().
 			Resolve(mock.Anything, colID.String()).
 			Return(testCol, nil).
 			Once()
 
 		mockAnaSvc.EXPECT().
-			GetArticles(mock.Anything, colID, []string{"openalex:W1"}).
-			Return([]*models.Article{art}, nil, nil).
+			GetWorks(mock.Anything, colID, []string{"openalex:W1"}).
+			Return([]*models.Work{work}, nil, nil).
 			Once()
 
 		res, err := client.CallTool(t.Context(), &mcp.CallToolParams{
-			Name: "articles",
+			Name: "works",
 			Arguments: map[string]any{
 				"target": colID.String(),
 				"ids":    []string{"openalex:W1"},
@@ -81,17 +81,17 @@ func TestArticlesTool(t *testing.T) {
 		require.NoError(t, err)
 		assert.False(t, res.IsError)
 
-		var out analysis.ArticlesOutput
+		var out analysis.WorksOutput
 		err = json.Unmarshal([]byte(res.Content[0].(*mcp.TextContent).Text), &out)
 		require.NoError(t, err)
-		require.Len(t, out.Articles, 1)
+		require.Len(t, out.Works, 1)
 		assert.Empty(t, out.NotFound)
-		assert.Equal(t, "openalex:W1", out.Articles[0].Label)
-		require.NotNil(t, out.Articles[0].Title)
-		assert.Equal(t, paperTitle, *out.Articles[0].Title)
-		require.NotNil(t, out.Articles[0].Abstract)
-		assert.Equal(t, abstract, *out.Articles[0].Abstract)
-		assert.Equal(t, []string{"Vaswani, Ashish", "Shazeer, Noam"}, out.Articles[0].Authors)
+		assert.Equal(t, "openalex:W1", out.Works[0].Label)
+		require.NotNil(t, out.Works[0].Title)
+		assert.Equal(t, paperTitle, *out.Works[0].Title)
+		require.NotNil(t, out.Works[0].Abstract)
+		assert.Equal(t, abstract, *out.Works[0].Abstract)
+		assert.Equal(t, []string{"Vaswani, Ashish", "Shazeer, Noam"}, out.Works[0].Authors)
 	})
 
 	t.Run("reports not found IDs", func(t *testing.T) {
@@ -101,12 +101,12 @@ func TestArticlesTool(t *testing.T) {
 			Once()
 
 		mockAnaSvc.EXPECT().
-			GetArticles(mock.Anything, colID, []string{"openalex:W1", "missing-id"}).
-			Return([]*models.Article{art}, []string{"missing-id"}, nil).
+			GetWorks(mock.Anything, colID, []string{"openalex:W1", "missing-id"}).
+			Return([]*models.Work{work}, []string{"missing-id"}, nil).
 			Once()
 
 		res, err := client.CallTool(t.Context(), &mcp.CallToolParams{
-			Name: "articles",
+			Name: "works",
 			Arguments: map[string]any{
 				"ids": []string{"openalex:W1", "missing-id"},
 			},
@@ -114,16 +114,16 @@ func TestArticlesTool(t *testing.T) {
 		require.NoError(t, err)
 		assert.False(t, res.IsError)
 
-		var out analysis.ArticlesOutput
+		var out analysis.WorksOutput
 		err = json.Unmarshal([]byte(res.Content[0].(*mcp.TextContent).Text), &out)
 		require.NoError(t, err)
-		require.Len(t, out.Articles, 1)
+		require.Len(t, out.Works, 1)
 		assert.Equal(t, []string{"missing-id"}, out.NotFound)
 	})
 
 	t.Run("empty ids returns error", func(t *testing.T) {
 		res, err := client.CallTool(t.Context(), &mcp.CallToolParams{
-			Name: "articles",
+			Name: "works",
 			Arguments: map[string]any{
 				"ids": []string{"   "},
 			},
@@ -140,7 +140,7 @@ func TestArticlesTool(t *testing.T) {
 			Once()
 
 		res, err := client.CallTool(t.Context(), &mcp.CallToolParams{
-			Name: "articles",
+			Name: "works",
 			Arguments: map[string]any{
 				"target": "non-existent",
 				"ids":    []string{"openalex:W1"},
@@ -158,18 +158,18 @@ func TestArticlesTool(t *testing.T) {
 			Once()
 
 		mockAnaSvc.EXPECT().
-			GetArticles(mock.Anything, colID, []string{"W1"}).
+			GetWorks(mock.Anything, colID, []string{"W1"}).
 			Return(nil, nil, errors.New("db query timeout")).
 			Once()
 
 		res, err := client.CallTool(t.Context(), &mcp.CallToolParams{
-			Name: "articles",
+			Name: "works",
 			Arguments: map[string]any{
 				"ids": []string{"W1"},
 			},
 		})
 		require.NoError(t, err)
 		assert.True(t, res.IsError)
-		assert.Contains(t, res.Content[0].(*mcp.TextContent).Text, "failed to retrieve articles: db query timeout")
+		assert.Contains(t, res.Content[0].(*mcp.TextContent).Text, "failed to retrieve works: db query timeout")
 	})
 }

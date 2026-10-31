@@ -27,7 +27,7 @@ INSERT INTO collections (
     result_limit,
     parameters,
     name,
-    article_count
+    work_count
 ) VALUES (?, ?, ?, ?, ?, ?, ?);
 
 -- name: DeleteCollectionById :exec
@@ -48,12 +48,12 @@ WHERE collection_id = ?;
 DELETE FROM links
 WHERE collection_id = ?;
 
--- name: UpsertArticle :one
-INSERT INTO articles (
+-- name: UpsertWork :one
+INSERT INTO works (
     id,
     label,
     title,
-    journal,
+    venue,
     year,
     volume,
     issue,
@@ -68,42 +68,42 @@ INSERT INTO articles (
     ids
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(label) DO UPDATE SET
-    title=COALESCE(excluded.title, articles.title),
-    journal=COALESCE(excluded.journal, articles.journal),
-    year=COALESCE(excluded.year, articles.year),
-    volume=COALESCE(excluded.volume, articles.volume),
-    issue=COALESCE(excluded.issue, articles.issue),
-    page=COALESCE(excluded.page, articles.page),
-    doi=COALESCE(excluded.doi, articles.doi),
-    permalink=COALESCE(excluded.permalink, articles.permalink),
-    times_cited=COALESCE(excluded.times_cited, articles.times_cited),
-    abstract=COALESCE(excluded.abstract, articles.abstract),
-    rich=excluded.rich OR articles.rich,
-    authors=COALESCE(excluded.authors, articles.authors),
-    keywords=COALESCE(excluded.keywords, articles.keywords),
-    ids=COALESCE(excluded.ids, articles.ids)
+    title=COALESCE(excluded.title, works.title),
+    venue=COALESCE(excluded.venue, works.venue),
+    year=COALESCE(excluded.year, works.year),
+    volume=COALESCE(excluded.volume, works.volume),
+    issue=COALESCE(excluded.issue, works.issue),
+    page=COALESCE(excluded.page, works.page),
+    doi=COALESCE(excluded.doi, works.doi),
+    permalink=COALESCE(excluded.permalink, works.permalink),
+    times_cited=COALESCE(excluded.times_cited, works.times_cited),
+    abstract=COALESCE(excluded.abstract, works.abstract),
+    rich=excluded.rich OR works.rich,
+    authors=COALESCE(excluded.authors, works.authors),
+    keywords=COALESCE(excluded.keywords, works.keywords),
+    ids=COALESCE(excluded.ids, works.ids)
 RETURNING id;
 
 -- name: UpsertNode :one
 INSERT INTO nodes (
     id,
     collection_id,
-    article_id,
+    work_id,
     category,
     rootness,
     trunkness,
     leafness
 ) VALUES (?, ?, ?, ?, ?, ?, ?)
-ON CONFLICT(collection_id, article_id) DO UPDATE SET
+ON CONFLICT(collection_id, work_id) DO UPDATE SET
     category=excluded.category,
     rootness=excluded.rootness,
     trunkness=excluded.trunkness,
     leafness=excluded.leafness
 RETURNING id;
 
--- name: UpdateArticleCount :exec
+-- name: UpdateWorkCount :exec
 UPDATE collections
-SET article_count = (
+SET work_count = (
         SELECT count(*)
         FROM nodes n
         WHERE n.collection_id = ?
@@ -122,11 +122,11 @@ INSERT OR REPLACE INTO links (
 -- name: ListNodes :many
 SELECT
 	n.id, n.category, n.rootness, n.trunkness, n.leafness,
-	a.id, a.label, a.title, a.journal, a.year, a.volume, a.issue, a.page,
-	a.doi, a.permalink, a.times_cited, a.abstract, a.rich,
-	a.authors, a.keywords, a.ids
+	w.id, w.label, w.title, w.venue, w.year, w.volume, w.issue, w.page,
+	w.doi, w.permalink, w.times_cited, w.abstract, w.rich,
+	w.authors, w.keywords, w.ids
 FROM nodes n
-JOIN articles a ON a.id = n.article_id
+JOIN works w ON w.id = n.work_id
 WHERE n.collection_id = ?;
 
 -- name: ListLinks :many
@@ -137,11 +137,11 @@ WHERE collection_id = ?;
 -- name: ListRoots :many
 SELECT
     n.rootness,
-    a.id, a.label, a.title, a.journal, a.year, a.volume, a.issue, a.page,
-    a.doi, a.permalink, a.times_cited, a.abstract, a.rich,
-    a.authors, a.keywords, a.ids
+    w.id, w.label, w.title, w.venue, w.year, w.volume, w.issue, w.page,
+    w.doi, w.permalink, w.times_cited, w.abstract, w.rich,
+    w.authors, w.keywords, w.ids
 FROM nodes n
-JOIN articles a ON a.id = n.article_id
+JOIN works w ON w.id = n.work_id
 WHERE n.collection_id = ? AND n.rootness > 0
 ORDER BY n.rootness DESC
 LIMIT ?;
@@ -149,11 +149,11 @@ LIMIT ?;
 -- name: ListTrunks :many
 SELECT
     n.trunkness,
-    a.id, a.label, a.title, a.journal, a.year, a.volume, a.issue, a.page,
-    a.doi, a.permalink, a.times_cited, a.abstract, a.rich,
-    a.authors, a.keywords, a.ids
+    w.id, w.label, w.title, w.venue, w.year, w.volume, w.issue, w.page,
+    w.doi, w.permalink, w.times_cited, w.abstract, w.rich,
+    w.authors, w.keywords, w.ids
 FROM nodes n
-JOIN articles a ON a.id = n.article_id
+JOIN works w ON w.id = n.work_id
 WHERE n.collection_id = ? AND n.trunkness > 0
 ORDER BY n.trunkness DESC
 LIMIT ?;
@@ -161,11 +161,11 @@ LIMIT ?;
 -- name: ListLeaves :many
 SELECT
     n.leafness,
-    a.id, a.label, a.title, a.journal, a.year, a.volume, a.issue, a.page,
-    a.doi, a.permalink, a.times_cited, a.abstract, a.rich,
-    a.authors, a.keywords, a.ids
+    w.id, w.label, w.title, w.venue, w.year, w.volume, w.issue, w.page,
+    w.doi, w.permalink, w.times_cited, w.abstract, w.rich,
+    w.authors, w.keywords, w.ids
 FROM nodes n
-JOIN articles a ON a.id = n.article_id
+JOIN works w ON w.id = n.work_id
 WHERE n.collection_id = ? AND n.leafness > 0
 ORDER BY n.leafness DESC
 LIMIT ?;
@@ -173,12 +173,12 @@ LIMIT ?;
 -- name: Search :many
 SELECT
     n.id, n.category, n.rootness, n.trunkness, n.leafness,
-    a.id, a.label, a.title, a.journal, a.year, a.volume, a.issue, a.page,
-    a.doi, a.permalink, a.times_cited, a.abstract, a.rich,
-    a.authors, a.keywords, a.ids
-FROM articles_fts(?) fts
-JOIN articles a ON a.rowid = fts.rowid
-JOIN nodes n ON n.article_id = a.id
+    w.id, w.label, w.title, w.venue, w.year, w.volume, w.issue, w.page,
+    w.doi, w.permalink, w.times_cited, w.abstract, w.rich,
+    w.authors, w.keywords, w.ids
+FROM works_fts(?) fts
+JOIN works w ON w.rowid = fts.rowid
+JOIN nodes n ON n.work_id = w.id
 WHERE n.collection_id = ?
-ORDER BY bm25(articles_fts)
+ORDER BY bm25(works_fts)
 LIMIT ?;

@@ -44,7 +44,7 @@ func (d *Delete) Tool() *mcp.Tool {
 			ReadOnlyHint:    false,
 			Title:           "delete collection",
 		},
-		Description: "Permanently delete a stored bibliographic collection, with its articles and citation graph, by UUID or name alias. Use it to remove throwaway or failed collections; it cannot be undone.",
+		Description: "Permanently delete a stored bibliographic collection, with its works and citation graph, by UUID or name alias. Use it to remove throwaway or failed collections; it cannot be undone.",
 		Name:        "delete",
 		Title:       "Delete collection",
 	}

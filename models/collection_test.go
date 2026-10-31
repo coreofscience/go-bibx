@@ -11,23 +11,23 @@ import (
 
 func TestCollection_Len(t *testing.T) {
 	tests := []struct {
-		name     string
-		articles models.Articles
-		want     int
+		name  string
+		works models.Works
+		want  int
 	}{
 		{
-			name:     "nil collection",
-			articles: nil,
-			want:     0,
+			name:  "nil collection",
+			works: nil,
+			want:  0,
 		},
 		{
-			name:     "empty collection",
-			articles: models.Articles{},
-			want:     0,
+			name:  "empty collection",
+			works: models.Works{},
+			want:  0,
 		},
 		{
-			name: "single article",
-			articles: models.Articles{
+			name: "single work",
+			works: models.Works{
 				{
 					Label:      "single",
 					IDs:        collections.NewSet("single1"),
@@ -37,15 +37,15 @@ func TestCollection_Len(t *testing.T) {
 			want: 1,
 		},
 		{
-			name: "multiple articles",
-			articles: models.Articles{
+			name: "multiple works",
+			works: models.Works{
 				{
-					Label:      "article1",
+					Label:      "work1",
 					IDs:        collections.NewSet("id1"),
 					References: nil,
 				},
 				{
-					Label:      "article2",
+					Label:      "work2",
 					IDs:        collections.NewSet("id2"),
 					References: nil,
 				},
@@ -53,15 +53,15 @@ func TestCollection_Len(t *testing.T) {
 			want: 2,
 		},
 		{
-			name: "duplicate articles",
-			articles: models.Articles{
+			name: "duplicate works",
+			works: models.Works{
 				{
-					Label:      "article1",
+					Label:      "work1",
 					IDs:        collections.NewSet("id1"),
 					References: nil,
 				},
 				{
-					Label:      "article1",
+					Label:      "work1",
 					IDs:        collections.NewSet("id1"),
 					References: nil,
 				},
@@ -71,8 +71,8 @@ func TestCollection_Len(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := models.NewCollection(tt.articles)
-			if tt.articles == nil {
+			c, err := models.NewCollection(tt.works)
+			if tt.works == nil {
 				require.Error(t, err)
 				assert.Equal(t, tt.want, c.Len())
 				return
@@ -85,37 +85,37 @@ func TestCollection_Len(t *testing.T) {
 }
 
 func TestCollection_Keep_NilKey(t *testing.T) {
-	art1 := &models.Article{
+	art1 := &models.Work{
 		Label: "with-id",
 		IDs:   collections.NewSet("id1"),
 	}
-	art2 := &models.Article{
+	art2 := &models.Work{
 		Label: "without-id",
 		IDs:   collections.NewSet("id2"),
 	}
-	articles := models.Articles{art1, art2}
+	works := models.Works{art1, art2}
 
-	c, err := models.NewCollection(articles)
+	c, err := models.NewCollection(works)
 	require.NoError(t, err)
 	require.Equal(t, 2, c.Len())
 
-	// Clear the second article's IDs after collection construction so its Key() returns nil
+	// Clear the second work's IDs after collection construction so its Key() returns nil
 	art2.IDs = collections.NewSet[string]()
 	require.Nil(t, art2.Key())
 
-	// Keep should not panic when encountering an article with nil Key()
+	// Keep should not panic when encountering a work with nil Key()
 	kept, err := c.Keep("id1")
 	require.NoError(t, err)
 	require.NotNil(t, kept)
 	assert.Equal(t, 1, kept.Len())
 }
 
-func TestCollection_CitationGraph_IncludesArticlesWithoutReferences(t *testing.T) {
-	art := &models.Article{
+func TestCollection_CitationGraph_IncludesWorksWithoutReferences(t *testing.T) {
+	work := &models.Work{
 		Label: "isolated",
 		IDs:   collections.NewSet("openalex:W1"),
 	}
-	c, err := models.NewCollection(models.Articles{art})
+	c, err := models.NewCollection(models.Works{work})
 	require.NoError(t, err)
 
 	graph, err := c.CitationGraph()
