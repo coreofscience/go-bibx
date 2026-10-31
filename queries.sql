@@ -13,6 +13,19 @@ SELECT *
 FROM collections
 WHERE name = ?;
 
+-- name: GetCollectionByQuery :one
+SELECT *
+FROM collections
+WHERE query = ? AND result_limit = ?
+ORDER BY created_at DESC, id DESC
+LIMIT 1;
+
+-- name: UpdateCollectionHash :exec
+UPDATE collections
+SET query_hash = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?;
+
 -- name: ListCollections :many
 SELECT *
 FROM collections

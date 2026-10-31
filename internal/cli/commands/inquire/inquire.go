@@ -86,7 +86,7 @@ func New() *cli.Command {
 				Name:  name,
 			})
 			if err != nil {
-				return fmt.Errorf("failed to store analysis: %w", err)
+				return fmt.Errorf("failed to run inquiry: %w", err)
 			}
 
 			if !res.IsNew {

@@ -146,6 +146,36 @@ func (q *Queries) GetCollectionByName(ctx context.Context, name sql.NullString) 
 	return i, err
 }
 
+const getCollectionByQuery = `-- name: GetCollectionByQuery :one
+SELECT id, query_hash, "query", result_limit, parameters, name, work_count, created_at, updated_at
+FROM collections
+WHERE query = ? AND result_limit = ?
+ORDER BY created_at DESC, id DESC
+LIMIT 1
+`
+
+type GetCollectionByQueryParams struct {
+	Query       string
+	ResultLimit int64
+}
+
+func (q *Queries) GetCollectionByQuery(ctx context.Context, arg GetCollectionByQueryParams) (Collection, error) {
+	row := q.db.QueryRowContext(ctx, getCollectionByQuery, arg.Query, arg.ResultLimit)
+	var i Collection
+	err := row.Scan(
+		&i.ID,
+		&i.QueryHash,
+		&i.Query,
+		&i.ResultLimit,
+		&i.Parameters,
+		&i.Name,
+		&i.WorkCount,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const listCollections = `-- name: ListCollections :many
 SELECT id, query_hash, "query", result_limit, parameters, name, work_count, created_at, updated_at
 FROM collections
@@ -644,6 +674,23 @@ func (q *Queries) Search(ctx context.Context, arg SearchParams) ([]SearchRow, er
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateCollectionHash = `-- name: UpdateCollectionHash :exec
+UPDATE collections
+SET query_hash = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?
+`
+
+type UpdateCollectionHashParams struct {
+	QueryHash interface{}
+	ID        uuid.UUID
+}
+
+func (q *Queries) UpdateCollectionHash(ctx context.Context, arg UpdateCollectionHashParams) error {
+	_, err := q.db.ExecContext(ctx, updateCollectionHash, arg.QueryHash, arg.ID)
+	return err
 }
 
 const updateCollectionName = `-- name: UpdateCollectionName :exec

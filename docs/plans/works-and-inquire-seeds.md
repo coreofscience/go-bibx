@@ -124,9 +124,10 @@ and 1 conference abstract.
 1. In `SearchWorks` (`clients/openalex/client.go`), replace `type:types/article`
    with `referenced_works_count:>0`. Keep `cited_by_count:>1` and
    `has_abstract:true`.
-2. Add a version to `queryFingerprint`, so that old queries fetch again. Old
-   collections stop matching their queries and can be removed with `delete`. Say
-   so in the PR.
+2. Add a version to `queryFingerprint`, so that old queries fetch again. An
+   `inquire` for the same query and limit refreshes the older collection in place,
+   keeping its ID and name. A name held by a collection for another query fails
+   before anything is fetched.
 3. Update `seedFilters` and the `inquire` description
    (`internal/mcp/tools/collections/inquire.go`). Both currently say that only
    journal articles are fetched directly.
