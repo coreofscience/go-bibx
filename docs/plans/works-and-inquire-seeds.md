@@ -22,7 +22,7 @@ Tree of Science (ToS) can use any work with citations as a seed.
 | 1     | Rename `Article` to `Work`                | Done          |
 | 2     | Change the `inquire` seed filter          | Done          |
 | 3     | BibTeX entry types and venues             | Done          |
-| 4     | Explain why roots can look off topic      | To do         |
+| 4     | Explain why roots can look off topic      | Done          |
 | Later | Cut-off titles, `lookup`                  | Not scheduled |
 
 Each phase is its own PR, in this order.

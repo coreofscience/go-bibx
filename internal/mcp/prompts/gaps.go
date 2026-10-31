@@ -77,6 +77,7 @@ Follow this systematic network-analysis methodology using the bibx MCP tools:
 ### Phase 2: Mapping Established Ground vs Frontier
 1. **Established Core (Roots & Trunks)**:
    - Query roots: `+"`tos(category=\"root\", limit=10%s)`"+` to establish what foundational problems and assumptions are already well-established.
+     Expect roots to look a bit off topic, because topics seldom start under their modern names. Judge a root by whether the topic grew from it, not by whether it mentions the query, and set aside generic method citations such as reporting guidelines.
    - Query trunks: `+"`tos(category=\"trunk\", limit=10%s)`"+` to identify dominant methodologies and standard analytical frameworks.
 2. **Contemporary Frontier (Leaves)**:
    - Query leaves: `+"`tos(category=\"leaf\", limit=30%s)`"+` to survey active contemporary research papers.

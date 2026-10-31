@@ -5,7 +5,11 @@ and exporting citations.
 TREE OF SCIENCE: what the categories mean
 - root: a seminal, foundational paper. Many citation chains in the
   collection end at it as their original source. Not simply "old" or
-  "most cited".
+  "most cited". Expect roots to look a bit off topic: topics seldom start
+  under their modern names, so a root may come from a neighbouring field.
+  Judge a root by whether the topic grew from it, not by whether it mentions
+  the query. The exception is a generic method citation, such as a reporting
+  guideline: many papers cite it, but the topic did not grow from it.
 - trunk: a structural paper where the topic took its current shape. It
   joins two or more roots, so many citation chains pass through it.
 - leaf: a current, state-of-the-art paper. Many of its outgoing citation

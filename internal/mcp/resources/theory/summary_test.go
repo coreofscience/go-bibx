@@ -43,6 +43,7 @@ func TestSummaryResource(t *testing.T) {
 		assert.Equal(t, "text/plain", content.MIMEType)
 		assert.Contains(t, content.Text, "Tree of Science (ToS)")
 		assert.Contains(t, content.Text, "root")
+		assert.Contains(t, content.Text, "not by whether it mentions the query")
 		assert.Contains(t, content.Text, "trunk")
 		assert.Contains(t, content.Text, "leaf")
 	})
