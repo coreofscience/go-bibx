@@ -3,26 +3,23 @@
 [![Go](https://github.com/coreofscience/go-bibx/actions/workflows/go.yml/badge.svg)](https://github.com/coreofscience/go-bibx/actions/workflows/go.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/coreofscience/go-bibx.svg)](https://pkg.go.dev/github.com/coreofscience/go-bibx)
 
-`go-bibx` is a high-performance command-line tool and Go library designed for
-researchers to perform deep, graph-based bibliographic analysis. Maintained by
-the [Core of Science](https://coreofscience.org/) organization, it serves as a
-Go implementation of the **Tree of Science (ToS)** methodology.
+`go-bibx` builds and analyses citation networks with the **Tree of Science
+(ToS)** method. It fetches works from [OpenAlex](https://openalex.org/), stores
+them in a local SQLite database, and works as a command-line tool, an
+[MCP server](#mcp-server) for AI agents, and a Go library. Maintained by
+[Core of Science](https://coreofscience.org/).
 
-The project is built to be both a standalone CLI tool for academic inquiry and a
-robust library for larger data pipelines, featuring a pure-Go embedded SQLite
-storage engine with zero CGO requirements.
+## The Tree of Science
 
-## The Tree of Science & SAP Algorithm
+The **SAP algorithm** uses the topology of the citation graph to map how a
+research field evolved. It sorts works into:
 
-At its core, `go-bibx` implements the **SAP algorithm** (`algorithms/sap.go`),
-which analyzes citation graph topology to map the evolutionary structure of a
-research field. Using the "Tree of Science" metaphor, it categorizes works into:
-
-- **Roots**: Foundational, seminal works that established the field.
-- **Trunk**: Core papers that provide the structural backbone and consolidate
-  the topic.
-- **Leaves**: Recent, specialized developments representing the current frontier
-  of research.
+- **Roots**: Seminal works that many citation chains in the collection end at as
+  their original source.
+- **Trunk**: Structural works where the topic took its current shape, joining
+  two or more roots.
+- **Leaves**: Current, state-of-the-art works whose citation chains lead back to
+  the roots.
 
 Roots can look a bit off topic. Topics seldom start under their conventional
 modern names, so the works they grew from may use other terms or come from
@@ -31,199 +28,81 @@ Judge a root by whether the topic grew from it, not by whether it mentions the
 query. Generic method citations, such as reporting guidelines, are the
 exception: many papers cite them, but the topic did not grow from them.
 
-## Features
-
-- **Multi-Collection SQLite Storage**: Persistent storage in `.bibx/bibx.db`
-  powered by a pure-Go driver (`modernc.org/sqlite`) with embedded database
-  migrations. Multiple inquiries can coexist in a single database.
-- **Query Idempotency**: Deterministic query hashing prevents redundant OpenAlex
-  API calls and recalculations when re-running identical inquiries.
-- **Clean 3-Tier Architecture**: Built with clear architectural boundaries
-  separating public data persistence (`repository`), domain services
-  (`services`), and internal presentation/delivery (`internal/cli`,
-  `internal/mcp`).
-- **Inquire**: Fetch literature and citation networks directly from the OpenAlex
-  API and run Tree of Science SAP algorithms.
-- **Collection Management**: Inspect, list, and delete inquiry collections by
-  UUIDv7 or human-readable name aliases.
-- **Visualize**: Interactive, browser-based graph exploration of any collection.
-- **Keyword Search**: Graph search combining SQLite FTS5 (BM25 ranking) with
-  pseudo-Steiner graph reduction to isolate subnetworks related to specific
-  keywords.
-- **ToS Category Queries**: Filter and rank works by relevance across Tree of
-  Science categories (_Root_, _Trunk_, _Leaf_).
-- **Pure Go & Cross-Platform**: Fully builds and runs with `CGO_ENABLED=0` on
-  Linux, macOS, and Windows.
-
 ## Installation
 
-### Via `go install`
+Download a binary from
+[GitHub Releases](https://github.com/coreofscience/go-bibx/releases), or install
+with Go 1.27+:
 
 ```bash
 go install github.com/coreofscience/go-bibx/cmd/bibx@latest
 ```
 
-### Pre-built Binaries
-
-You can download pre-built binaries for your operating system and architecture
-from the [GitHub Releases](https://github.com/coreofscience/go-bibx/releases)
-page.
-
-### Build from Source
-
-Ensure you have Go 1.27+ installed, then clone the repository and build:
-
-```bash
-git clone https://github.com/coreofscience/go-bibx.git
-cd go-bibx
-CGO_ENABLED=0 go build -o bibx ./cmd/bibx
-```
-
 ## CLI Usage
 
-### Global Options
-
-`bibx` supports global flags across all subcommands:
-
-- `--db string`: Custom path to the SQLite database file (defaults to
-  `.bibx/bibx.db` relative to root).
-- `--root, -r string`: Root working directory (defaults to current directory
-  `.`).
-- `--verbose`: Enable debug logging.
-
-### 1. Inquire a research topic
-
-Fetch papers related to a specific topic, compute Tree of Science metrics, and
-save them as a collection:
-
 ```bash
-# Basic inquiry (defaults to limit 200)
-bibx inquire "quantum machine learning" --limit 100
+# Fetch works on a topic, run the analysis, and save a named collection
+bibx inquire "quantum machine learning" --limit 300 --name qml
 
-# Name the collection for easy reference
-bibx inquire "deep learning transformers" --limit 100 --name "transformers"
+# Top works by category in a collection (defaults to the latest)
+bibx query --category root --limit 10 --collection qml --format reference
 
-# Force re-fetching an existing query
-bibx inquire "quantum machine learning" --limit 100 --force
-```
+# Keyword search, returning the matches and the citation paths connecting them
+bibx search "entanglement" --collection qml
 
-If an inquiry with the same normalized query and limit has already been
-executed, `bibx` detects the existing collection and skips remote network
-requests unless `--force` (`-f`) is passed.
+# Explore the citation graph in the browser at http://localhost:8080
+bibx view --collection qml
 
-### 2. Manage collections
+# Export a collection as BibTeX
+bibx collection export qml --output qml.bib
 
-List, inspect, and delete collections within your database:
-
-```bash
-# List all collections
+# Manage collections, by name or UUID
 bibx collection list
-
-# Show collection details (by name alias or UUIDv7, defaults to latest)
-bibx collection show transformers
-bibx collection show 019a1234-5678-7000-8000-123456789abc
-
-# Delete a collection (cascades to associated nodes and links)
-bibx collection delete transformers
+bibx collection show qml
+bibx collection delete qml
 ```
 
-### 3. Query by Tree of Science category
+`inquire` matches every term of the query against titles and abstracts, so use
+one concept of 1-3 words per call. Results are cached per query and limit; pass
+`--force` to fetch them again.
 
-Query top works in a collection by category score (`root`, `trunk`, or `leaf`):
+Collections live in `.bibx/bibx.db` under the current directory. Use the global
+flags `--root` or `--db`, placed before the subcommand, to change that. Run
+`bibx <command> --help` for all the options and output formats.
 
-```bash
-# Query the latest collection
-bibx query --category root --limit 10 --format reference
+## MCP Server
 
-# Query a specific collection by name or ID
-bibx query --category trunk --limit 5 --collection transformers --format markdown
-```
+`bibx mcp` serves the same collections to AI agents over stdio, using the
+[Model Context Protocol](https://modelcontextprotocol.io/). Add it to your
+client's configuration:
 
-Supported output formats: `json` (default), `markdown`, `reference`, `simple`.
-
-### 4. Graph Search
-
-Perform a keyword search using full-text search (SQLite FTS5) combined with
-pseudo-Steiner graph reduction:
-
-```bash
-# Search and output simple summary
-bibx search "attention mechanism" --limit 10 --collection transformers
-
-# Search and launch interactive browser visualization
-bibx search "attention mechanism" --limit 10 --view --port 8081
-```
-
-Supported output formats: `simple` (default), `json`, `markdown`, `reference`,
-`filename`.
-
-### 5. View the collection
-
-Launch an interactive browser-based visualization for any collection:
-
-```bash
-# View the latest collection
-bibx view --port 8080
-
-# View a specific collection
-bibx view --collection transformers --port 8080
-```
-
-Open [http://localhost:8080](http://localhost:8080) to explore the interactive
-citation graph.
-
-## Library Usage
-
-`go-bibx` can be imported as a Go library. The public `repository` and
-`services` packages provide easy access to the database lifecycle and domain
-services:
-
-```go
-package main
-
-import (
-	"context"
-	"fmt"
-
-	"github.com/coreofscience/go-bibx/repository"
-	"github.com/coreofscience/go-bibx/services"
-)
-
-func main() {
-	ctx := context.Background()
-
-	// Open or create SQLite database with embedded migrations
-	db, err := repository.OpenAndMigrateSQLite(".bibx/bibx.db")
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
-
-	// Initialize collection service
-	collectionService := services.NewCollectionService(db)
-
-	// List collections
-	collections, err := collectionService.List(ctx)
-	if err != nil {
-		panic(err)
-	}
-
-	for _, col := range collections {
-		fmt.Printf("Collection: %s, Works: %d\n", col.ID, col.WorkCount)
-	}
+```json
+{
+  "mcpServers": {
+    "bibx": {
+      "command": "bibx",
+      "args": ["--db", "/absolute/path/to/bibx.db", "mcp"]
+    }
+  }
 }
 ```
 
+Pass an absolute `--db` path, since clients may start the server from any
+directory.
+
+## Library Usage
+
+Import the public packages to build on `go-bibx`: `services` for the domain
+operations, `repository` for the database, `clients/openalex` for the OpenAlex
+API, `algorithms` for the graph algorithms, and `models` for the shared types.
+See the
+[package documentation](https://pkg.go.dev/github.com/coreofscience/go-bibx).
+
 ## Development
 
-- **Run with Air**: For live-reloading during development, use [Air][air].
-- **Testing**: Run tests with `CGO_ENABLED=0 go test ./...`.
-- **Linting**: Run `golangci-lint run`.
-- **SQL Queries (sqlc)**: Regenerate typed database queries with
-  `sqlc generate`.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and
+[docs/adrs](docs/adrs) for the architecture decisions.
 
 ## License
 
 This project is licensed under the MIT License.
-
-[air]: https://github.com/air-verse/air
