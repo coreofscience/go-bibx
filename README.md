@@ -90,26 +90,6 @@ client's configuration:
 Pass an absolute `--db` path, since clients may start the server from any
 directory.
 
-| Tools                    | Purpose                                                     |
-| ------------------------ | ----------------------------------------------------------- |
-| `inquire`                | Fetch a topic from OpenAlex and store it as a collection    |
-| `list`, `show`, `delete` | Manage collections                                          |
-| `tos`                    | Top works by Tree of Science category                       |
-| `search`                 | Keyword search returning a connected citation subgraph      |
-| `works`                  | Full metadata and abstracts by OpenAlex ID, DOI, or label   |
-| `bibtex`                 | Export selected works, or a preset such as `tos`, to BibTeX |
-
-| Resources                        | Purpose                                  |
-| -------------------------------- | ---------------------------------------- |
-| `bibx:/summary`                  | The Tree of Science method               |
-| `bibx:/collections/{id}/summary` | Metadata of a collection                 |
-| `bibx:/collections/{id}/bibtex`  | Full BibTeX bibliography of a collection |
-
-| Prompts  | Purpose                            |
-| -------- | ---------------------------------- |
-| `review` | Run a literature review on a topic |
-| `gaps`   | Find research gaps in a field      |
-
 ## Library Usage
 
 Import the public packages to build on `go-bibx`: `services` for the domain
