@@ -18,6 +18,13 @@ A "root" work is a seminal work, foundational to the given topic. These
 works are identified mainly because lots of citation lineages end up with it
 as an original resource.
 
+Roots are expected to look a bit off topic. Topics seldom start under their
+conventional modern names, so the works they grew from may use other terms or
+come from neighbouring fields. Judge a root by whether the topic grew from it,
+not by whether it mentions the query. Generic method citations, such as
+reporting guidelines, are different: many papers in a collection may cite them,
+but the topic did not grow from them.
+
 A "trunk" work gives structure to the topic, it is where the topic became
 the way it is today. These works are characterized by being join points
 between two or more seminal works. These works are identified by having

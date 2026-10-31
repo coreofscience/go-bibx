@@ -79,6 +79,7 @@ Systematically explore the field across its evolutionary dimensions using the `+
 1. **Foundational Heritage (Roots)**:
    - Call `+"`tos(category=\"root\", limit=10%s)`"+`
    - Identify seminal papers, original theoretical frameworks, founding authors, and initial problem formulations.
+   - Expect roots to look a bit off topic, because topics seldom start under their modern names. Judge a root by whether the topic grew from it, not by whether it mentions the query, and set aside generic method citations such as reporting guidelines.
    - Note key baseline assumptions and conceptual foundations.
 2. **Structural Evolution (Trunks)**:
    - Call `+"`tos(category=\"trunk\", limit=10%s)`"+`

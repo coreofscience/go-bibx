@@ -25,7 +25,7 @@ var ValidCategories = map[string]struct{}{
 // TosInput represents the input parameters for the Tos tool.
 type TosInput struct {
 	// Category is the Tree of Science category to query: "root", "trunk", or "leaf".
-	Category string `json:"category" jsonschema:"Tree of Science category: 'root' (foundational/seminal papers), 'trunk' (structural bridge papers), or 'leaf' (modern state-of-the-art papers)"`
+	Category string `json:"category" jsonschema:"Tree of Science category: 'root' (foundational/seminal papers, which may not mention the query), 'trunk' (structural bridge papers), or 'leaf' (modern state-of-the-art papers)"`
 	// Limit is the number of results to return (default: 10, max: 1000).
 	Limit int `json:"limit,omitempty" jsonschema:"Maximum number of top-scored works to return (1-1000, default: 10). 10 to 20 is usually plenty, except for 'leaf' where up to 40 is also fine."`
 	// Target is the collection ID (UUID) or name alias. If omitted, the latest collection is queried.
@@ -63,7 +63,7 @@ func (t *Tos) Tool() *mcp.Tool {
 			ReadOnlyHint:    true,
 			Title:           "query Tree of Science categories",
 		},
-		Description: "Query top works in a collection by Tree of Science (ToS) category ('root', 'trunk', or 'leaf'). Abstracts are omitted by default; use the 'works' tool to fetch abstracts for specific papers. Read resource bibx:/summary for methodology details.",
+		Description: "Query top works in a collection by Tree of Science (ToS) category ('root', 'trunk', or 'leaf'). Abstracts are omitted by default; use the 'works' tool to fetch abstracts for specific papers. Roots can look a bit off topic, because topics seldom start under their modern names: judge a root by whether the topic grew from it, not by whether it mentions the query. Read resource bibx:/summary for methodology details.",
 		Name:        "tos",
 		Title:       "Tree of Science",
 	}

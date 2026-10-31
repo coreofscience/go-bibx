@@ -20,6 +20,8 @@ At its core, `go-bibx` implements the **SAP algorithm** (`algorithms/sap.go`), w
 - **Trunk**: Core papers that provide the structural backbone and consolidate the topic.
 - **Leaves**: Recent, specialized developments representing the current frontier of research.
 
+Roots can look a bit off topic. Topics seldom start under their conventional modern names, so the works they grew from may use other terms or come from neighbouring fields: for "apache kafka", roots include ZooKeeper and MapReduce. Judge a root by whether the topic grew from it, not by whether it mentions the query. Generic method citations, such as reporting guidelines, are the exception: many papers cite them, but the topic did not grow from them.
+
 ## Features
 
 - **Multi-Collection SQLite Storage**: Persistent storage in `.bibx/bibx.db` powered by a pure-Go driver (`modernc.org/sqlite`) with embedded database migrations. Multiple inquiries can coexist in a single database.
