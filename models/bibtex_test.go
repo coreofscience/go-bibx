@@ -154,6 +154,147 @@ func TestWork_ToBibEntry(t *testing.T) {
 	})
 }
 
+func TestWork_ToBibEntry_Types(t *testing.T) {
+	tests := []struct {
+		name       string
+		work       *models.Work
+		wantType   string
+		wantFields map[string]string
+		wantAbsent []string
+	}{
+		{
+			name:       "conference paper",
+			work:       &models.Work{Type: new("conference-paper"), Venue: new("SOSP"), VenueType: new("conference")},
+			wantType:   "inproceedings",
+			wantFields: map[string]string{"booktitle": "SOSP"},
+			wantAbsent: []string{"journal"},
+		},
+		{
+			name:       "article at a conference venue",
+			work:       &models.Work{Type: new("article"), Venue: new("PVLDB"), VenueType: new("conference")},
+			wantType:   "inproceedings",
+			wantFields: map[string]string{"booktitle": "PVLDB"},
+		},
+		{
+			name:       "book on an ebook platform",
+			work:       &models.Work{Type: new("book"), Venue: new("Apress eBooks"), VenueType: new("ebook platform"), Publisher: new("Apress")},
+			wantType:   "book",
+			wantFields: map[string]string{"publisher": "Apress"},
+			wantAbsent: []string{"journal", "series"},
+		},
+		{
+			name:       "book in a series",
+			work:       &models.Work{Type: new("book"), Venue: new("LNCS"), VenueType: new("book series"), Publisher: new("Springer")},
+			wantType:   "book",
+			wantFields: map[string]string{"publisher": "Springer", "series": "LNCS"},
+		},
+		{
+			name:       "book without a publisher",
+			work:       &models.Work{Type: new("book")},
+			wantType:   "book",
+			wantAbsent: []string{"publisher"},
+		},
+		{
+			name:       "report prefers the author institution",
+			work:       &models.Work{Type: new("report"), Institution: new("NIST"), Publisher: new("GPO")},
+			wantType:   "techreport",
+			wantFields: map[string]string{"institution": "NIST"},
+		},
+		{
+			name:       "report falls back to the publisher",
+			work:       &models.Work{Type: new("report"), Publisher: new("GPO")},
+			wantType:   "techreport",
+			wantFields: map[string]string{"institution": "GPO"},
+		},
+		{
+			name:       "book chapter",
+			work:       &models.Work{Type: new("book-chapter"), Venue: new("Internet of Things"), VenueType: new("book series"), Publisher: new("Springer")},
+			wantType:   "incollection",
+			wantFields: map[string]string{"booktitle": "Internet of Things", "publisher": "Springer"},
+		},
+		{
+			name:       "book chapter on an ebook platform has no book title",
+			work:       &models.Work{Type: new("book-chapter"), Venue: new("Elsevier eBooks"), VenueType: new("ebook platform"), Publisher: new("Elsevier")},
+			wantType:   "incollection",
+			wantFields: map[string]string{"publisher": "Elsevier"},
+			wantAbsent: []string{"booktitle"},
+		},
+		{
+			name:       "dissertation in a repository",
+			work:       &models.Work{Type: new("dissertation"), Venue: new("DSpace@MIT"), VenueType: new("repository"), Publisher: new("MIT")},
+			wantType:   "phdthesis",
+			wantFields: map[string]string{"school": "MIT"},
+			wantAbsent: []string{"note", "journal"},
+		},
+		{
+			name:       "preprint in a repository is flagged",
+			work:       &models.Work{Type: new("preprint"), Venue: new("arXiv"), VenueType: new("repository")},
+			wantType:   "misc",
+			wantFields: map[string]string{"howpublished": "arXiv", "note": "venue from repository copy"},
+			wantAbsent: []string{"journal"},
+		},
+		{
+			name:       "conference paper in a repository is flagged without a book title",
+			work:       &models.Work{Type: new("conference-paper"), Venue: new("Zenodo"), VenueType: new("repository")},
+			wantType:   "inproceedings",
+			wantFields: map[string]string{"note": "venue from repository copy"},
+			wantAbsent: []string{"booktitle", "howpublished"},
+		},
+		{
+			name:       "report in a repository is not flagged",
+			work:       &models.Work{Type: new("report"), Venue: new("NBER"), VenueType: new("repository"), Institution: new("NBER")},
+			wantType:   "techreport",
+			wantFields: map[string]string{"institution": "NBER"},
+			wantAbsent: []string{"note", "howpublished"},
+		},
+		{
+			name:       "review in a journal",
+			work:       &models.Work{Type: new("review"), Venue: new("ACM CSUR"), VenueType: new("journal")},
+			wantType:   "article",
+			wantFields: map[string]string{"journal": "ACM CSUR"},
+		},
+		{
+			name:       "article on an ebook platform",
+			work:       &models.Work{Type: new("article"), Venue: new("Springer eBooks"), VenueType: new("ebook platform")},
+			wantType:   "misc",
+			wantAbsent: []string{"journal", "howpublished"},
+		},
+		{
+			name:       "unknown type with a venue",
+			work:       &models.Work{Type: new("editorial"), Venue: new("Nature"), VenueType: new("journal")},
+			wantType:   "article",
+			wantFields: map[string]string{"journal": "Nature"},
+		},
+		{
+			name:       "work stored without types keeps its export",
+			work:       &models.Work{Venue: new("KTH DiVA")},
+			wantType:   "article",
+			wantFields: map[string]string{"journal": "KTH DiVA"},
+			wantAbsent: []string{"note"},
+		},
+		{
+			name:       "work stored without types or venue",
+			work:       &models.Work{},
+			wantType:   "misc",
+			wantAbsent: []string{"journal"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			entry := tt.work.ToBibEntry()
+			require.NotNil(t, entry)
+			assert.Equal(t, tt.wantType, entry.Type)
+			for field, want := range tt.wantFields {
+				require.Contains(t, entry.Fields, field)
+				assert.Equal(t, want, entry.Fields[field].String())
+			}
+			for _, field := range tt.wantAbsent {
+				assert.NotContains(t, entry.Fields, field)
+			}
+		})
+	}
+}
+
 func TestWork_ToBibTeX(t *testing.T) {
 	t.Run("nil work returns empty string", func(t *testing.T) {
 		var a *models.Work

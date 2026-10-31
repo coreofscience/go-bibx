@@ -21,7 +21,7 @@ Tree of Science (ToS) can use any work with citations as a seed.
 | ----- | ----------------------------------------- | ------------- |
 | 1     | Rename `Article` to `Work`                | Done          |
 | 2     | Change the `inquire` seed filter          | Done          |
-| 3     | BibTeX entry types and venues             | To do         |
+| 3     | BibTeX entry types and venues             | Done          |
 | 4     | Explain why roots can look off topic      | To do         |
 | Later | Cut-off titles, `lookup`                  | Not scheduled |
 
@@ -186,11 +186,15 @@ using repository names as venues.
    | has a venue (e.g. `article` or `review`)           | `@article`       | `journal`     |
    | otherwise                                          | `@misc`          | none          |
 
-4. Check where `publisher` comes from before building the `@book` row. In a small
-   sample of books, the source was "Apress eBooks" or missing, and
-   `host_organization_name` was empty. Check `institution` and `school` the same
-   way. If a value is not available, leave the field out.
-5. Add tests in `models/bibtex_test.go` and the client tests. Include a work
+4. Store `publisher` from the source's `host_organization_name`, which 19 of 25
+   sampled books have, and `institution` from the first affiliation listed for
+   the authors. `institution` and `school` use the affiliation, then the publisher.
+   If a value is not available, leave the field out.
+5. An `ebook platform` such as "Elsevier eBooks" says where a work is hosted, not
+   where it was published, so it is never exported as a venue.
+6. Bump `queryFingerprintVersion`, so that rerunning a query refreshes its
+   collection with the new venue and fields.
+7. Add tests in `models/bibtex_test.go` and the client tests. Include a work
    stored before phase 2, with null types, to show that its export does not
    change.
 

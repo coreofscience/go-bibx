@@ -89,6 +89,18 @@ func TestWork_Merge(t *testing.T) {
 			want:  &models.Work{VenueType: new("journal")},
 		},
 		{
+			name:  "Merge keeps the publisher if present",
+			work:  &models.Work{},
+			other: &models.Work{Publisher: new("Springer")},
+			want:  &models.Work{Publisher: new("Springer")},
+		},
+		{
+			name:  "Merge keeps the institution if present",
+			work:  &models.Work{},
+			other: &models.Work{Institution: new("NIST")},
+			want:  &models.Work{Institution: new("NIST")},
+		},
+		{
 			name:  "Merge keeps the volume if present",
 			work:  &models.Work{},
 			other: &models.Work{Volume: new("Volume B")},

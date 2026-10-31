@@ -40,25 +40,27 @@ type Node struct {
 }
 
 type Work struct {
-	ID         uuid.UUID
-	Label      string
-	Title      sql.NullString
-	Venue      sql.NullString
-	Year       sql.NullInt64
-	Volume     sql.NullString
-	Issue      sql.NullString
-	Page       sql.NullString
-	Doi        sql.NullString
-	Permalink  sql.NullString
-	TimesCited sql.NullInt64
-	Abstract   sql.NullString
-	Rich       sql.NullBool
-	Authors    []byte
-	Keywords   []byte
-	Ids        []byte
-	CreatedAt  sql.NullTime
-	Type       sql.NullString
-	VenueType  sql.NullString
+	ID          uuid.UUID
+	Label       string
+	Title       sql.NullString
+	Venue       sql.NullString
+	Year        sql.NullInt64
+	Volume      sql.NullString
+	Issue       sql.NullString
+	Page        sql.NullString
+	Doi         sql.NullString
+	Permalink   sql.NullString
+	TimesCited  sql.NullInt64
+	Abstract    sql.NullString
+	Rich        sql.NullBool
+	Authors     []byte
+	Keywords    []byte
+	Ids         []byte
+	CreatedAt   sql.NullTime
+	Type        sql.NullString
+	VenueType   sql.NullString
+	Publisher   sql.NullString
+	Institution sql.NullString
 }
 
 type WorksFt struct {

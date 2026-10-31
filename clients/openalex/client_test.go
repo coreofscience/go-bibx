@@ -217,6 +217,103 @@ func TestToWork_Types(t *testing.T) {
 	})
 }
 
+func TestToWork_Venue(t *testing.T) {
+	repository := &openalex.WorkLocationSource{DisplayName: "KTH DiVA", Type: "repository"}
+	journal := &openalex.WorkLocationSource{
+		DisplayName:          "IEEE Data Engineering Bulletin",
+		Type:                 "journal",
+		HostOrganizationName: new("IEEE"),
+	}
+	conference := &openalex.WorkLocationSource{DisplayName: "SOSP", Type: "conference"}
+	series := &openalex.WorkLocationSource{DisplayName: "LNCS", Type: "book series", HostOrganizationName: new("Springer")}
+
+	tests := []struct {
+		name          string
+		primary       *openalex.WorkLocationSource
+		locations     []*openalex.WorkLocationSource
+		wantVenue     *string
+		wantType      *string
+		wantPublisher *string
+	}{
+		{
+			name:          "repository copy uses the journal from another location",
+			primary:       repository,
+			locations:     []*openalex.WorkLocationSource{repository, nil, journal},
+			wantVenue:     new("IEEE Data Engineering Bulletin"),
+			wantType:      new("journal"),
+			wantPublisher: new("IEEE"),
+		},
+		{
+			name:      "repository copy uses the conference from another location",
+			primary:   repository,
+			locations: []*openalex.WorkLocationSource{conference},
+			wantVenue: new("SOSP"),
+			wantType:  new("conference"),
+		},
+		{
+			name:      "repository copy without another venue stays",
+			primary:   repository,
+			locations: []*openalex.WorkLocationSource{repository, series},
+			wantVenue: new("KTH DiVA"),
+			wantType:  new("repository"),
+		},
+		{
+			name:          "missing primary source uses a journal location",
+			locations:     []*openalex.WorkLocationSource{journal},
+			wantVenue:     new("IEEE Data Engineering Bulletin"),
+			wantType:      new("journal"),
+			wantPublisher: new("IEEE"),
+		},
+		{
+			name:          "other primary sources are kept",
+			primary:       series,
+			locations:     []*openalex.WorkLocationSource{journal},
+			wantVenue:     new("LNCS"),
+			wantType:      new("book series"),
+			wantPublisher: new("Springer"),
+		},
+		{
+			name: "no sources",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			raw := &openalex.Work{
+				ID:              "https://openalex.org/W1",
+				PrimaryLocation: &openalex.WorkLocation{Source: tt.primary},
+			}
+			for _, source := range tt.locations {
+				raw.Locations = append(raw.Locations, openalex.WorkLocation{Source: source})
+			}
+			work := openalex.ToWork(raw)
+			assert.Equal(t, tt.wantVenue, work.Venue)
+			assert.Equal(t, tt.wantType, work.VenueType)
+			assert.Equal(t, tt.wantPublisher, work.Publisher)
+		})
+	}
+}
+
+func TestToWork_Institution(t *testing.T) {
+	t.Run("uses the first institution listed for the authors", func(t *testing.T) {
+		work := openalex.ToWork(&openalex.Work{
+			ID: "https://openalex.org/W1",
+			Authorships: []openalex.WorkAuthorship{
+				{Author: openalex.Author{DisplayName: "No Affiliation"}},
+				{
+					Author:       openalex.Author{DisplayName: "Peter Mell"},
+					Institutions: []openalex.WorkInstitution{{DisplayName: "NIST"}, {DisplayName: "Other"}},
+				},
+			},
+		})
+		assert.Equal(t, new("NIST"), work.Institution)
+	})
+
+	t.Run("leaves it empty when no author has one", func(t *testing.T) {
+		work := openalex.ToWork(&openalex.Work{ID: "https://openalex.org/W1"})
+		assert.Nil(t, work.Institution)
+	})
+}
+
 func TestToWork_PageRange(t *testing.T) {
 	tests := []struct {
 		name  string

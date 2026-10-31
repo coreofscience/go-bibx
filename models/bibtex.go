@@ -17,6 +17,11 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
+const (
+	venueTypeRepository    = "repository"
+	venueTypeEbookPlatform = "ebook platform"
+)
+
 var (
 	nonKeyChars = regexp.MustCompile(`[^a-zA-Z0-9_-]+`)
 
@@ -24,12 +29,19 @@ var (
 		"author",
 		"title",
 		"journal",
+		"booktitle",
+		"series",
+		"publisher",
+		"institution",
+		"school",
+		"howpublished",
 		"year",
 		"volume",
 		"number",
 		"pages",
 		"doi",
 		"url",
+		"note",
 		"keywords",
 		"abstract",
 	}
@@ -171,6 +183,86 @@ func keySuffix(n int) string {
 	return string(buf)
 }
 
+// isValue reports whether value is set to want.
+func isValue(value *string, want string) bool {
+	return value != nil && *value == want
+}
+
+// citableVenue returns the venue to cite. A repository or an ebook platform such as
+// "Elsevier eBooks" says where a work is hosted rather than where it was published, so
+// neither counts.
+func (w *Work) citableVenue() string {
+	if w.Venue == nil || isValue(w.VenueType, venueTypeRepository) || isValue(w.VenueType, venueTypeEbookPlatform) {
+		return ""
+	}
+	return *w.Venue
+}
+
+// bibEntryType returns the BibTeX entry type for the Work, from its OpenAlex types.
+// Works stored before those types were kept have none, and fall back to whether they have a venue.
+func (w *Work) bibEntryType() string {
+	switch {
+	case isValue(w.Type, "conference-paper") || isValue(w.VenueType, "conference"):
+		return "inproceedings"
+	case isValue(w.Type, "book"):
+		return "book"
+	case isValue(w.Type, "report"):
+		return "techreport"
+	case isValue(w.Type, "book-chapter"):
+		return "incollection"
+	case isValue(w.Type, "dissertation"):
+		return "phdthesis"
+	case isValue(w.VenueType, venueTypeRepository):
+		return "misc"
+	case w.citableVenue() != "":
+		return "article"
+	default:
+		return "misc"
+	}
+}
+
+// addVenueFields adds the fields that say where the Work was published, which depend on its entry type.
+func (w *Work) addVenueFields(entry *bibtex.BibEntry) {
+	addField := func(name string, value *string) {
+		if value != nil && *value != "" {
+			entry.AddField(name, bibtex.NewBibConst(SanitizeLaTeX(*value)))
+		}
+	}
+	venue := w.citableVenue()
+	issuer := w.Institution
+	if issuer == nil {
+		issuer = w.Publisher
+	}
+
+	switch entry.Type {
+	case "inproceedings":
+		addField("booktitle", &venue)
+	case "book":
+		addField("publisher", w.Publisher)
+		if isValue(w.VenueType, "book series") {
+			addField("series", &venue)
+		}
+	case "techreport":
+		addField("institution", issuer)
+	case "incollection":
+		addField("booktitle", &venue)
+		addField("publisher", w.Publisher)
+	case "phdthesis":
+		addField("school", issuer)
+	case "article":
+		addField("journal", &venue)
+	case "misc":
+		if isValue(w.VenueType, venueTypeRepository) {
+			addField("howpublished", w.Venue)
+		}
+	}
+
+	// A thesis or report belongs in a repository, but these were published somewhere else.
+	if isValue(w.VenueType, venueTypeRepository) && entry.Type != "phdthesis" && entry.Type != "techreport" {
+		addField("note", new("venue from repository copy"))
+	}
+}
+
 // ToBibEntry converts the Work into a [*bibtex.BibEntry].
 // Accepts optional [BibtexOption] modifiers (e.g. [WithCiteKey], [WithOmitAbstracts]).
 func (w *Work) ToBibEntry(opts ...BibtexOption) *bibtex.BibEntry {
@@ -183,17 +275,12 @@ func (w *Work) ToBibEntry(opts ...BibtexOption) *bibtex.BibEntry {
 		opt(&options)
 	}
 
-	entryType := "misc"
-	if w.Venue != nil && *w.Venue != "" {
-		entryType = "article"
-	}
-
 	key := GenerateCitationKey(w)
 	if options.citeKey != "" {
 		key = options.citeKey
 	}
 
-	entry := bibtex.NewBibEntry(entryType, key)
+	entry := bibtex.NewBibEntry(w.bibEntryType(), key)
 
 	if len(w.Authors) > 0 {
 		entry.AddField("author", bibtex.NewBibConst(strings.Join(w.Authors, " and ")))
@@ -201,9 +288,7 @@ func (w *Work) ToBibEntry(opts ...BibtexOption) *bibtex.BibEntry {
 	if w.Title != nil && *w.Title != "" {
 		entry.AddField("title", bibtex.NewBibConst(SanitizeLaTeX(*w.Title)))
 	}
-	if w.Venue != nil && *w.Venue != "" {
-		entry.AddField("journal", bibtex.NewBibConst(SanitizeLaTeX(*w.Venue)))
-	}
+	w.addVenueFields(entry)
 	if w.Year != nil {
 		entry.AddField("year", bibtex.NewBibConst(fmt.Sprintf("%d", *w.Year)))
 	}

@@ -219,7 +219,7 @@ func (q *Queries) ListCollections(ctx context.Context, limit int64) ([]Collectio
 const listLeaves = `-- name: ListLeaves :many
 SELECT
     n.leafness,
-    w.id, w.label, w.title, w.venue, w.type, w.venue_type, w.year, w.volume, w.issue, w.page,
+    w.id, w.label, w.title, w.venue, w.type, w.venue_type, w.publisher, w.institution, w.year, w.volume, w.issue, w.page,
     w.doi, w.permalink, w.times_cited, w.abstract, w.rich,
     w.authors, w.keywords, w.ids
 FROM nodes n
@@ -235,25 +235,27 @@ type ListLeavesParams struct {
 }
 
 type ListLeavesRow struct {
-	Leafness   float64
-	ID         uuid.UUID
-	Label      string
-	Title      sql.NullString
-	Venue      sql.NullString
-	Type       sql.NullString
-	VenueType  sql.NullString
-	Year       sql.NullInt64
-	Volume     sql.NullString
-	Issue      sql.NullString
-	Page       sql.NullString
-	Doi        sql.NullString
-	Permalink  sql.NullString
-	TimesCited sql.NullInt64
-	Abstract   sql.NullString
-	Rich       sql.NullBool
-	Authors    []byte
-	Keywords   []byte
-	Ids        []byte
+	Leafness    float64
+	ID          uuid.UUID
+	Label       string
+	Title       sql.NullString
+	Venue       sql.NullString
+	Type        sql.NullString
+	VenueType   sql.NullString
+	Publisher   sql.NullString
+	Institution sql.NullString
+	Year        sql.NullInt64
+	Volume      sql.NullString
+	Issue       sql.NullString
+	Page        sql.NullString
+	Doi         sql.NullString
+	Permalink   sql.NullString
+	TimesCited  sql.NullInt64
+	Abstract    sql.NullString
+	Rich        sql.NullBool
+	Authors     []byte
+	Keywords    []byte
+	Ids         []byte
 }
 
 func (q *Queries) ListLeaves(ctx context.Context, arg ListLeavesParams) ([]ListLeavesRow, error) {
@@ -273,6 +275,8 @@ func (q *Queries) ListLeaves(ctx context.Context, arg ListLeavesParams) ([]ListL
 			&i.Venue,
 			&i.Type,
 			&i.VenueType,
+			&i.Publisher,
+			&i.Institution,
 			&i.Year,
 			&i.Volume,
 			&i.Issue,
@@ -336,7 +340,7 @@ func (q *Queries) ListLinks(ctx context.Context, collectionID uuid.UUID) ([]Link
 const listNodes = `-- name: ListNodes :many
 SELECT
 	n.id, n.category, n.rootness, n.trunkness, n.leafness,
-	w.id, w.label, w.title, w.venue, w.type, w.venue_type, w.year, w.volume, w.issue, w.page,
+	w.id, w.label, w.title, w.venue, w.type, w.venue_type, w.publisher, w.institution, w.year, w.volume, w.issue, w.page,
 	w.doi, w.permalink, w.times_cited, w.abstract, w.rich,
 	w.authors, w.keywords, w.ids
 FROM nodes n
@@ -345,29 +349,31 @@ WHERE n.collection_id = ?
 `
 
 type ListNodesRow struct {
-	ID         uuid.UUID
-	Category   string
-	Rootness   float64
-	Trunkness  float64
-	Leafness   float64
-	ID_2       uuid.UUID
-	Label      string
-	Title      sql.NullString
-	Venue      sql.NullString
-	Type       sql.NullString
-	VenueType  sql.NullString
-	Year       sql.NullInt64
-	Volume     sql.NullString
-	Issue      sql.NullString
-	Page       sql.NullString
-	Doi        sql.NullString
-	Permalink  sql.NullString
-	TimesCited sql.NullInt64
-	Abstract   sql.NullString
-	Rich       sql.NullBool
-	Authors    []byte
-	Keywords   []byte
-	Ids        []byte
+	ID          uuid.UUID
+	Category    string
+	Rootness    float64
+	Trunkness   float64
+	Leafness    float64
+	ID_2        uuid.UUID
+	Label       string
+	Title       sql.NullString
+	Venue       sql.NullString
+	Type        sql.NullString
+	VenueType   sql.NullString
+	Publisher   sql.NullString
+	Institution sql.NullString
+	Year        sql.NullInt64
+	Volume      sql.NullString
+	Issue       sql.NullString
+	Page        sql.NullString
+	Doi         sql.NullString
+	Permalink   sql.NullString
+	TimesCited  sql.NullInt64
+	Abstract    sql.NullString
+	Rich        sql.NullBool
+	Authors     []byte
+	Keywords    []byte
+	Ids         []byte
 }
 
 func (q *Queries) ListNodes(ctx context.Context, collectionID uuid.UUID) ([]ListNodesRow, error) {
@@ -391,6 +397,8 @@ func (q *Queries) ListNodes(ctx context.Context, collectionID uuid.UUID) ([]List
 			&i.Venue,
 			&i.Type,
 			&i.VenueType,
+			&i.Publisher,
+			&i.Institution,
 			&i.Year,
 			&i.Volume,
 			&i.Issue,
@@ -420,7 +428,7 @@ func (q *Queries) ListNodes(ctx context.Context, collectionID uuid.UUID) ([]List
 const listRoots = `-- name: ListRoots :many
 SELECT
     n.rootness,
-    w.id, w.label, w.title, w.venue, w.type, w.venue_type, w.year, w.volume, w.issue, w.page,
+    w.id, w.label, w.title, w.venue, w.type, w.venue_type, w.publisher, w.institution, w.year, w.volume, w.issue, w.page,
     w.doi, w.permalink, w.times_cited, w.abstract, w.rich,
     w.authors, w.keywords, w.ids
 FROM nodes n
@@ -436,25 +444,27 @@ type ListRootsParams struct {
 }
 
 type ListRootsRow struct {
-	Rootness   float64
-	ID         uuid.UUID
-	Label      string
-	Title      sql.NullString
-	Venue      sql.NullString
-	Type       sql.NullString
-	VenueType  sql.NullString
-	Year       sql.NullInt64
-	Volume     sql.NullString
-	Issue      sql.NullString
-	Page       sql.NullString
-	Doi        sql.NullString
-	Permalink  sql.NullString
-	TimesCited sql.NullInt64
-	Abstract   sql.NullString
-	Rich       sql.NullBool
-	Authors    []byte
-	Keywords   []byte
-	Ids        []byte
+	Rootness    float64
+	ID          uuid.UUID
+	Label       string
+	Title       sql.NullString
+	Venue       sql.NullString
+	Type        sql.NullString
+	VenueType   sql.NullString
+	Publisher   sql.NullString
+	Institution sql.NullString
+	Year        sql.NullInt64
+	Volume      sql.NullString
+	Issue       sql.NullString
+	Page        sql.NullString
+	Doi         sql.NullString
+	Permalink   sql.NullString
+	TimesCited  sql.NullInt64
+	Abstract    sql.NullString
+	Rich        sql.NullBool
+	Authors     []byte
+	Keywords    []byte
+	Ids         []byte
 }
 
 func (q *Queries) ListRoots(ctx context.Context, arg ListRootsParams) ([]ListRootsRow, error) {
@@ -474,6 +484,8 @@ func (q *Queries) ListRoots(ctx context.Context, arg ListRootsParams) ([]ListRoo
 			&i.Venue,
 			&i.Type,
 			&i.VenueType,
+			&i.Publisher,
+			&i.Institution,
 			&i.Year,
 			&i.Volume,
 			&i.Issue,
@@ -503,7 +515,7 @@ func (q *Queries) ListRoots(ctx context.Context, arg ListRootsParams) ([]ListRoo
 const listTrunks = `-- name: ListTrunks :many
 SELECT
     n.trunkness,
-    w.id, w.label, w.title, w.venue, w.type, w.venue_type, w.year, w.volume, w.issue, w.page,
+    w.id, w.label, w.title, w.venue, w.type, w.venue_type, w.publisher, w.institution, w.year, w.volume, w.issue, w.page,
     w.doi, w.permalink, w.times_cited, w.abstract, w.rich,
     w.authors, w.keywords, w.ids
 FROM nodes n
@@ -519,25 +531,27 @@ type ListTrunksParams struct {
 }
 
 type ListTrunksRow struct {
-	Trunkness  float64
-	ID         uuid.UUID
-	Label      string
-	Title      sql.NullString
-	Venue      sql.NullString
-	Type       sql.NullString
-	VenueType  sql.NullString
-	Year       sql.NullInt64
-	Volume     sql.NullString
-	Issue      sql.NullString
-	Page       sql.NullString
-	Doi        sql.NullString
-	Permalink  sql.NullString
-	TimesCited sql.NullInt64
-	Abstract   sql.NullString
-	Rich       sql.NullBool
-	Authors    []byte
-	Keywords   []byte
-	Ids        []byte
+	Trunkness   float64
+	ID          uuid.UUID
+	Label       string
+	Title       sql.NullString
+	Venue       sql.NullString
+	Type        sql.NullString
+	VenueType   sql.NullString
+	Publisher   sql.NullString
+	Institution sql.NullString
+	Year        sql.NullInt64
+	Volume      sql.NullString
+	Issue       sql.NullString
+	Page        sql.NullString
+	Doi         sql.NullString
+	Permalink   sql.NullString
+	TimesCited  sql.NullInt64
+	Abstract    sql.NullString
+	Rich        sql.NullBool
+	Authors     []byte
+	Keywords    []byte
+	Ids         []byte
 }
 
 func (q *Queries) ListTrunks(ctx context.Context, arg ListTrunksParams) ([]ListTrunksRow, error) {
@@ -557,6 +571,8 @@ func (q *Queries) ListTrunks(ctx context.Context, arg ListTrunksParams) ([]ListT
 			&i.Venue,
 			&i.Type,
 			&i.VenueType,
+			&i.Publisher,
+			&i.Institution,
 			&i.Year,
 			&i.Volume,
 			&i.Issue,
@@ -586,7 +602,7 @@ func (q *Queries) ListTrunks(ctx context.Context, arg ListTrunksParams) ([]ListT
 const search = `-- name: Search :many
 SELECT
     n.id, n.category, n.rootness, n.trunkness, n.leafness,
-    w.id, w.label, w.title, w.venue, w.type, w.venue_type, w.year, w.volume, w.issue, w.page,
+    w.id, w.label, w.title, w.venue, w.type, w.venue_type, w.publisher, w.institution, w.year, w.volume, w.issue, w.page,
     w.doi, w.permalink, w.times_cited, w.abstract, w.rich,
     w.authors, w.keywords, w.ids
 FROM works_fts(?) fts
@@ -604,29 +620,31 @@ type SearchParams struct {
 }
 
 type SearchRow struct {
-	ID         uuid.UUID
-	Category   string
-	Rootness   float64
-	Trunkness  float64
-	Leafness   float64
-	ID_2       uuid.UUID
-	Label      string
-	Title      sql.NullString
-	Venue      sql.NullString
-	Type       sql.NullString
-	VenueType  sql.NullString
-	Year       sql.NullInt64
-	Volume     sql.NullString
-	Issue      sql.NullString
-	Page       sql.NullString
-	Doi        sql.NullString
-	Permalink  sql.NullString
-	TimesCited sql.NullInt64
-	Abstract   sql.NullString
-	Rich       sql.NullBool
-	Authors    []byte
-	Keywords   []byte
-	Ids        []byte
+	ID          uuid.UUID
+	Category    string
+	Rootness    float64
+	Trunkness   float64
+	Leafness    float64
+	ID_2        uuid.UUID
+	Label       string
+	Title       sql.NullString
+	Venue       sql.NullString
+	Type        sql.NullString
+	VenueType   sql.NullString
+	Publisher   sql.NullString
+	Institution sql.NullString
+	Year        sql.NullInt64
+	Volume      sql.NullString
+	Issue       sql.NullString
+	Page        sql.NullString
+	Doi         sql.NullString
+	Permalink   sql.NullString
+	TimesCited  sql.NullInt64
+	Abstract    sql.NullString
+	Rich        sql.NullBool
+	Authors     []byte
+	Keywords    []byte
+	Ids         []byte
 }
 
 func (q *Queries) Search(ctx context.Context, arg SearchParams) ([]SearchRow, error) {
@@ -650,6 +668,8 @@ func (q *Queries) Search(ctx context.Context, arg SearchParams) ([]SearchRow, er
 			&i.Venue,
 			&i.Type,
 			&i.VenueType,
+			&i.Publisher,
+			&i.Institution,
 			&i.Year,
 			&i.Volume,
 			&i.Issue,
@@ -808,6 +828,8 @@ INSERT INTO works (
     venue,
     type,
     venue_type,
+    publisher,
+    institution,
     year,
     volume,
     issue,
@@ -820,12 +842,14 @@ INSERT INTO works (
     authors,
     keywords,
     ids
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(label) DO UPDATE SET
     title=COALESCE(excluded.title, works.title),
     venue=COALESCE(excluded.venue, works.venue),
     type=COALESCE(excluded.type, works.type),
     venue_type=COALESCE(excluded.venue_type, works.venue_type),
+    publisher=COALESCE(excluded.publisher, works.publisher),
+    institution=COALESCE(excluded.institution, works.institution),
     year=COALESCE(excluded.year, works.year),
     volume=COALESCE(excluded.volume, works.volume),
     issue=COALESCE(excluded.issue, works.issue),
@@ -842,24 +866,26 @@ RETURNING id
 `
 
 type UpsertWorkParams struct {
-	ID         uuid.UUID
-	Label      string
-	Title      sql.NullString
-	Venue      sql.NullString
-	Type       sql.NullString
-	VenueType  sql.NullString
-	Year       sql.NullInt64
-	Volume     sql.NullString
-	Issue      sql.NullString
-	Page       sql.NullString
-	Doi        sql.NullString
-	Permalink  sql.NullString
-	TimesCited sql.NullInt64
-	Abstract   sql.NullString
-	Rich       sql.NullBool
-	Authors    []byte
-	Keywords   []byte
-	Ids        []byte
+	ID          uuid.UUID
+	Label       string
+	Title       sql.NullString
+	Venue       sql.NullString
+	Type        sql.NullString
+	VenueType   sql.NullString
+	Publisher   sql.NullString
+	Institution sql.NullString
+	Year        sql.NullInt64
+	Volume      sql.NullString
+	Issue       sql.NullString
+	Page        sql.NullString
+	Doi         sql.NullString
+	Permalink   sql.NullString
+	TimesCited  sql.NullInt64
+	Abstract    sql.NullString
+	Rich        sql.NullBool
+	Authors     []byte
+	Keywords    []byte
+	Ids         []byte
 }
 
 func (q *Queries) UpsertWork(ctx context.Context, arg UpsertWorkParams) (uuid.UUID, error) {
@@ -870,6 +896,8 @@ func (q *Queries) UpsertWork(ctx context.Context, arg UpsertWorkParams) (uuid.UU
 		arg.Venue,
 		arg.Type,
 		arg.VenueType,
+		arg.Publisher,
+		arg.Institution,
 		arg.Year,
 		arg.Volume,
 		arg.Issue,

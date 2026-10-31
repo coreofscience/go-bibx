@@ -19,11 +19,17 @@ type Author struct {
 	ORCID       *string `json:"orcid"`
 }
 
+// WorkInstitution is an institution an author was affiliated with for a work.
+type WorkInstitution struct {
+	DisplayName string `json:"display_name"`
+}
+
 // WorkAuthorship links an [Author] to a work, including authorship order and corresponding status.
 type WorkAuthorship struct {
-	AuthorPosition  AuthorPosition `json:"author_position"`
-	Author          Author         `json:"author"`
-	IsCorresponding bool           `json:"is_corresponding"`
+	AuthorPosition  AuthorPosition    `json:"author_position"`
+	Author          Author            `json:"author"`
+	IsCorresponding bool              `json:"is_corresponding"`
+	Institutions    []WorkInstitution `json:"institutions"`
 }
 
 // WorkKeyword represents a keyword concept associated with a work in OpenAlex.
@@ -43,9 +49,10 @@ type WorkBiblio struct {
 
 // WorkLocationSource represents the venue or source of a work (e.g. journal or repository).
 type WorkLocationSource struct {
-	ID          string `json:"id"`
-	DisplayName string `json:"display_name"`
-	Type        string `json:"type"`
+	ID                   string  `json:"id"`
+	DisplayName          string  `json:"display_name"`
+	Type                 string  `json:"type"`
+	HostOrganizationName *string `json:"host_organization_name"`
 }
 
 // WorkLocation details the access location, URLs, and source venue of a work.
@@ -71,6 +78,7 @@ type Work struct {
 	ReferencedWorks       []string          `json:"referenced_works"`
 	Biblio                WorkBiblio        `json:"biblio"`
 	PrimaryLocation       *WorkLocation     `json:"primary_location"`
+	Locations             []WorkLocation    `json:"locations"`
 }
 
 // ResponseMeta contains pagination metadata returned by OpenAlex list responses.
