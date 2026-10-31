@@ -17,12 +17,12 @@ Tree of Science (ToS) can use any work with citations as a seed.
 
 ## Status
 
-| Phase | Work                                | State |
-| ----- | ----------------------------------- | ----- |
-| 1     | Rename `Article` to `Work`          | To do |
-| 2     | Change the `inquire` seed filter    | To do |
-| 3     | BibTeX entry types and venues       | To do |
-| Later | Cut-off titles, off-topic roots, `lookup` | Not scheduled |
+| Phase | Work                                      | State                                                                |
+| ----- | ----------------------------------------- | -------------------------------------------------------------------- |
+| 1     | Rename `Article` to `Work`                | In review in [PR #52](https://github.com/coreofscience/go-bibx/pull/52) |
+| 2     | Change the `inquire` seed filter          | To do                                                                |
+| 3     | BibTeX entry types and venues             | To do                                                                |
+| Later | Cut-off titles, off-topic roots, `lookup` | Not scheduled                                                        |
 
 Each phase is its own PR, in this order.
 
@@ -82,6 +82,8 @@ column, because BibTeX, the search index and sqlc all work with named fields.
 
    A plain `ALTER TABLE articles RENAME TO works` is not enough. FTS5 keeps
    `content = 'articles'`, and searches fail with `no such table: main.articles`.
+   Use `IF EXISTS` on the drops, because databases created by earlier versions of
+   `000001` have no search triggers.
 4. Update `queries.sql` and the column overrides in `sqlc.yaml`, then regenerate
    the sqlc code and the mocks (`.mockery.yaml`).
 5. User-facing names:
