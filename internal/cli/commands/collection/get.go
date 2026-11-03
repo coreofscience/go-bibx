@@ -13,7 +13,7 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-func newShowCommand() *cli.Command {
+func newGetCommand() *cli.Command {
 	return &cli.Command{
 		Name:      "get",
 		Usage:     "Display details of a collection by ID or name",
