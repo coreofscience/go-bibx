@@ -15,9 +15,8 @@ import (
 
 func newListCommand() *cli.Command {
 	return &cli.Command{
-		Name:    "list",
-		Aliases: []string{"ls"},
-		Usage:   "List all collections in the database",
+		Name:  "list",
+		Usage: "List all collections in the database",
 		Action: func(ctx context.Context, c *cli.Command) error {
 			dbPath, ok := utils.GetDBPath(ctx)
 			if !ok {

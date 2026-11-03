@@ -14,7 +14,6 @@ import (
 func newDeleteCommand() *cli.Command {
 	return &cli.Command{
 		Name:      "delete",
-		Aliases:   []string{"rm", "del"},
 		Usage:     "Delete a collection by ID or name",
 		ArgsUsage: "<id|name>",
 		Arguments: []cli.Argument{
