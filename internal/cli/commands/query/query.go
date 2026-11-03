@@ -27,7 +27,7 @@ func New() *cli.Command {
 	supportedCategories := strings.Join(categories.Items(), ", ")
 	return &cli.Command{
 		Name:  "query",
-		Usage: "Query the bibx collection for relevant works",
+		Usage: "List the top root, trunk or leaf works in a collection",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:     "category",

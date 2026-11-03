@@ -41,7 +41,7 @@ func (l *List) Tool() *mcp.Tool {
 			ReadOnlyHint:    true,
 			Title:           "list collections",
 		},
-		Description: "List stored bibliographic collections in the local database, ordered by most recently updated.",
+		Description: "List stored bibliographic collections in the database, ordered by most recently updated.",
 		Name:        "list",
 		Title:       "List collections",
 	}

@@ -63,7 +63,7 @@ func NewServer(
 		&sdk.Implementation{
 			Name:        "bibx",
 			Title:       "bibx",
-			Description: "bibx provides capabilities for managing bibliographic collections",
+			Description: "Maps the literature on any research topic from OpenAlex with the Tree of Science, to find its foundational, structural and current works, search them and export citations",
 			Version:     o.version,
 			WebsiteURL:  "https://bibx.coreofscience.org",
 		},

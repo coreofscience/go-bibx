@@ -42,7 +42,7 @@ func TestInquireTool(t *testing.T) {
 		require.NotNil(t, res)
 		require.Len(t, res.Tools, 1)
 		assert.Equal(t, "inquire", res.Tools[0].Name)
-		assert.Equal(t, "Inquire collection", res.Tools[0].Title)
+		assert.Equal(t, "Map a research topic", res.Tools[0].Title)
 		assert.True(t, *res.Tools[0].Annotations.OpenWorldHint)
 		mcptest.AssertPropertyDescriptions(t, res.Tools[0].InputSchema, "query", "limit", "force", "name")
 		mcptest.AssertPropertyDescriptions(t, res.Tools[0].OutputSchema, "collection", "is_new", "warnings")

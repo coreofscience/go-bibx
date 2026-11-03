@@ -42,7 +42,7 @@ const seedFilters = "works that have an abstract, at least one reference and mor
 
 // inquireDescription tells the agent how queries are matched and what gets fetched.
 const inquireDescription = "Fetch the OpenAlex works most relevant to a research topic, add the works they cite, " +
-	"run Tree of Science (SAP) network analysis, and store the collection locally. " +
+	"run Tree of Science (SAP) network analysis, and store the collection. " +
 	"The query is matched against titles and abstracts and every term must match, so use one concept of 1-3 words per call. " +
 	"Only " + seedFilters + " are fetched directly, whatever their type (journal articles, conference papers, reviews and so on). " +
 	"Works without references, such as many books, enter the collection only when a fetched work cites them. " +
@@ -68,11 +68,11 @@ func (i *Inquire) Tool() *mcp.Tool {
 			IdempotentHint:  true,
 			OpenWorldHint:   new(true),
 			ReadOnlyHint:    false,
-			Title:           "inquire collection",
+			Title:           "map a research topic",
 		},
 		Description: inquireDescription,
 		Name:        "inquire",
-		Title:       "Inquire collection",
+		Title:       "Map a research topic",
 	}
 }
 

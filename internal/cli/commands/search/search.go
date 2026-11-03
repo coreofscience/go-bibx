@@ -28,7 +28,7 @@ func New() *cli.Command {
 	supportedFormats := strings.Join(formats.Items(), ", ")
 	return &cli.Command{
 		Name:      "search",
-		Usage:     "Perform a keyword search on the bibx collection",
+		Usage:     "Find works on a keyword in a collection, with the citation paths that connect them",
 		ArgsUsage: "<query>",
 		Flags: []cli.Flag{
 			&cli.IntFlag{

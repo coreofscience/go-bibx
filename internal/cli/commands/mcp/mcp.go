@@ -18,7 +18,7 @@ import (
 func New() *cli.Command {
 	return &cli.Command{
 		Name:  "mcp",
-		Usage: "start mcp server",
+		Usage: "Serve bibx to AI agents over the Model Context Protocol",
 		Action: func(ctx context.Context, c *cli.Command) error {
 			dbPath, ok := utils.GetDBPath(ctx)
 			if !ok {
