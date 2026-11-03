@@ -83,8 +83,8 @@ func TestCollectionCommands(t *testing.T) {
 		assert.Contains(t, out, "No collections found.")
 	})
 
-	t.Run("get empty", func(t *testing.T) {
-		err := rootCmd.Run(ctx, []string{"bibx", "collection", "get"})
+	t.Run("show empty", func(t *testing.T) {
+		err := rootCmd.Run(ctx, []string{"bibx", "collection", "show"})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "no collections found")
 	})
@@ -128,9 +128,9 @@ func TestCollectionCommands(t *testing.T) {
 		assert.Contains(t, out, savedCol1.CreatedAt.Local().Format("2006-01-02 15:04"))
 	})
 
-	t.Run("get latest", func(t *testing.T) {
+	t.Run("show latest", func(t *testing.T) {
 		out, err := captureStdout(func() error {
-			return rootCmd.Run(ctx, []string{"bibx", "collection", "get"})
+			return rootCmd.Run(ctx, []string{"bibx", "collection", "show"})
 		})
 		require.NoError(t, err)
 		assert.Contains(t, out, col2.ID.String())
@@ -144,9 +144,9 @@ func TestCollectionCommands(t *testing.T) {
 		assert.Contains(t, out, savedCol2.UpdatedAt.Local().Format("2006-01-02 15:04:05"))
 	})
 
-	t.Run("get by name", func(t *testing.T) {
+	t.Run("show by name", func(t *testing.T) {
 		out, err := captureStdout(func() error {
-			return rootCmd.Run(ctx, []string{"bibx", "collection", "get", "first-col"})
+			return rootCmd.Run(ctx, []string{"bibx", "collection", "show", "first-col"})
 		})
 		require.NoError(t, err)
 		assert.Contains(t, out, col1.ID.String())
@@ -154,17 +154,17 @@ func TestCollectionCommands(t *testing.T) {
 		assert.Contains(t, out, "first query")
 	})
 
-	t.Run("get by UUID", func(t *testing.T) {
+	t.Run("show by UUID", func(t *testing.T) {
 		out, err := captureStdout(func() error {
-			return rootCmd.Run(ctx, []string{"bibx", "collection", "get", col2.ID.String()})
+			return rootCmd.Run(ctx, []string{"bibx", "collection", "show", col2.ID.String()})
 		})
 		require.NoError(t, err)
 		assert.Contains(t, out, col2.ID.String())
 		assert.Contains(t, out, "second-col")
 	})
 
-	t.Run("get nonexistent", func(t *testing.T) {
-		err := rootCmd.Run(ctx, []string{"bibx", "collection", "get", "nonexistent-target"})
+	t.Run("show nonexistent", func(t *testing.T) {
+		err := rootCmd.Run(ctx, []string{"bibx", "collection", "show", "nonexistent-target"})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "collection not found")
 	})

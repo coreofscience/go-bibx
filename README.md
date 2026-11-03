@@ -58,7 +58,7 @@ bibx collection export qml --output qml.bib
 
 # Manage collections, by name or UUID
 bibx collection list
-bibx collection get qml
+bibx collection show qml
 bibx collection delete qml
 ```
 

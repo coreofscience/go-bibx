@@ -13,9 +13,9 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-func newGetCommand() *cli.Command {
+func newShowCommand() *cli.Command {
 	return &cli.Command{
-		Name:      "get",
+		Name:      "show",
 		Usage:     "Display details of a collection by ID or name",
 		ArgsUsage: "[<id|name>]",
 		Arguments: []cli.Argument{
