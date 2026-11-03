@@ -72,7 +72,7 @@ func New() *cli.Command {
 			},
 			&cli.StringFlag{
 				Name:    "collection",
-				Aliases: []string{"col", "c"},
+				Aliases: []string{"c"},
 				Usage:   "collection ID or name alias to search (defaults to latest)",
 			},
 		},

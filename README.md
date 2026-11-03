@@ -45,7 +45,7 @@ go install github.com/coreofscience/go-bibx/cmd/bibx@latest
 bibx inquire "quantum machine learning" --limit 300 --name qml
 
 # Top works by category in a collection (defaults to the latest)
-bibx query --category root --limit 10 --collection qml --format reference
+bibx query root --limit 10 --collection qml --format reference
 
 # Keyword search, returning the matches and the citation paths connecting them
 bibx search "entanglement" --collection qml
