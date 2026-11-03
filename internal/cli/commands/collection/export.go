@@ -23,7 +23,6 @@ func newExportCommand() *cli.Command {
 
 	return &cli.Command{
 		Name:      "export",
-		Aliases:   []string{"dump"},
 		Usage:     "Export works in a collection to BibTeX, JSON, or markdown",
 		ArgsUsage: "[<id|name>]",
 		Arguments: []cli.Argument{

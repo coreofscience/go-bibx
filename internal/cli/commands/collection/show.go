@@ -16,7 +16,6 @@ import (
 func newShowCommand() *cli.Command {
 	return &cli.Command{
 		Name:      "show",
-		Aliases:   []string{"info", "get"},
 		Usage:     "Display details of a collection by ID or name",
 		ArgsUsage: "[<id|name>]",
 		Arguments: []cli.Argument{

@@ -15,8 +15,9 @@ import (
 
 func main() {
 	cmd := cli.Command{
-		Name:  "bibx",
-		Usage: "bibx is a CLI tool for managing bibliographic collections",
+		Name:    "bibx",
+		Usage:   "Map the literature on any research topic with the Tree of Science",
+		Version: utils.ModuleVersion(),
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:  "verbose",

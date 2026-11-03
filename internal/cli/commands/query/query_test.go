@@ -106,7 +106,7 @@ func TestQueryCommand_BibtexFormat(t *testing.T) {
 	}
 
 	output, err := captureStdout(func() error {
-		return rootCmd.Run(ctx, []string{"bibx", "query", "--category", "root", "--format", "bibtex"})
+		return rootCmd.Run(ctx, []string{"bibx", "query", "root", "-c", colID.String(), "--format", "bibtex"})
 	})
 	require.NoError(t, err)
 	assert.Contains(t, output, "@article{vaswani2017,")
@@ -115,4 +115,23 @@ func TestQueryCommand_BibtexFormat(t *testing.T) {
 	parsed, err := bibtex.Parse(strings.NewReader(output))
 	require.NoError(t, err)
 	require.Len(t, parsed.Entries, 1)
+}
+
+func TestQueryCommand_InvalidCategory(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "test_query_cmd.db")
+	rootCmd := &cli.Command{
+		Name: "bibx",
+		Commands: []*cli.Command{
+			query.New(),
+		},
+		Before: func(ctx context.Context, c *cli.Command) (context.Context, error) {
+			return utils.WithDBPath(ctx, dbPath), nil
+		},
+	}
+
+	err := rootCmd.Run(context.Background(), []string{"bibx", "query"})
+	require.ErrorContains(t, err, "category argument is required")
+
+	err = rootCmd.Run(context.Background(), []string{"bibx", "query", "branch"})
+	require.ErrorContains(t, err, `invalid category "branch"`)
 }

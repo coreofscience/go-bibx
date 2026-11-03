@@ -26,24 +26,10 @@ func New() *cli.Command {
 	supportedFormats := strings.Join(formats.Items(), ", ")
 	supportedCategories := strings.Join(categories.Items(), ", ")
 	return &cli.Command{
-		Name:  "query",
-		Usage: "Query the bibx collection for relevant works",
+		Name:      "query",
+		Usage:     "List the top root, trunk or leaf works in a collection",
+		ArgsUsage: "<root|trunk|leaf>",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:     "category",
-				Aliases:  []string{"c"},
-				Usage:    fmt.Sprintf("category to filter by (%s)", supportedCategories),
-				Required: true,
-				Validator: func(value string) error {
-					if value == "" {
-						return errors.New("category is required")
-					}
-					if !categories.Contains(value) {
-						return fmt.Errorf("invalid category, must be one of: %s", supportedCategories)
-					}
-					return nil
-				},
-			},
 			&cli.IntFlag{
 				Name:    "limit",
 				Aliases: []string{"l"},
@@ -73,11 +59,28 @@ func New() *cli.Command {
 			},
 			&cli.StringFlag{
 				Name:    "collection",
-				Aliases: []string{"col"},
+				Aliases: []string{"c"},
 				Usage:   "collection ID or name alias to query (defaults to latest)",
 			},
 		},
+		Arguments: []cli.Argument{
+			&cli.StringArg{
+				Name:      "category",
+				UsageText: fmt.Sprintf("category to list (%s)", supportedCategories),
+				Config: cli.StringConfig{
+					TrimSpace: true,
+				},
+			},
+		},
 		Action: func(ctx context.Context, c *cli.Command) error {
+			category := c.StringArg("category")
+			if category == "" {
+				return fmt.Errorf("category argument is required (%s)", supportedCategories)
+			}
+			if !categories.Contains(category) {
+				return fmt.Errorf("invalid category %q, must be one of: %s", category, supportedCategories)
+			}
+
 			dbPath, ok := utils.GetDBPath(ctx)
 			if !ok {
 				return errors.New("database path not set")
@@ -104,7 +107,7 @@ func New() *cli.Command {
 				return fmt.Errorf("failed to resolve collection %q: %w", colTarget, err)
 			}
 
-			results, err := anaSvc.QueryCategory(ctx, col.ID, c.String("category"), c.Int("limit"))
+			results, err := anaSvc.QueryCategory(ctx, col.ID, category, c.Int("limit"))
 			if err != nil {
 				return fmt.Errorf("failed to query: %w", err)
 			}

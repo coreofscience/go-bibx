@@ -45,7 +45,7 @@ go install github.com/coreofscience/go-bibx/cmd/bibx@latest
 bibx inquire "quantum machine learning" --limit 300 --name qml
 
 # Top works by category in a collection (defaults to the latest)
-bibx query --category root --limit 10 --collection qml --format reference
+bibx query root --limit 10 --collection qml --format reference
 
 # Keyword search, returning the matches and the citation paths connecting them
 bibx search "entanglement" --collection qml
@@ -94,8 +94,8 @@ directory.
 
 Import the public packages to build on `go-bibx`: `services` for the domain
 operations, `repository` for the database, `clients/openalex` for the OpenAlex
-API, `algorithms` for the graph algorithms, and `models` for the shared types.
-See the
+API, `algorithms` for the graph algorithms, `models` for the shared types, and
+`mcp` to serve the MCP server on your own transport. See the
 [package documentation](https://pkg.go.dev/github.com/coreofscience/go-bibx).
 
 ## Development

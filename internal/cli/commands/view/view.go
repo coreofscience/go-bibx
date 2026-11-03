@@ -19,7 +19,7 @@ import (
 func New() *cli.Command {
 	return &cli.Command{
 		Name:  "view",
-		Usage: "Visualize the analysis results in a web browser",
+		Usage: "Explore a collection's citation graph in the browser",
 		Flags: []cli.Flag{
 			&cli.IntFlag{
 				Name:    "port",
@@ -29,7 +29,7 @@ func New() *cli.Command {
 			},
 			&cli.StringFlag{
 				Name:    "collection",
-				Aliases: []string{"col", "c"},
+				Aliases: []string{"c"},
 				Usage:   "collection ID or name alias to view (defaults to latest)",
 			},
 		},
