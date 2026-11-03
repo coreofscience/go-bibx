@@ -94,24 +94,9 @@ directory.
 
 Import the public packages to build on `go-bibx`: `services` for the domain
 operations, `repository` for the database, `clients/openalex` for the OpenAlex
-API, `algorithms` for the graph algorithms, and `models` for the shared types.
-See the
+API, `algorithms` for the graph algorithms, `models` for the shared types, and
+`mcp` to serve the MCP server on your own transport. See the
 [package documentation](https://pkg.go.dev/github.com/coreofscience/go-bibx).
-
-To serve the MCP tools from your own application, build a server with `mcp` and
-run it on any transport, such as the SDK's streamable HTTP handler:
-
-```go
-import (
-	bibxmcp "github.com/coreofscience/go-bibx/mcp"
-	"github.com/modelcontextprotocol/go-sdk/mcp"
-)
-
-server := bibxmcp.NewServer(collectionService, analysisService)
-handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server {
-	return server
-}, nil)
-```
 
 ## Development
 
