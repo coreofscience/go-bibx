@@ -98,6 +98,21 @@ API, `algorithms` for the graph algorithms, and `models` for the shared types.
 See the
 [package documentation](https://pkg.go.dev/github.com/coreofscience/go-bibx).
 
+To serve the MCP tools from your own application, build a server with `mcp` and
+run it on any transport, such as the SDK's streamable HTTP handler:
+
+```go
+import (
+	bibxmcp "github.com/coreofscience/go-bibx/mcp"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+)
+
+server := bibxmcp.NewServer(collectionService, analysisService)
+handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server {
+	return server
+}, nil)
+```
+
 ## Development
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and

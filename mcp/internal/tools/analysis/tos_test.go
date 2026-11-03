@@ -1,0 +1,193 @@
+package analysis_test
+
+import (
+	"encoding/json"
+	"errors"
+	"testing"
+	"uuid"
+
+	servicesmocks "github.com/coreofscience/go-bibx/internal/mocks/services"
+	mcptest "github.com/coreofscience/go-bibx/mcp/internal/test"
+	"github.com/coreofscience/go-bibx/mcp/internal/tools/analysis"
+	"github.com/coreofscience/go-bibx/models"
+	"github.com/coreofscience/go-bibx/services"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+)
+
+func TestTosTool(t *testing.T) {
+	mockAnaSvc := servicesmocks.NewMockAnalysisService(t)
+	mockColSvc := servicesmocks.NewMockCollectionService(t)
+	server := mcp.NewServer(&mcp.Implementation{Name: "test-server", Version: "0.1.0"}, nil)
+
+	tosTool := analysis.NewTos(mockAnaSvc, mockColSvc)
+	tosTool.Register(server)
+
+	client := mcptest.Connect(t, server)
+
+	colID := uuid.NewV7()
+	testCol := &services.Collection{
+		ID:    colID,
+		Query: "graph theory",
+	}
+
+	paperTitle := "Foundational Network Paper"
+	paperAbstract := "A seminal abstract on graph theory."
+	mockResults := []*models.Result{
+		{
+			Score: 0.95,
+			Work: &models.Work{
+				Label:    "openalex:W1",
+				Title:    &paperTitle,
+				Abstract: &paperAbstract,
+			},
+		},
+	}
+
+	t.Run("lists tool metadata", func(t *testing.T) {
+		res, err := client.ListTools(t.Context(), nil)
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		require.Len(t, res.Tools, 1)
+		assert.Equal(t, "tos", res.Tools[0].Name)
+		assert.Equal(t, "Tree of Science", res.Tools[0].Title)
+		assert.False(t, *res.Tools[0].Annotations.OpenWorldHint)
+		mcptest.AssertPropertyDescriptions(t, res.Tools[0].InputSchema, "category", "limit", "target", "include_abstracts")
+		mcptest.AssertPropertyDescriptions(t, res.Tools[0].OutputSchema, "results")
+	})
+
+	t.Run("query root category with target collection omits abstract by default", func(t *testing.T) {
+		mockColSvc.EXPECT().
+			Resolve(mock.Anything, colID.String()).
+			Return(testCol, nil).
+			Once()
+
+		mockAnaSvc.EXPECT().
+			QueryCategory(mock.Anything, colID, "root", 10).
+			Return(mockResults, nil).
+			Once()
+
+		res, err := client.CallTool(t.Context(), &mcp.CallToolParams{
+			Name: "tos",
+			Arguments: map[string]any{
+				"category": "root",
+				"target":   colID.String(),
+			},
+		})
+		require.NoError(t, err)
+		assert.False(t, res.IsError)
+
+		var out analysis.TosOutput
+		err = json.Unmarshal([]byte(res.Content[0].(*mcp.TextContent).Text), &out)
+		require.NoError(t, err)
+		require.Len(t, out.Results, 1)
+		assert.Equal(t, 0.95, out.Results[0].Score)
+		assert.Equal(t, "Foundational Network Paper", *out.Results[0].Work.Title)
+		assert.Nil(t, out.Results[0].Work.Abstract)
+	})
+
+	t.Run("query category with include_abstracts true includes abstract", func(t *testing.T) {
+		mockColSvc.EXPECT().
+			Resolve(mock.Anything, colID.String()).
+			Return(testCol, nil).
+			Once()
+
+		mockAnaSvc.EXPECT().
+			QueryCategory(mock.Anything, colID, "root", 10).
+			Return(mockResults, nil).
+			Once()
+
+		res, err := client.CallTool(t.Context(), &mcp.CallToolParams{
+			Name: "tos",
+			Arguments: map[string]any{
+				"category":          "root",
+				"target":            colID.String(),
+				"include_abstracts": true,
+			},
+		})
+		require.NoError(t, err)
+		assert.False(t, res.IsError)
+
+		var out analysis.TosOutput
+		err = json.Unmarshal([]byte(res.Content[0].(*mcp.TextContent).Text), &out)
+		require.NoError(t, err)
+		require.Len(t, out.Results, 1)
+		require.NotNil(t, out.Results[0].Work.Abstract)
+		assert.Equal(t, paperAbstract, *out.Results[0].Work.Abstract)
+	})
+
+	t.Run("query trunk category with custom limit", func(t *testing.T) {
+		mockColSvc.EXPECT().
+			Resolve(mock.Anything, "").
+			Return(testCol, nil).
+			Once()
+
+		mockAnaSvc.EXPECT().
+			QueryCategory(mock.Anything, colID, "trunk", 25).
+			Return(mockResults, nil).
+			Once()
+
+		res, err := client.CallTool(t.Context(), &mcp.CallToolParams{
+			Name: "tos",
+			Arguments: map[string]any{
+				"category": "TRUNK",
+				"limit":    25,
+			},
+		})
+		require.NoError(t, err)
+		assert.False(t, res.IsError)
+
+		var out analysis.TosOutput
+		err = json.Unmarshal([]byte(res.Content[0].(*mcp.TextContent).Text), &out)
+		require.NoError(t, err)
+		require.Len(t, out.Results, 1)
+	})
+
+	t.Run("invalid category returns error", func(t *testing.T) {
+		res, err := client.CallTool(t.Context(), &mcp.CallToolParams{
+			Name: "tos",
+			Arguments: map[string]any{
+				"category": "invalid-category",
+			},
+		})
+		require.NoError(t, err)
+		assert.True(t, res.IsError)
+		assert.Contains(t, res.Content[0].(*mcp.TextContent).Text, "invalid category")
+	})
+
+	t.Run("missing category returns error", func(t *testing.T) {
+		res, err := client.CallTool(t.Context(), &mcp.CallToolParams{
+			Name: "tos",
+			Arguments: map[string]any{
+				"category": "   ",
+			},
+		})
+		require.NoError(t, err)
+		assert.True(t, res.IsError)
+		assert.Contains(t, res.Content[0].(*mcp.TextContent).Text, "category is required")
+	})
+
+	t.Run("service failure returns error", func(t *testing.T) {
+		mockColSvc.EXPECT().
+			Resolve(mock.Anything, "").
+			Return(testCol, nil).
+			Once()
+
+		mockAnaSvc.EXPECT().
+			QueryCategory(mock.Anything, colID, "leaf", 10).
+			Return(nil, errors.New("db query timeout")).
+			Once()
+
+		res, err := client.CallTool(t.Context(), &mcp.CallToolParams{
+			Name: "tos",
+			Arguments: map[string]any{
+				"category": "leaf",
+			},
+		})
+		require.NoError(t, err)
+		assert.True(t, res.IsError)
+		assert.Contains(t, res.Content[0].(*mcp.TextContent).Text, "db query timeout")
+	})
+}

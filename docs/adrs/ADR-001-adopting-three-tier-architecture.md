@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted
+Accepted. The MCP server was later made public by
+[ADR-003](ADR-003-publishing-the-mcp-server.md).
 
 ## Context
 
