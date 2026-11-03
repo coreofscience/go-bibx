@@ -8,17 +8,15 @@ package mcp
 import (
 	_ "embed"
 	"log/slog"
-	"runtime/debug"
 	"uuid"
 
+	"github.com/coreofscience/go-bibx/internal/utils"
 	"github.com/coreofscience/go-bibx/mcp/internal/prompts"
 	"github.com/coreofscience/go-bibx/mcp/internal/resources"
 	"github.com/coreofscience/go-bibx/mcp/internal/tools"
 	"github.com/coreofscience/go-bibx/services"
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
-
-const modulePath = "github.com/coreofscience/go-bibx"
 
 //go:embed instructions.txt
 var instructions string
@@ -55,7 +53,7 @@ func NewServer(
 ) *sdk.Server {
 	o := &options{
 		logger:  slog.Default(),
-		version: moduleVersion(),
+		version: utils.ModuleVersion(),
 	}
 	for _, opt := range opts {
 		opt(o)
@@ -95,22 +93,4 @@ func NewServer(
 	prompts.Register(server)
 
 	return server
-}
-
-// moduleVersion reports the version of the go-bibx module in the running
-// binary, whether it is the main module or a dependency.
-func moduleVersion() string {
-	info, ok := debug.ReadBuildInfo()
-	if !ok {
-		return "(devel)"
-	}
-	if info.Main.Path == modulePath {
-		return info.Main.Version
-	}
-	for _, dep := range info.Deps {
-		if dep.Path == modulePath {
-			return dep.Version
-		}
-	}
-	return "(devel)"
 }
