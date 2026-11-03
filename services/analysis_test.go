@@ -12,7 +12,7 @@ import (
 	"github.com/coreofscience/go-bibx/internal/collections"
 	openalexmocks "github.com/coreofscience/go-bibx/internal/mocks/clients/openalex"
 	"github.com/coreofscience/go-bibx/models"
-	"github.com/coreofscience/go-bibx/repository"
+	repositorytest "github.com/coreofscience/go-bibx/repository/test"
 	"github.com/coreofscience/go-bibx/services"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -20,6 +20,8 @@ import (
 )
 
 func TestOpenAlexAnalysisService_InquireAndSearch(t *testing.T) {
+	t.Parallel()
+
 	title1 := "First Paper on Machine Learning"
 	title2 := "Second Paper on Deep Learning"
 	title3 := "Third Paper on Neural Networks"
@@ -74,13 +76,7 @@ func TestOpenAlexAnalysisService_InquireAndSearch(t *testing.T) {
 		}).
 		Maybe()
 
-	tempDir := t.TempDir()
-	dbPath := filepath.Join(tempDir, "service_test.db")
-	db, err := repository.OpenAndMigrateSQLite(dbPath)
-	require.NoError(t, err)
-	defer func() {
-		require.NoError(t, db.Close())
-	}()
+	db := repositorytest.NewDB(t)
 
 	svc := services.NewAnalysisService(db, oaClient)
 
@@ -156,6 +152,8 @@ func TestOpenAlexAnalysisService_InquireAndSearch(t *testing.T) {
 }
 
 func TestOpenAlexAnalysisService_InquireRefreshesOutdatedCollection(t *testing.T) {
+	t.Parallel()
+
 	w1 := &openalex.Work{
 		ID:              "https://openalex.org/W1",
 		IDs:             map[string]string{"openalex": "https://openalex.org/W1"},
@@ -173,11 +171,7 @@ func TestOpenAlexAnalysisService_InquireRefreshesOutdatedCollection(t *testing.T
 
 	setup := func(t *testing.T) (*openalexmocks.MockClient, services.AnalysisService, *services.SQLiteCollectionService, *services.Collection) {
 		t.Helper()
-		db, err := repository.OpenAndMigrateSQLite(filepath.Join(t.TempDir(), "outdated.db"))
-		require.NoError(t, err)
-		t.Cleanup(func() {
-			require.NoError(t, db.Close())
-		})
+		db := repositorytest.NewDB(t)
 
 		oaClient := openalexmocks.NewMockClient(t)
 		oaClient.EXPECT().
@@ -199,6 +193,8 @@ func TestOpenAlexAnalysisService_InquireRefreshesOutdatedCollection(t *testing.T
 	ctx := context.Background()
 
 	t.Run("reuses the name of an outdated collection for the same query", func(t *testing.T) {
+		t.Parallel()
+
 		oaClient, svc, colSvc, outdated := setup(t)
 		oaClient.EXPECT().SearchWorks(mock.Anything, "apache kafka", 10).Return([]*openalex.Work{w1, w2, w3}, nil).Once()
 
@@ -222,6 +218,8 @@ func TestOpenAlexAnalysisService_InquireRefreshesOutdatedCollection(t *testing.T
 	})
 
 	t.Run("keeps the name when none is given", func(t *testing.T) {
+		t.Parallel()
+
 		oaClient, svc, _, outdated := setup(t)
 		oaClient.EXPECT().SearchWorks(mock.Anything, "apache kafka", 10).Return([]*openalex.Work{w1, w2, w3}, nil).Once()
 
@@ -232,6 +230,8 @@ func TestOpenAlexAnalysisService_InquireRefreshesOutdatedCollection(t *testing.T
 	})
 
 	t.Run("applies a new name", func(t *testing.T) {
+		t.Parallel()
+
 		oaClient, svc, _, outdated := setup(t)
 		oaClient.EXPECT().SearchWorks(mock.Anything, "apache kafka", 10).Return([]*openalex.Work{w1, w2, w3}, nil).Once()
 
@@ -242,6 +242,8 @@ func TestOpenAlexAnalysisService_InquireRefreshesOutdatedCollection(t *testing.T
 	})
 
 	t.Run("rejects a name used by another query before fetching", func(t *testing.T) {
+		t.Parallel()
+
 		_, svc, colSvc, outdated := setup(t)
 
 		_, err := svc.Inquire(ctx, "apache spark", 10, services.InquireOptions{Name: "kafka"})
@@ -255,6 +257,8 @@ func TestOpenAlexAnalysisService_InquireRefreshesOutdatedCollection(t *testing.T
 	})
 
 	t.Run("leaves a collection with another limit alone", func(t *testing.T) {
+		t.Parallel()
+
 		oaClient, svc, colSvc, outdated := setup(t)
 		oaClient.EXPECT().SearchWorks(mock.Anything, "apache kafka", 20).Return([]*openalex.Work{w1, w2, w3}, nil).Once()
 
@@ -268,6 +272,8 @@ func TestOpenAlexAnalysisService_InquireRefreshesOutdatedCollection(t *testing.T
 	})
 
 	t.Run("retries after a failed refresh", func(t *testing.T) {
+		t.Parallel()
+
 		oaClient, svc, colSvc, outdated := setup(t)
 		oaClient.EXPECT().SearchWorks(mock.Anything, "apache kafka", 10).Return(nil, errors.New("upstream")).Once()
 
@@ -281,6 +287,8 @@ func TestOpenAlexAnalysisService_InquireRefreshesOutdatedCollection(t *testing.T
 }
 
 func TestOpenAlexAnalysisService_ReCleansAfterEnrichDiscardsMissingReferences(t *testing.T) {
+	t.Parallel()
+
 	// W1 and W2 cite W3 (surviving initial Clean), and W4 & W5 only connect to the giant component via W_MISSING.
 	// When enrich discards W_MISSING, re-running Clean() removes the now-disconnected W4 & W5 and dangling nodes.
 	w1 := &openalex.Work{
@@ -317,12 +325,7 @@ func TestOpenAlexAnalysisService_ReCleansAfterEnrichDiscardsMissingReferences(t 
 		Return([]*openalex.Work{}, nil). // W_MISSING is not returned by OpenAlex
 		Once()
 
-	tempDir := t.TempDir()
-	db, err := repository.OpenAndMigrateSQLite(filepath.Join(tempDir, "reclean_test.db"))
-	require.NoError(t, err)
-	defer func() {
-		require.NoError(t, db.Close())
-	}()
+	db := repositorytest.NewDB(t)
 
 	svc := services.NewAnalysisService(db, oaClient)
 	res, err := svc.Inquire(context.Background(), "reclean query", 10, services.InquireOptions{})
@@ -341,14 +344,9 @@ func TestOpenAlexAnalysisService_ReCleansAfterEnrichDiscardsMissingReferences(t 
 }
 
 func TestOpenAlexAnalysisService_AnalysisPersistenceAndQuery(t *testing.T) {
-	tempDir := t.TempDir()
-	dbPath := filepath.Join(tempDir, "test_analysis_persistence.db")
+	t.Parallel()
 
-	db, err := repository.OpenAndMigrateSQLite(dbPath)
-	require.NoError(t, err)
-	defer func() {
-		require.NoError(t, db.Close())
-	}()
+	db := repositorytest.NewDB(t)
 
 	colSvc := services.NewCollectionService(db)
 	oaClient := openalexmocks.NewMockClient(t)
@@ -447,7 +445,7 @@ func TestOpenAlexAnalysisService_AnalysisPersistenceAndQuery(t *testing.T) {
 	}
 
 	// 3. StoreAnalysis: non-existent collection fails
-	err = anaSvc.StoreAnalysis(ctx, uuid.NewV7(), analysis)
+	err := anaSvc.StoreAnalysis(ctx, uuid.NewV7(), analysis)
 	require.ErrorIs(t, err, services.ErrCollectionNotFound)
 
 	// 4. StoreAnalysis: nil analysis fails
@@ -535,12 +533,9 @@ func TestOpenAlexAnalysisService_AnalysisPersistenceAndQuery(t *testing.T) {
 }
 
 func TestOpenAlexAnalysisService_SearchHighLimitPerformance(t *testing.T) {
-	tempDir := t.TempDir()
-	db, err := repository.OpenAndMigrateSQLite(filepath.Join(tempDir, "high_limit_test.db"))
-	require.NoError(t, err)
-	defer func() {
-		require.NoError(t, db.Close())
-	}()
+	t.Parallel()
+
+	db := repositorytest.NewDB(t)
 
 	colSvc := services.NewCollectionService(db)
 	oaClient := openalexmocks.NewMockClient(t)
@@ -599,12 +594,9 @@ func TestOpenAlexAnalysisService_SearchHighLimitPerformance(t *testing.T) {
 }
 
 func TestOpenAlexAnalysisService_GetWorks(t *testing.T) {
-	tempDir := t.TempDir()
-	db, err := repository.OpenAndMigrateSQLite(filepath.Join(tempDir, "get_works_test.db"))
-	require.NoError(t, err)
-	defer func() {
-		require.NoError(t, db.Close())
-	}()
+	t.Parallel()
+
+	db := repositorytest.NewDB(t)
 
 	colSvc := services.NewCollectionService(db)
 	oaClient := openalexmocks.NewMockClient(t)
