@@ -3,18 +3,19 @@ package services_test
 import (
 	"context"
 	"crypto/sha256"
-	"path/filepath"
 	"testing"
 	"time"
 	"uuid"
 
-	"github.com/coreofscience/go-bibx/repository"
+	repositorytest "github.com/coreofscience/go-bibx/repository/test"
 	"github.com/coreofscience/go-bibx/services"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNormalizeQuery(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		input    string
@@ -66,6 +67,8 @@ func TestNormalizeQuery(t *testing.T) {
 }
 
 func TestComputeQueryHash(t *testing.T) {
+	t.Parallel()
+
 	t.Run("identical hashes for whitespace and casing variations", func(t *testing.T) {
 		h1 := services.ComputeQueryHash("quantum computing", 100)
 		h2 := services.ComputeQueryHash("   Quantum   Computing   ", 100)
@@ -97,6 +100,8 @@ func TestComputeQueryHash(t *testing.T) {
 }
 
 func TestUUIDHelpers(t *testing.T) {
+	t.Parallel()
+
 	t.Run("UUIDToBytes and ScanUUID with []byte", func(t *testing.T) {
 		original := uuid.NewV7()
 		bytes := services.UUIDToBytes(original)
@@ -135,14 +140,9 @@ func TestUUIDHelpers(t *testing.T) {
 }
 
 func TestCollectionService_CRUD(t *testing.T) {
-	tempDir := t.TempDir()
-	dbPath := filepath.Join(tempDir, "test_collection_crud.db")
+	t.Parallel()
 
-	db, err := repository.OpenAndMigrateSQLite(dbPath)
-	require.NoError(t, err)
-	defer func() {
-		require.NoError(t, db.Close())
-	}()
+	db := repositorytest.NewDB(t)
 
 	colSvc := services.NewCollectionService(db)
 	ctx := context.Background()
@@ -158,7 +158,7 @@ func TestCollectionService_CRUD(t *testing.T) {
 	}
 
 	// 1. Create collection
-	err = colSvc.Create(ctx, col1)
+	err := colSvc.Create(ctx, col1)
 	require.NoError(t, err)
 
 	// 2. Create collection with duplicate hash fails
@@ -246,20 +246,15 @@ func TestCollectionService_CRUD(t *testing.T) {
 }
 
 func TestCollectionService_Resolve(t *testing.T) {
-	ctx := context.Background()
-	tempDir := t.TempDir()
-	dbPath := filepath.Join(tempDir, "resolve_test.db")
+	t.Parallel()
 
-	db, err := repository.OpenAndMigrateSQLite(dbPath)
-	require.NoError(t, err)
-	defer func() {
-		require.NoError(t, db.Close())
-	}()
+	ctx := context.Background()
+	db := repositorytest.NewDB(t)
 
 	colSvc := services.NewCollectionService(db)
 
 	// Empty store resolution
-	_, err = colSvc.Resolve(ctx, "")
+	_, err := colSvc.Resolve(ctx, "")
 	require.ErrorIs(t, err, services.ErrCollectionNotFound)
 
 	name1 := "col-one"
