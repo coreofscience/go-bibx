@@ -30,7 +30,24 @@ exception: many papers cite them, but the topic did not grow from them.
 
 ## Installation
 
-Download a binary from
+On Linux or macOS:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/coreofscience/go-bibx/main/installers/install.sh | sh
+```
+
+On Windows (PowerShell):
+
+```powershell
+irm https://raw.githubusercontent.com/coreofscience/go-bibx/main/installers/install.ps1 | iex
+```
+
+The installers fetch the latest release and verify its checksum. Set
+`BIBX_VERSION` (e.g. `v0.7.0`) to pin a release, or `BIBX_INSTALL_DIR` to change
+where the binary goes (default `~/.local/bin`, or `%LOCALAPPDATA%\Programs\bibx`
+on Windows, which is added to your user `PATH`).
+
+You can also download a binary from
 [GitHub Releases](https://github.com/coreofscience/go-bibx/releases), or install
 with Go 1.27+:
 
