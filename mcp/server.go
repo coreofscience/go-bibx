@@ -11,6 +11,7 @@ import (
 	"uuid"
 
 	"github.com/coreofscience/go-bibx/internal/utils"
+	"github.com/coreofscience/go-bibx/mcp/internal/icons"
 	"github.com/coreofscience/go-bibx/mcp/internal/prompts"
 	"github.com/coreofscience/go-bibx/mcp/internal/resources"
 	"github.com/coreofscience/go-bibx/mcp/internal/tools"
@@ -66,6 +67,7 @@ func NewServer(
 			Description: "Maps the literature on any research topic from OpenAlex with the Tree of Science, to find its foundational, structural and current works, search them and export citations",
 			Version:     o.version,
 			WebsiteURL:  "https://bibx.coreofscience.org",
+			Icons:       icons.All(),
 		},
 		&sdk.ServerOptions{
 			Instructions: instructions,
