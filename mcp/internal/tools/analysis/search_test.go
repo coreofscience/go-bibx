@@ -6,6 +6,7 @@ import (
 	"testing"
 	"uuid"
 
+	"github.com/coreofscience/go-bibx/internal/collections"
 	servicesmocks "github.com/coreofscience/go-bibx/internal/mocks/services"
 	mcptest "github.com/coreofscience/go-bibx/mcp/internal/test"
 	"github.com/coreofscience/go-bibx/mcp/internal/tools/analysis"
@@ -34,6 +35,7 @@ func TestSearchTool(t *testing.T) {
 	}
 
 	paperTitle := "Shortest Path Algorithms"
+	paperDOI := "10.1007/BF01386390"
 	paperAbstract := "An in-depth study of shortest path algorithms in citation networks."
 	mockAnalysis := &models.Analysis{
 		Nodes: []*models.Node{
@@ -42,9 +44,13 @@ func TestSearchTool(t *testing.T) {
 				Category:  models.CategoryRoot,
 				Rootness:  0.9,
 				Trunkness: 0.1,
+				Leafness:  0.2,
 				Work: &models.Work{
 					Label:    "openalex:W1",
 					Title:    &paperTitle,
+					Authors:  []string{"Dijkstra, E. W."},
+					DOI:      &paperDOI,
+					IDs:      collections.NewSet("openalex:W1", "doi:10.1007/BF01386390", "simple:dijkstra1959"),
 					Abstract: &paperAbstract,
 				},
 			},
@@ -66,11 +72,14 @@ func TestSearchTool(t *testing.T) {
 		assert.Equal(t, "search", res.Tools[0].Name)
 		assert.Equal(t, "Search collection", res.Tools[0].Title)
 		assert.False(t, *res.Tools[0].Annotations.OpenWorldHint)
-		mcptest.AssertPropertyDescriptions(t, res.Tools[0].InputSchema, "query", "limit", "target", "include_abstracts")
+		mcptest.AssertPropertyDescriptions(t, res.Tools[0].InputSchema, "query", "limit", "target")
+		inputSchemaMap := res.Tools[0].InputSchema.(map[string]any)
+		inputProps := inputSchemaMap["properties"].(map[string]any)
+		assert.NotContains(t, inputProps, "include_abstracts")
 		mcptest.AssertPropertyDescriptions(t, res.Tools[0].OutputSchema, "nodes", "links")
 	})
 
-	t.Run("successful search with target omits abstract by default", func(t *testing.T) {
+	t.Run("successful search with target returns compact node summary", func(t *testing.T) {
 		mockColSvc.EXPECT().
 			Resolve(mock.Anything, colID.String()).
 			Return(testCol, nil).
@@ -91,45 +100,27 @@ func TestSearchTool(t *testing.T) {
 		require.NoError(t, err)
 		assert.False(t, res.IsError)
 
+		rawJSON := res.Content[0].(*mcp.TextContent).Text
+		assert.NotContains(t, rawJSON, `"abstract"`)
+		assert.NotContains(t, rawJSON, `"work"`)
+
 		var out analysis.SearchOutput
-		err = json.Unmarshal([]byte(res.Content[0].(*mcp.TextContent).Text), &out)
+		err = json.Unmarshal([]byte(rawJSON), &out)
 		require.NoError(t, err)
 		require.Len(t, out.Nodes, 1)
 		assert.Equal(t, "openalex:W1", out.Nodes[0].ID)
-		assert.Equal(t, "Shortest Path Algorithms", *out.Nodes[0].Work.Title)
-		assert.Nil(t, out.Nodes[0].Work.Abstract)
+		assert.Equal(t, "root", out.Nodes[0].Category)
+		assert.Equal(t, 0.9, out.Nodes[0].Rootness)
+		assert.Equal(t, 0.1, out.Nodes[0].Trunkness)
+		assert.Equal(t, 0.2, out.Nodes[0].Leafness)
+		require.NotNil(t, out.Nodes[0].Title)
+		assert.Equal(t, "Shortest Path Algorithms", *out.Nodes[0].Title)
+		assert.Equal(t, []string{"Dijkstra, E. W."}, out.Nodes[0].Authors)
+		require.NotNil(t, out.Nodes[0].DOI)
+		assert.Equal(t, "10.1007/BF01386390", *out.Nodes[0].DOI)
+		assert.ElementsMatch(t, []string{"openalex:W1", "doi:10.1007/BF01386390", "simple:dijkstra1959"}, out.Nodes[0].IDs)
 		require.Len(t, out.Links, 1)
 		assert.Equal(t, "openalex:W1", out.Links[0].Source)
-	})
-
-	t.Run("search with include_abstracts true includes abstract", func(t *testing.T) {
-		mockColSvc.EXPECT().
-			Resolve(mock.Anything, colID.String()).
-			Return(testCol, nil).
-			Once()
-
-		mockAnaSvc.EXPECT().
-			Search(mock.Anything, colID, "shortest path", 10).
-			Return(mockAnalysis, nil).
-			Once()
-
-		res, err := client.CallTool(t.Context(), &mcp.CallToolParams{
-			Name: "search",
-			Arguments: map[string]any{
-				"query":             "shortest path",
-				"target":            colID.String(),
-				"include_abstracts": true,
-			},
-		})
-		require.NoError(t, err)
-		assert.False(t, res.IsError)
-
-		var out analysis.SearchOutput
-		err = json.Unmarshal([]byte(res.Content[0].(*mcp.TextContent).Text), &out)
-		require.NoError(t, err)
-		require.Len(t, out.Nodes, 1)
-		require.NotNil(t, out.Nodes[0].Work.Abstract)
-		assert.Equal(t, paperAbstract, *out.Nodes[0].Work.Abstract)
 	})
 
 	t.Run("search empty target defaults to latest", func(t *testing.T) {
