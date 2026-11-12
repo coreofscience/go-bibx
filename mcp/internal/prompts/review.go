@@ -90,7 +90,7 @@ Systematically explore the field across its evolutionary dimensions using the `+
    - Identify recent frontier works, emerging subtopics, modern experimental validation, and specialized applications.
    - Group leaves by thematic focus and technological approaches.
 4. **Deep-Dive Abstract Inspection**:
-   - Because `+"`tos`"+` and `+"`search`"+` omit abstracts by default to save context window, call `+"`works`"+` with the IDs of the most important papers to read their full abstracts and metadata.
+   - Because `+"`tos`"+` omits abstracts by default and `+"`search`"+` returns compact node summaries to save context window, call `+"`works`"+` with the IDs of the most important papers to read their full abstracts and metadata.
 
 ### Phase 3: Thematic Drill-Down via Graph Search
 - For key subtopics, conflicting paradigms, or specialized questions that emerge from your analysis of leaves and trunks, use the `+"`search`"+` tool:
