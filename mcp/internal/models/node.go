@@ -8,9 +8,9 @@ import (
 type NodeSummary struct {
 	ID        string   `json:"id" jsonschema:"Unique node identifier in the citation graph"`
 	Category  string   `json:"category" jsonschema:"Assigned Tree of Science category ('root', 'trunk', 'leaf', or 'none')"`
-	Rootness  float64  `json:"rootness" jsonschema:"Score measuring foundational/seminal impact (in-degree from collection citation graph). A high score does not depend on the work mentioning the query"`
-	Trunkness float64  `json:"trunkness" jsonschema:"SAP score measuring structural bridge centrality between roots and leaves"`
-	Leafness  float64  `json:"leafness" jsonschema:"Score measuring modern state-of-the-art relevance (citation paths reaching roots)"`
+	Rootness  float64  `json:"rootness" jsonschema:"Normalized score in [0, 1] measuring foundational/seminal impact (log-scaled relative to the top root in the collection). A high score does not depend on the work mentioning the query"`
+	Trunkness float64  `json:"trunkness" jsonschema:"Normalized SAP score in [0, 1] measuring structural bridge centrality between roots and leaves (log-scaled relative to the top trunk in the collection)"`
+	Leafness  float64  `json:"leafness" jsonschema:"Normalized score in [0, 1] measuring modern state-of-the-art relevance (log-scaled relative to the top leaf in the collection)"`
 	Title     *string  `json:"title,omitempty" jsonschema:"Work title"`
 	Authors   []string `json:"authors,omitempty" jsonschema:"Author names"`
 	DOI       *string  `json:"doi,omitempty" jsonschema:"Digital Object Identifier (DOI)"`

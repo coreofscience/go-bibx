@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
+	"math"
 	"path/filepath"
 	"testing"
 	"uuid"
@@ -488,11 +489,19 @@ func TestOpenAlexAnalysisService_AnalysisPersistenceAndQuery(t *testing.T) {
 	assert.Equal(t, new("conference-paper"), rootResults[0].Work.Type)
 	require.Len(t, rootResults, 2)
 	assert.Equal(t, "Seminal Graph Paper", *rootResults[0].Work.Title)
+	assert.Equal(t, 1.0, rootResults[0].Score)
+	assert.InDelta(t, math.Log1p(0.1)/math.Log1p(0.95), rootResults[1].Score, 1e-12)
 
 	// Verify Search
 	searchResults, err := anaSvc.Search(ctx, colID, "neural networks", 10)
 	require.NoError(t, err)
 	require.NotEmpty(t, searchResults.Nodes)
+	for _, n := range searchResults.Nodes {
+		if n.ID == "openalex:W3" {
+			assert.Equal(t, 1.0, n.Leafness)
+			assert.InDelta(t, math.Log1p(0.2)/math.Log1p(0.88), n.Trunkness, 1e-12)
+		}
+	}
 
 	// 7. Verify re-storing a smaller analysis removes stale nodes/links and preserves existing work authors/keywords when nil
 	stubNode1 := &models.Node{
