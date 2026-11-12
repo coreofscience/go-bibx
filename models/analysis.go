@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"math"
 	"regexp"
 	"slices"
 	"strings"
@@ -212,11 +213,87 @@ func (a *Analysis) Keep(ids []string) *Analysis {
 	}
 }
 
+// NormalizeScore scales a positive raw SAP metric into (0, 1] relative to maxScore
+// using logarithmic scaling: ln(1 + score) / ln(1 + maxScore).
+func NormalizeScore(score, maxScore float64) float64 {
+	if score <= 0 || maxScore <= 0 {
+		return 0
+	}
+	if score >= maxScore {
+		return 1
+	}
+	return math.Log1p(score) / math.Log1p(maxScore)
+}
+
+// NormalizeResults returns a new slice of [Result] items with scores normalized relative to the maximum score.
+func NormalizeResults(results []*Result) []*Result {
+	if len(results) == 0 {
+		return results
+	}
+	var maxScore float64
+	for _, r := range results {
+		if r != nil && r.Score > maxScore {
+			maxScore = r.Score
+		}
+	}
+	normalized := make([]*Result, len(results))
+	for i, r := range results {
+		if r == nil {
+			continue
+		}
+		normalized[i] = &Result{
+			Score: NormalizeScore(r.Score, maxScore),
+			Work:  r.Work,
+		}
+	}
+	return normalized
+}
+
+// Normalize returns a new [Analysis] with each node's Rootness, Trunkness, and Leafness
+// log-normalized onto [0, 1] relative to the maximum score in each category.
+func (a *Analysis) Normalize() *Analysis {
+	if a == nil {
+		return nil
+	}
+	var maxRoot, maxTrunk, maxLeaf float64
+	for _, n := range a.Nodes {
+		if n == nil {
+			continue
+		}
+		maxRoot = max(maxRoot, n.Rootness)
+		maxTrunk = max(maxTrunk, n.Trunkness)
+		maxLeaf = max(maxLeaf, n.Leafness)
+	}
+	nodes := make([]*Node, len(a.Nodes))
+	for i, n := range a.Nodes {
+		if n == nil {
+			continue
+		}
+		nodes[i] = &Node{
+			ID:        n.ID,
+			Category:  n.Category,
+			Rootness:  NormalizeScore(n.Rootness, maxRoot),
+			Trunkness: NormalizeScore(n.Trunkness, maxTrunk),
+			Leafness:  NormalizeScore(n.Leafness, maxLeaf),
+			Work:      n.Work,
+		}
+	}
+	links := make([]*Link, len(a.Links))
+	copy(links, a.Links)
+	return &Analysis{
+		Nodes: nodes,
+		Links: links,
+	}
+}
+
 // Query returns the top scored results for the given Tree of Science category ("root", "trunk", or "leaf"), up to top items.
 func (a *Analysis) Query(category string, top int) ([]*Result, error) {
 	results := make([]*Result, 0, top)
 	scored := make([]*Result, 0, len(a.Nodes))
 	for _, node := range a.Nodes {
+		if node == nil {
+			continue
+		}
 		var score float64
 		switch Category(category) {
 		case CategoryRoot:
@@ -239,6 +316,7 @@ func (a *Analysis) Query(category string, top int) ([]*Result, error) {
 	slices.SortFunc(scored, func(a, b *Result) int {
 		return cmp.Compare(b.Score, a.Score)
 	})
+	scored = NormalizeResults(scored)
 
 	limit := min(top, len(scored))
 	for _, node := range scored[:limit] {

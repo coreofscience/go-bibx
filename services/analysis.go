@@ -445,10 +445,10 @@ func (s *OpenAlexAnalysisService) LoadAnalysis(ctx context.Context, collectionID
 		}
 	}
 
-	return &models.Analysis{
+	return (&models.Analysis{
 		Nodes: nodes,
 		Links: links,
-	}, nil
+	}).Normalize(), nil
 }
 
 // QueryCategory retrieves scored results for a category using indexed B-Tree ordering.
@@ -471,7 +471,7 @@ func (s *OpenAlexAnalysisService) QueryCategory(ctx context.Context, collectionI
 			work := buildWork(r.Label, r.Title, r.Venue, r.Type, r.VenueType, r.Publisher, r.Institution, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
 			results[i] = &models.Result{Score: r.Trunkness, Work: work}
 		}
-		return results, nil
+		return models.NormalizeResults(results), nil
 
 	case models.CategoryLeaf:
 		rows, err := s.queries.ListLeaves(ctx, repository.ListLeavesParams{
@@ -486,7 +486,7 @@ func (s *OpenAlexAnalysisService) QueryCategory(ctx context.Context, collectionI
 			work := buildWork(r.Label, r.Title, r.Venue, r.Type, r.VenueType, r.Publisher, r.Institution, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
 			results[i] = &models.Result{Score: r.Leafness, Work: work}
 		}
-		return results, nil
+		return models.NormalizeResults(results), nil
 
 	default: // Root
 		rows, err := s.queries.ListRoots(ctx, repository.ListRootsParams{
@@ -501,7 +501,7 @@ func (s *OpenAlexAnalysisService) QueryCategory(ctx context.Context, collectionI
 			work := buildWork(r.Label, r.Title, r.Venue, r.Type, r.VenueType, r.Publisher, r.Institution, r.Year, r.Volume, r.Issue, r.Page, r.Doi, r.Permalink, r.TimesCited, r.Abstract, r.Rich.Bool, r.Authors, r.Keywords, r.Ids)
 			results[i] = &models.Result{Score: r.Rootness, Work: work}
 		}
-		return results, nil
+		return models.NormalizeResults(results), nil
 	}
 }
 

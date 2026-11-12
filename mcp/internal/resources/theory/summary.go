@@ -38,6 +38,10 @@ citation lineages that end up in the "root" papers.
 Using the root, trunk and leaves you can build strong and useful literature
 reviews. And identify which works need to be read to understand an specific
 topic.
+
+Scores (rootness, trunkness, and leafness) are log-normalized to [0, 1] within
+each category relative to the collection maximum (1.0 being the highest-scoring
+work in that category, and 0 indicating the work is not in that category).
 `
 
 // Summary is a resource to hold the summary of the bibx algorithm.

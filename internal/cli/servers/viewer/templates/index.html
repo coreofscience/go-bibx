@@ -432,37 +432,6 @@
                 });
             }
 
-            const getMinPositive = (data, key) => {
-                const values = data.map((d) => d[key]).filter((v) => v > 0);
-                return values.length > 0 ? d3.min(values) : 1; // Fallback to 1 if all are 0
-            };
-
-            const bounds = {
-                root: {
-                    min: getMinPositive(data.nodes, "rootness"),
-                    max: d3.max(data.nodes, (d) => d.rootness),
-                },
-                trunk: {
-                    min: getMinPositive(data.nodes, "trunkness"),
-                    max: d3.max(data.nodes, (d) => d.trunkness),
-                },
-                leaf: {
-                    min: getMinPositive(data.nodes, "leafness"),
-                    max: d3.max(data.nodes, (d) => d.leafness),
-                },
-            };
-
-            const normalizeLog = (val, min, max) => {
-                if (val <= 0) return 0;
-                // Map the value from [min, max] to [0.1, 1] logarithmically
-                // We start at 0.1 so that the smallest positive value still has some "weight"
-                const scale = d3
-                    .scaleSymlog()
-                    .domain([min, max])
-                    .range([0.01, 1]);
-                return scale(val);
-            };
-
             const areaScale = d3
                 .scaleSymlog()
                 .domain([0, 1])
@@ -471,24 +440,12 @@
 
             // 3. The "Fair" Radius Function
             const getFairRadius = (d) => {
-                const nRoot = normalizeLog(
-                    d.rootness,
-                    bounds.root.min,
-                    bounds.root.max,
+                // Scores are already log-normalized to [0, 1] per category
+                const winner = Math.max(
+                    d.rootness || 0,
+                    d.trunkness || 0,
+                    d.leafness || 0,
                 );
-                const nTrunk = normalizeLog(
-                    d.trunkness,
-                    bounds.trunk.min,
-                    bounds.trunk.max,
-                );
-                const nLeaf = normalizeLog(
-                    d.leafness,
-                    bounds.leaf.min,
-                    bounds.leaf.max,
-                );
-
-                // Pick the winner
-                const winner = Math.max(nRoot, nTrunk, nLeaf);
 
                 // Calculate radius from area
                 return Math.sqrt(areaScale(winner) / Math.PI);
