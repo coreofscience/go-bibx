@@ -45,7 +45,8 @@ func Migrate(db *sql.DB) error {
 }
 
 // OpenSQLite opens a SQLite database connection at the given path,
-// ensures its parent directory exists, and sets recommended PRAGMAs (WAL mode and foreign keys).
+// ensures its parent directory exists, and configures recommended PRAGMAs
+// (WAL mode, foreign keys, and busy_timeout) on every connection in the pool.
 // It does NOT automatically run migrations, leaving schema management decoupled.
 func OpenSQLite(path string) (*sql.DB, error) {
 	cleanPath := path
@@ -65,17 +66,26 @@ func OpenSQLite(path string) (*sql.DB, error) {
 		}
 	}
 
-	db, err := sql.Open("sqlite", path)
+	dsn := sqliteDSN(path)
+	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite database: %w", err)
 	}
 
-	if _, err := db.Exec("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;"); err != nil {
+	if err := db.Ping(); err != nil {
 		_ = db.Close()
-		return nil, fmt.Errorf("failed to set sqlite pragmas: %w", err)
+		return nil, fmt.Errorf("failed to connect to sqlite database: %w", err)
 	}
 
 	return db, nil
+}
+
+func sqliteDSN(path string) string {
+	const pragmas = "_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)"
+	if strings.Contains(path, "?") {
+		return path + "&" + pragmas
+	}
+	return path + "?" + pragmas
 }
 
 // OpenAndMigrateSQLite opens the SQLite database at the given path and runs pending migrations.

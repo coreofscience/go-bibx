@@ -203,3 +203,63 @@ JOIN nodes n ON n.work_id = w.id
 WHERE n.collection_id = ?
 ORDER BY bm25(works_fts)
 LIMIT ?;
+
+-- name: CreateInquireJob :exec
+INSERT INTO inquire_jobs (
+    id,
+    query_hash,
+    query,
+    result_limit,
+    name,
+    force,
+    status,
+    stage
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+-- name: GetInquireJobByID :one
+SELECT *
+FROM inquire_jobs
+WHERE id = ?;
+
+-- name: GetActiveInquireJobByHash :one
+SELECT *
+FROM inquire_jobs
+WHERE query_hash = ? AND status IN ('pending', 'running')
+LIMIT 1;
+
+-- name: UpdateInquireJobStage :exec
+UPDATE inquire_jobs
+SET status = ?,
+    stage = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?;
+
+-- name: CompleteInquireJob :exec
+UPDATE inquire_jobs
+SET status = 'completed',
+    stage = 'done',
+    collection_id = ?,
+    is_new = ?,
+    seed_count = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?;
+
+-- name: FailInquireJob :exec
+UPDATE inquire_jobs
+SET status = 'failed',
+    error = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?;
+
+-- name: FailStaleInquireJobs :exec
+UPDATE inquire_jobs
+SET status = 'failed',
+    error = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE status IN ('pending', 'running')
+  AND updated_at <= ?;
+
+-- name: DeleteCompletedInquireJobsBefore :exec
+DELETE FROM inquire_jobs
+WHERE status IN ('completed', 'failed')
+  AND updated_at < ?;

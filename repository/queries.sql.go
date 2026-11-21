@@ -12,6 +12,34 @@ import (
 	"uuid"
 )
 
+const completeInquireJob = `-- name: CompleteInquireJob :exec
+UPDATE inquire_jobs
+SET status = 'completed',
+    stage = 'done',
+    collection_id = ?,
+    is_new = ?,
+    seed_count = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?
+`
+
+type CompleteInquireJobParams struct {
+	CollectionID *uuid.UUID
+	IsNew        bool
+	SeedCount    int64
+	ID           uuid.UUID
+}
+
+func (q *Queries) CompleteInquireJob(ctx context.Context, arg CompleteInquireJobParams) error {
+	_, err := q.db.ExecContext(ctx, completeInquireJob,
+		arg.CollectionID,
+		arg.IsNew,
+		arg.SeedCount,
+		arg.ID,
+	)
+	return err
+}
+
 const createCollection = `-- name: CreateCollection :exec
 INSERT INTO collections (
     id,
@@ -47,6 +75,44 @@ func (q *Queries) CreateCollection(ctx context.Context, arg CreateCollectionPara
 	return err
 }
 
+const createInquireJob = `-- name: CreateInquireJob :exec
+INSERT INTO inquire_jobs (
+    id,
+    query_hash,
+    query,
+    result_limit,
+    name,
+    force,
+    status,
+    stage
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+`
+
+type CreateInquireJobParams struct {
+	ID          uuid.UUID
+	QueryHash   interface{}
+	Query       string
+	ResultLimit int64
+	Name        sql.NullString
+	Force       bool
+	Status      string
+	Stage       string
+}
+
+func (q *Queries) CreateInquireJob(ctx context.Context, arg CreateInquireJobParams) error {
+	_, err := q.db.ExecContext(ctx, createInquireJob,
+		arg.ID,
+		arg.QueryHash,
+		arg.Query,
+		arg.ResultLimit,
+		arg.Name,
+		arg.Force,
+		arg.Status,
+		arg.Stage,
+	)
+	return err
+}
+
 const deleteCollectionById = `-- name: DeleteCollectionById :exec
 DELETE FROM collections
 WHERE id = ?
@@ -54,6 +120,17 @@ WHERE id = ?
 
 func (q *Queries) DeleteCollectionById(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, deleteCollectionById, id)
+	return err
+}
+
+const deleteCompletedInquireJobsBefore = `-- name: DeleteCompletedInquireJobsBefore :exec
+DELETE FROM inquire_jobs
+WHERE status IN ('completed', 'failed')
+  AND updated_at < ?
+`
+
+func (q *Queries) DeleteCompletedInquireJobsBefore(ctx context.Context, updatedAt sql.NullTime) error {
+	_, err := q.db.ExecContext(ctx, deleteCompletedInquireJobsBefore, updatedAt)
 	return err
 }
 
@@ -75,6 +152,72 @@ WHERE collection_id = ?
 func (q *Queries) DeleteNodesByCollectionID(ctx context.Context, collectionID uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, deleteNodesByCollectionID, collectionID)
 	return err
+}
+
+const failInquireJob = `-- name: FailInquireJob :exec
+UPDATE inquire_jobs
+SET status = 'failed',
+    error = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?
+`
+
+type FailInquireJobParams struct {
+	Error sql.NullString
+	ID    uuid.UUID
+}
+
+func (q *Queries) FailInquireJob(ctx context.Context, arg FailInquireJobParams) error {
+	_, err := q.db.ExecContext(ctx, failInquireJob, arg.Error, arg.ID)
+	return err
+}
+
+const failStaleInquireJobs = `-- name: FailStaleInquireJobs :exec
+UPDATE inquire_jobs
+SET status = 'failed',
+    error = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE status IN ('pending', 'running')
+  AND updated_at <= ?
+`
+
+type FailStaleInquireJobsParams struct {
+	Error     sql.NullString
+	UpdatedAt sql.NullTime
+}
+
+func (q *Queries) FailStaleInquireJobs(ctx context.Context, arg FailStaleInquireJobsParams) error {
+	_, err := q.db.ExecContext(ctx, failStaleInquireJobs, arg.Error, arg.UpdatedAt)
+	return err
+}
+
+const getActiveInquireJobByHash = `-- name: GetActiveInquireJobByHash :one
+SELECT id, query_hash, "query", result_limit, name, force, status, stage, collection_id, is_new, seed_count, error, created_at, updated_at
+FROM inquire_jobs
+WHERE query_hash = ? AND status IN ('pending', 'running')
+LIMIT 1
+`
+
+func (q *Queries) GetActiveInquireJobByHash(ctx context.Context, queryHash interface{}) (InquireJob, error) {
+	row := q.db.QueryRowContext(ctx, getActiveInquireJobByHash, queryHash)
+	var i InquireJob
+	err := row.Scan(
+		&i.ID,
+		&i.QueryHash,
+		&i.Query,
+		&i.ResultLimit,
+		&i.Name,
+		&i.Force,
+		&i.Status,
+		&i.Stage,
+		&i.CollectionID,
+		&i.IsNew,
+		&i.SeedCount,
+		&i.Error,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const getCollectionByHash = `-- name: GetCollectionByHash :one
@@ -170,6 +313,34 @@ func (q *Queries) GetCollectionByQuery(ctx context.Context, arg GetCollectionByQ
 		&i.Parameters,
 		&i.Name,
 		&i.WorkCount,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getInquireJobByID = `-- name: GetInquireJobByID :one
+SELECT id, query_hash, "query", result_limit, name, force, status, stage, collection_id, is_new, seed_count, error, created_at, updated_at
+FROM inquire_jobs
+WHERE id = ?
+`
+
+func (q *Queries) GetInquireJobByID(ctx context.Context, id uuid.UUID) (InquireJob, error) {
+	row := q.db.QueryRowContext(ctx, getInquireJobByID, id)
+	var i InquireJob
+	err := row.Scan(
+		&i.ID,
+		&i.QueryHash,
+		&i.Query,
+		&i.ResultLimit,
+		&i.Name,
+		&i.Force,
+		&i.Status,
+		&i.Stage,
+		&i.CollectionID,
+		&i.IsNew,
+		&i.SeedCount,
+		&i.Error,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -727,6 +898,25 @@ type UpdateCollectionNameParams struct {
 
 func (q *Queries) UpdateCollectionName(ctx context.Context, arg UpdateCollectionNameParams) error {
 	_, err := q.db.ExecContext(ctx, updateCollectionName, arg.Name, arg.ID)
+	return err
+}
+
+const updateInquireJobStage = `-- name: UpdateInquireJobStage :exec
+UPDATE inquire_jobs
+SET status = ?,
+    stage = ?,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?
+`
+
+type UpdateInquireJobStageParams struct {
+	Status string
+	Stage  string
+	ID     uuid.UUID
+}
+
+func (q *Queries) UpdateInquireJobStage(ctx context.Context, arg UpdateInquireJobStageParams) error {
+	_, err := q.db.ExecContext(ctx, updateInquireJobStage, arg.Status, arg.Stage, arg.ID)
 	return err
 }
 
