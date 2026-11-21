@@ -18,10 +18,30 @@ import (
 	"github.com/coreofscience/go-bibx/repository"
 )
 
+// InquireStage identifies the current execution stage of an inquiry pipeline.
+type InquireStage string
+
+// Execution stages reported during an inquiry pipeline.
+const (
+	StageQueued        InquireStage = "queued"
+	StageFetchingSeeds InquireStage = "fetching_seeds"
+	StageEnriching     InquireStage = "enriching"
+	StageScoring       InquireStage = "scoring"
+	StageStoring       InquireStage = "storing"
+	StageDone          InquireStage = "done"
+)
+
 // InquireOptions specifies optional configuration for storing inquiry results.
 type InquireOptions struct {
-	Force bool
-	Name  string
+	Force   bool
+	Name    string
+	OnStage func(stage InquireStage)
+}
+
+func notifyStage(fn func(InquireStage), stage InquireStage) {
+	if fn != nil {
+		fn(stage)
+	}
 }
 
 // InquireResult encapsulates the stored or matched collection and whether it was newly queried.
@@ -123,6 +143,7 @@ func (s *OpenAlexAnalysisService) Inquire(
 	}
 
 	slog.InfoContext(ctx, "fetching initial works")
+	notifyStage(opts.OnStage, StageFetchingSeeds)
 	fetched, err := s.openalexClient.SearchWorks(ctx, query, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search works: %w", err)
@@ -142,6 +163,7 @@ func (s *OpenAlexAnalysisService) Inquire(
 		return nil, fmt.Errorf("failed to clean collection: %w", err)
 	}
 	slog.InfoContext(ctx, "enriching collection")
+	notifyStage(opts.OnStage, StageEnriching)
 	collection, err = s.enrich(ctx, collection)
 	if err != nil {
 		return nil, fmt.Errorf("failed to enrich collection: %w", err)
@@ -157,6 +179,7 @@ func (s *OpenAlexAnalysisService) Inquire(
 	}
 
 	slog.InfoContext(ctx, "applying sap algorithm")
+	notifyStage(opts.OnStage, StageScoring)
 	sap, err := algorithms.NewSapAlgorithm(graph)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create sap algorithm: %w", err)
@@ -229,6 +252,7 @@ func (s *OpenAlexAnalysisService) Inquire(
 	}
 
 	slog.InfoContext(ctx, "storing analysis", "collection_id", colID)
+	notifyStage(opts.OnStage, StageStoring)
 	if err := s.StoreAnalysis(ctx, colID, analysis); err != nil {
 		return nil, fmt.Errorf("failed to store analysis: %w", err)
 	}

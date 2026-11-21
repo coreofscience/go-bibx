@@ -22,6 +22,23 @@ type Collection struct {
 	UpdatedAt   sql.NullTime
 }
 
+type InquireJob struct {
+	ID           uuid.UUID
+	QueryHash    interface{}
+	Query        string
+	ResultLimit  int64
+	Name         sql.NullString
+	Force        bool
+	Status       string
+	Stage        string
+	CollectionID *uuid.UUID
+	IsNew        bool
+	SeedCount    int64
+	Error        sql.NullString
+	CreatedAt    sql.NullTime
+	UpdatedAt    sql.NullTime
+}
+
 type Link struct {
 	CollectionID uuid.UUID
 	SourceID     uuid.UUID

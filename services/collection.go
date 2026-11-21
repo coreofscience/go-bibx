@@ -56,8 +56,8 @@ type SQLiteCollectionService struct {
 	queries *repository.Queries
 }
 
-// NewCollectionService creates a [*SQLiteCollectionService] backed by the provided [repository.DBTX].
-func NewCollectionService(db repository.DBTX) *SQLiteCollectionService {
+// NewCollectionService creates a [*SQLiteCollectionService] backed by the provided [sql.DB].
+func NewCollectionService(db *sql.DB) *SQLiteCollectionService {
 	return &SQLiteCollectionService{
 		queries: repository.New(db),
 	}
