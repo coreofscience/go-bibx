@@ -64,6 +64,42 @@ func TestOpenSQLite_PragmasApplyAcrossConnections(t *testing.T) {
 	}
 }
 
+func TestOpenSQLite_RespectsCallerPragmas(t *testing.T) {
+	t.Run("parenthesis syntax overrides busy_timeout while keeping other defaults", func(t *testing.T) {
+		dsn := filepath.Join(t.TempDir(), "custom1.db") + "?_pragma=busy_timeout(15000)"
+		db, err := repository.OpenSQLite(dsn)
+		require.NoError(t, err)
+		defer func() { require.NoError(t, db.Close()) }()
+
+		var busyTimeout, foreignKeys int
+		var journalMode string
+		require.NoError(t, db.QueryRow("PRAGMA busy_timeout;").Scan(&busyTimeout))
+		require.NoError(t, db.QueryRow("PRAGMA foreign_keys;").Scan(&foreignKeys))
+		require.NoError(t, db.QueryRow("PRAGMA journal_mode;").Scan(&journalMode))
+
+		assert.Equal(t, 15000, busyTimeout)
+		assert.Equal(t, 1, foreignKeys)
+		assert.Equal(t, "wal", journalMode)
+	})
+
+	t.Run("equals syntax and uppercase pragma names are respected", func(t *testing.T) {
+		dsn := filepath.Join(t.TempDir(), "custom2.db") + "?_pragma=BUSY_TIMEOUT=12000&_pragma=FOREIGN_KEYS=0"
+		db, err := repository.OpenSQLite(dsn)
+		require.NoError(t, err)
+		defer func() { require.NoError(t, db.Close()) }()
+
+		var busyTimeout, foreignKeys int
+		var journalMode string
+		require.NoError(t, db.QueryRow("PRAGMA busy_timeout;").Scan(&busyTimeout))
+		require.NoError(t, db.QueryRow("PRAGMA foreign_keys;").Scan(&foreignKeys))
+		require.NoError(t, db.QueryRow("PRAGMA journal_mode;").Scan(&journalMode))
+
+		assert.Equal(t, 12000, busyTimeout)
+		assert.Equal(t, 0, foreignKeys)
+		assert.Equal(t, "wal", journalMode)
+	})
+}
+
 func TestMigrate_RunsMigrations(t *testing.T) {
 	tempDir := t.TempDir()
 	dbPath := filepath.Join(tempDir, "test_migrations.db")
