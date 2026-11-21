@@ -122,9 +122,9 @@ type SQLiteInquireJobService struct {
 	closed          bool
 }
 
-// NewInquireJobService creates a new [SQLiteInquireJobService].
+// NewInquireJobService creates a new [SQLiteInquireJobService] backed by the provided [sql.DB].
 func NewInquireJobService(
-	db repository.DBTX,
+	db *sql.DB,
 	analysisService AnalysisService,
 	opts ...InquireJobOption,
 ) *SQLiteInquireJobService {
